@@ -7,7 +7,7 @@ import logging
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
-from homeassistant.const import CONF_PASSWORD, CONF_USERNAME
+from homeassistant.const import CONF_PASSWORD, CONF_USERNAME, ATTR_BATTERY_LEVEL
 from homeassistant.helpers.entity import Entity
 
 from .const import (
@@ -121,6 +121,9 @@ class TahomaDevice(Entity):
                 self.tahoma_device.active_states.get(CORE_STATUS_STATE) == "available"
             )
 
+        if "core:SensorDefectState" in self.tahoma_device.active_states:
+            return self.tahoma_device.active_states.get(CORE_STATUS_STATE) != "dead"
+
         # A RTS power socket doesn't have a feedback channel,
         # so we must assume the socket is available.
         return True
@@ -150,6 +153,12 @@ class TahomaDevice(Entity):
         if CORE_RSSI_LEVEL_STATE in self.tahoma_device.active_states:
             attr[ATTR_RSSI_LEVEL] = self.tahoma_device.active_states[
                 CORE_RSSI_LEVEL_STATE
+            ]
+
+        # TODO Parse 'lowBattery' for low battery warning. 'dead' for not available.
+        if "core:SensorDefectState" in self.tahoma_device.active_states:
+            attr[ATTR_BATTERY_LEVEL] = self.tahoma_device.active_states[
+                "core:SensorDefectState"
             ]
 
         return attr

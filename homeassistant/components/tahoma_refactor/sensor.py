@@ -91,22 +91,3 @@ class TahomaSensor(TahomaDevice, Entity):
             self._available = True
 
         _LOGGER.debug("Update %s, value: %d", self._name, self.current_value)
-
-    @property
-    def device_state_attributes(self):
-        """Return the device state attributes."""
-        attr = {}
-        super_attr = super().device_state_attributes
-        if super_attr is not None:
-            attr.update(super_attr)
-
-        if "core:SensorDefectState" in self.tahoma_device.active_states:
-            attr[ATTR_BATTERY_LEVEL] = self.tahoma_device.active_states[
-                "core:SensorDefectState"
-            ]
-        return attr
-
-    @property
-    def available(self):
-        """Return True if entity is available."""
-        return self._available
