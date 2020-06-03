@@ -111,6 +111,14 @@ class TahomaDevice(Entity):
         return self.tahoma_device.url
 
     @property
+    def assumed_state(self):
+        """Return True if unable to access real state of the entity."""
+        if self.tahoma_device.type.startswith('rts:'):
+            return True
+
+        return False
+
+    @property
     def device_state_attributes(self):
         """Return the state attributes of the device."""
 

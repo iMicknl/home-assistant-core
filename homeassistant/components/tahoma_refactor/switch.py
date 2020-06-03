@@ -44,12 +44,6 @@ class TahomaSwitch(TahomaDevice, SwitchEntity):
 
         self.controller.get_states([self.tahoma_device])
 
-        if self.tahoma_device.type == "io:OnOffLightIOComponent":
-            if self.tahoma_device.active_states.get("core:OnOffState") == "on":
-                self._state = STATE_ON
-            else:
-                self._state = STATE_OFF
-
         # A RTS power socket doesn't have a feedback channel,
         # so we must assume the socket is available.
         if self.tahoma_device.type == "rts:OnOffRTSComponent":

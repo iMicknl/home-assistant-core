@@ -18,6 +18,7 @@ _LOGGER = logging.getLogger(__name__)
 
 SCAN_INTERVAL = timedelta(seconds=30)
 
+
 async def async_setup_entry(hass, entry, async_add_entities):
     """Set up the Tahoma lights from a config entry."""
 
@@ -42,18 +43,7 @@ class TahomaLight(TahomaDevice, LightEntity):
         self._skip_update = False
         self._effect = None
 
-        # TODO: 
         device_type = self.tahoma_device.widget
-
-        if device_type == 'DimmableLight':
-            # Enable brightness
-            print('DimmableLight detected')
-
-        if device_type == 'OnOffLight':
-            # Disable brightness
-            # TODO: Decide if we do it based on the device type or based on the available commands
-            print('OnOff Light detected')
-
         self.update()
 
     @property
@@ -71,7 +61,16 @@ class TahomaLight(TahomaDevice, LightEntity):
     @property
     def supported_features(self) -> int:
         """Flag supported features."""
-        return SUPPORT_BRIGHTNESS | SUPPORT_EFFECT
+
+        supported_features = 0
+
+        if "setIntensity" in self.tahoma_device.command_definitions:
+            supported_features |= SUPPORT_BRIGHTNESS
+
+        if "wink" in self.tahoma_device.command_definitions:
+            supported_features |= SUPPORT_EFFECT
+
+        return supported_features
 
     async def async_turn_on(self, **kwargs) -> None:
         """Turn the light on."""
@@ -121,9 +120,12 @@ class TahomaLight(TahomaDevice, LightEntity):
 
         _LOGGER.debug("[THM] Updating state...")
         self.controller.get_states([self.tahoma_device])
-        self._brightness = self.tahoma_device.active_states.get(
-            "core:LightIntensityState"
-        )
+
+        if "core:LightIntensityState" in self.tahoma_device.active_states:
+            self._brightness = self.tahoma_device.active_states.get(
+                "core:LightIntensityState"
+            )
+
         if self.tahoma_device.active_states.get("core:OnOffState") == "on":
             self._state = True
         else:
