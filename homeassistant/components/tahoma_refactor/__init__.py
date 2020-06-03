@@ -10,17 +10,21 @@ from homeassistant.core import HomeAssistant
 from homeassistant.const import CONF_PASSWORD, CONF_USERNAME
 from homeassistant.helpers.entity import Entity
 
-from .const import DOMAIN  # pylint:disable=unused-import
+from .const import DOMAIN, ATTR_RSSI_LEVEL, TAHOMA_TYPES, CORE_RSSI_LEVEL_STATE
 from .tahoma_api import TahomaApi, Action
 from requests.exceptions import RequestException
+
+from homeassistant.helpers import (
+    config_validation as cv,
+    device_registry as dr,
+    discovery,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
 CONFIG_SCHEMA = vol.Schema({DOMAIN: vol.Schema({})}, extra=vol.ALLOW_EXTRA)
 
-PLATFORMS = ["light"]
-
-TAHOMA_TYPES = {"Light": "light", "ExteriorScreen": "cover", "Pergola": "cover"}
+PLATFORMS = ["light", "cover"]
 
 
 async def async_setup(hass: HomeAssistant, config: dict):
@@ -30,8 +34,6 @@ async def async_setup(hass: HomeAssistant, config: dict):
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     """Set up Tahoma from a config entry."""
-    # TODO Store an API object for your platforms to access
-    # hass.data[DOMAIN][entry.entry_id] = MyApi(...)
 
     username = entry.data[CONF_USERNAME]
     password = entry.data[CONF_PASSWORD]
@@ -40,26 +42,21 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         api = TahomaApi(username, password)
         api.get_setup()
         devices = api.get_devices()
-        scenes = api.get_action_groups()
+        # scenes = api.get_action_groups()
+
     except RequestException:
         _LOGGER.exception("Error when getting devices from the Tahoma API")
         return False
 
     hass.data[DOMAIN] = {"controller": api, "devices": []}
 
+    # List devices
     for device in devices:
         _device = api.get_device(device)
 
         if _device.uiclass in TAHOMA_TYPES:
             if TAHOMA_TYPES[_device.uiclass] in PLATFORMS:
                 component = TAHOMA_TYPES[_device.uiclass]
-
-                _LOGGER.warning(
-                    "Supported type %s for Tahoma device %s and component %s ",
-                    _device.type,
-                    _device.uiclass,
-                    component,
-                )
 
                 hass.data[DOMAIN]["devices"].append(_device)
 
@@ -68,9 +65,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
                 )
         else:
             _LOGGER.warning(
-                "Unsupported type %s for Tahoma device %s",
+                "Unsupported Tahoma device (%s - %s - %s) ",
                 _device.type,
                 _device.uiclass,
+                _device.widget,
             )
 
     return True
@@ -113,15 +111,17 @@ class TahomaDevice(Entity):
     @property
     def device_state_attributes(self):
         """Return the state attributes of the device."""
-        
+
         attr = {
             "uiclass": self.tahoma_device.uiclass,
             "widget": self.tahoma_device.widget,
             "type": self.tahoma_device.type,
         }
 
-        if "core:RSSILevelState" in self.tahoma_device.active_states:
-            attr["rssi"] = self.tahoma_device.active_states["core:RSSILevelState"]
+        if CORE_RSSI_LEVEL_STATE in self.tahoma_device.active_states:
+            attr[ATTR_RSSI_LEVEL] = self.tahoma_device.active_states[
+                CORE_RSSI_LEVEL_STATE
+            ]
 
         return attr
 
@@ -135,7 +135,7 @@ class TahomaDevice(Entity):
             "model": self.tahoma_device.widget,
             "uiclass": self.tahoma_device.uiclass,
             "widget": self.tahoma_device.widget,
-            "type": self.tahoma_device.type
+            "type": self.tahoma_device.type,
         }
 
     def apply_action(self, cmd_name, *args):

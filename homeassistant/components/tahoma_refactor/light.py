@@ -12,19 +12,19 @@ from homeassistant.components.light import (
 
 from homeassistant.const import STATE_OFF, STATE_ON
 
-from . import DOMAIN as TAHOMA_DOMAIN, TahomaDevice, TAHOMA_TYPES
+from . import DOMAIN, TahomaDevice, TAHOMA_TYPES
 
 _LOGGER = logging.getLogger(__name__)
 
 SCAN_INTERVAL = timedelta(seconds=30)
 
-async def async_setup_entry(hass, config_entry, async_add_entities):
+async def async_setup_entry(hass, entry, async_add_entities):
     """Set up the Tahoma lights from a config entry."""
 
-    data = hass.data[TAHOMA_DOMAIN]
+    data = hass.data[DOMAIN]
 
     entities = []
-    controller = hass.data[TAHOMA_DOMAIN]["controller"]
+    controller = hass.data[DOMAIN]["controller"]
 
     for device in data.get("devices"):
         if TAHOMA_TYPES[device.uiclass] == "light":
