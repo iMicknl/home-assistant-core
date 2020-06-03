@@ -10,7 +10,13 @@ from homeassistant.core import HomeAssistant
 from homeassistant.const import CONF_PASSWORD, CONF_USERNAME
 from homeassistant.helpers.entity import Entity
 
-from .const import DOMAIN, ATTR_RSSI_LEVEL, TAHOMA_TYPES, CORE_RSSI_LEVEL_STATE
+from .const import (
+    DOMAIN,
+    ATTR_RSSI_LEVEL,
+    TAHOMA_TYPES,
+    CORE_RSSI_LEVEL_STATE,
+    CORE_STATUS_STATE,
+)
 from .tahoma_api import TahomaApi, Action
 from requests.exceptions import RequestException
 
@@ -110,9 +116,9 @@ class TahomaDevice(Entity):
     def available(self) -> bool:
         """Return True if entity is available."""
 
-        if "core:StatusState" in self.tahoma_device.active_states:
+        if CORE_STATUS_STATE in self.tahoma_device.active_states:
             return bool(
-                self.tahoma_device.active_states.get("core:StatusState") == "available"
+                self.tahoma_device.active_states.get(CORE_STATUS_STATE) == "available"
             )
 
         # A RTS power socket doesn't have a feedback channel,

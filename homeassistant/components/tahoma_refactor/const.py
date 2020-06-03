@@ -23,7 +23,7 @@ TAHOMA_TYPES = {
     "TemperatureSensor": "sensor",
     "DoorLock": "lock",
     "OnOff": "switch",
-    "HumiditySensor": "sensor"
+    "HumiditySensor": "sensor",
 }
 
 ## TODO Make sure widgetName has priority over uiClass for specific overrides.
@@ -42,11 +42,12 @@ ATTR_LOCK_LEVEL = "lock_level"
 ATTR_LOCK_ORIG = "lock_originator"
 
 # Tahoma internal device states
+CORE_RSSI_LEVEL_STATE = "core:RSSILevelState"
+CORE_STATUS_STATE = "core:StatusState"
 CORE_CLOSURE_STATE = "core:ClosureState"
 CORE_DEPLOYMENT_STATE = "core:DeploymentState"
 CORE_SLATS_ORIENTATION_STATE = "core:SlatsOrientationState"
 CORE_PRIORITY_LOCK_TIMER_STATE = "core:PriorityLockTimerState"
-CORE_RSSI_LEVEL_STATE = "core:RSSILevelState"
 
 IO_PRIORITY_LOCK_LEVEL_STATE = "io:PriorityLockLevelState"
 IO_PRIORITY_LOCK_ORIGINATOR_STATE = "io:PriorityLockOriginatorState"
