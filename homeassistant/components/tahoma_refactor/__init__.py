@@ -24,7 +24,7 @@ _LOGGER = logging.getLogger(__name__)
 
 CONFIG_SCHEMA = vol.Schema({DOMAIN: vol.Schema({})}, extra=vol.ALLOW_EXTRA)
 
-PLATFORMS = ["light", "cover", "sensor", "lock"]
+PLATFORMS = ["light", "cover", "sensor", "lock", "switch"]
 
 
 async def async_setup(hass: HomeAssistant, config: dict):
@@ -67,7 +67,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
                 )
         else:
             _LOGGER.warning(
-                "Unsupported Tahoma device (%s - %s - %s) ",
+                "Unsupported Tahoma device (%s - %s - %s)",
                 _device.type,
                 _device.uiclass,
                 _device.widget,
