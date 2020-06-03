@@ -4,11 +4,5 @@
   "config_flow": true,
   "documentation": "https://www.home-assistant.io/integrations/tahoma_refactor",
   "requirements": [],
-  "ssdp": [],
-  "zeroconf": [],
-  "homekit": {},
-  "dependencies": [],
-  "codeowners": [
-    "@imicknl"
-  ]
+  "codeowners": ["@imicknl", "@vlebourl"]
 }

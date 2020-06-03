@@ -23,6 +23,7 @@ from homeassistant.components.cover import (
 from homeassistant.util.dt import utcnow
 
 from . import TahomaDevice
+
 from .const import (
     DOMAIN,
     TAHOMA_TYPES,
@@ -43,7 +44,7 @@ from .const import (
 _LOGGER = logging.getLogger(__name__)
 
 async def async_setup_entry(hass, entry, async_add_entities):
-    """Set up the Tahoma lights from a config entry."""
+    """Set up the Tahoma covers from a config entry."""
 
     data = hass.data[DOMAIN][entry.entry_id]
 
