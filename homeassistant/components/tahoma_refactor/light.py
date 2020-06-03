@@ -21,10 +21,10 @@ SCAN_INTERVAL = timedelta(seconds=30)
 async def async_setup_entry(hass, entry, async_add_entities):
     """Set up the Tahoma lights from a config entry."""
 
-    data = hass.data[DOMAIN]
+    data = hass.data[DOMAIN][entry.entry_id]
 
     entities = []
-    controller = hass.data[DOMAIN]["controller"]
+    controller = data.get("controller")
 
     for device in data.get("devices"):
         if TAHOMA_TYPES[device.uiclass] == "light":

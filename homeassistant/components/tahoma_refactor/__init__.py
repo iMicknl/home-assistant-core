@@ -35,30 +35,32 @@ async def async_setup(hass: HomeAssistant, config: dict):
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     """Set up Tahoma from a config entry."""
 
+    hass.data.setdefault(DOMAIN, {})
+
     username = entry.data[CONF_USERNAME]
     password = entry.data[CONF_PASSWORD]
 
     try:
-        api = TahomaApi(username, password)
-        api.get_setup()
-        devices = api.get_devices()
+        controller = TahomaApi(username, password)
+        controller.get_setup()
+        devices = controller.get_devices()
         # scenes = api.get_action_groups()
 
     except RequestException:
         _LOGGER.exception("Error when getting devices from the Tahoma API")
         return False
 
-    hass.data[DOMAIN] = {"controller": api, "devices": []}
+    hass.data[DOMAIN][entry.entry_id] = {"controller": controller, "devices": []}
 
     # List devices
     for device in devices:
-        _device = api.get_device(device)
+        _device = controller.get_device(device)
 
         if _device.uiclass in TAHOMA_TYPES:
             if TAHOMA_TYPES[_device.uiclass] in PLATFORMS:
                 component = TAHOMA_TYPES[_device.uiclass]
 
-                hass.data[DOMAIN]["devices"].append(_device)
+                hass.data[DOMAIN][entry.entry_id]["devices"].append(_device)
 
                 hass.async_create_task(
                     hass.config_entries.async_forward_entry_setup(entry, component)
@@ -85,7 +87,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
         )
     )
     if unload_ok:
-        hass.data[DOMAIN].pop(entry.entry_id)
+        hass.data[DOMAIN][entry.entry_id].pop(entry.entry_id)
 
     return unload_ok
 
@@ -132,10 +134,7 @@ class TahomaDevice(Entity):
             "identifiers": {(DOMAIN, self.unique_id)},
             "manufacturer": "Somfy",
             "name": self.name,
-            "model": self.tahoma_device.widget,
-            "uiclass": self.tahoma_device.uiclass,
-            "widget": self.tahoma_device.widget,
-            "type": self.tahoma_device.type,
+            "model": self.tahoma_device.widget
         }
 
     def apply_action(self, cmd_name, *args):

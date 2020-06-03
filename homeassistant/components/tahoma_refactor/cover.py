@@ -45,28 +45,16 @@ _LOGGER = logging.getLogger(__name__)
 async def async_setup_entry(hass, entry, async_add_entities):
     """Set up the Tahoma lights from a config entry."""
 
-    data = hass.data[DOMAIN]
+    data = hass.data[DOMAIN][entry.entry_id]
 
     entities = []
-    controller = hass.data[DOMAIN]["controller"]
+    controller = data.get("controller")
 
     for device in data.get("devices"):
         if TAHOMA_TYPES[device.uiclass] == "cover":
             entities.append(TahomaCover(device, controller))
 
     async_add_entities(entities)
-
-
-def setup_platform(hass, config, add_entities, discovery_info=None):
-    """Set up the Tahoma covers."""
-    if discovery_info is None:
-        return
-    controller = hass.data[DOMAIN]["controller"]
-    devices = []
-    for device in hass.data[DOMAIN]["devices"]["cover"]:
-        devices.append(TahomaCover(device, controller))
-    add_entities(devices, True)
-
 
 class TahomaCover(TahomaDevice, CoverEntity):
     """Representation a Tahoma Cover."""
