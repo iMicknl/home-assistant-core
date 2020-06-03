@@ -33,7 +33,6 @@ class TahomaSwitch(TahomaDevice, SwitchEntity):
         super().__init__(tahoma_device, controller)
         self._state = STATE_OFF
         self._skip_update = False
-        self._available = False
 
     def update(self):
         """Update method."""
@@ -43,15 +42,6 @@ class TahomaSwitch(TahomaDevice, SwitchEntity):
             return
 
         self.controller.get_states([self.tahoma_device])
-
-        # A RTS power socket doesn't have a feedback channel,
-        # so we must assume the socket is available.
-        if self.tahoma_device.type == "rts:OnOffRTSComponent":
-            self._available = True
-        else:
-            self._available = bool(
-                self.tahoma_device.active_states.get("core:StatusState") == "available"
-            )
 
         _LOGGER.debug("Update %s, state: %s", self._name, self._state)
 
@@ -92,8 +82,3 @@ class TahomaSwitch(TahomaDevice, SwitchEntity):
         if self.tahoma_device.type == "rts:GarageDoor4TRTSComponent":
             return False
         return bool(self._state == STATE_ON)
-
-    @property
-    def available(self):
-        """Return True if entity is available."""
-        return self._available

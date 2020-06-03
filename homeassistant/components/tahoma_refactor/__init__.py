@@ -107,13 +107,26 @@ class TahomaDevice(Entity):
         return self._name
 
     @property
+    def available(self) -> bool:
+        """Return True if entity is available."""
+
+        if "core:StatusState" in self.tahoma_device.active_states:
+            return bool(
+                self.tahoma_device.active_states.get("core:StatusState") == "available"
+            )
+
+        # A RTS power socket doesn't have a feedback channel,
+        # so we must assume the socket is available.
+        return True
+
+    @property
     def unique_id(self) -> str:
         return self.tahoma_device.url
 
     @property
     def assumed_state(self):
         """Return True if unable to access real state of the entity."""
-        if self.tahoma_device.type.startswith('rts:'):
+        if self.tahoma_device.type.startswith("rts:"):
             return True
 
         return False
@@ -142,7 +155,7 @@ class TahomaDevice(Entity):
             "identifiers": {(DOMAIN, self.unique_id)},
             "manufacturer": "Somfy",
             "name": self.name,
-            "model": self.tahoma_device.widget
+            "model": self.tahoma_device.widget,
         }
 
     def apply_action(self, cmd_name, *args):
