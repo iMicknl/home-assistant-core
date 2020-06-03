@@ -24,7 +24,7 @@ _LOGGER = logging.getLogger(__name__)
 
 CONFIG_SCHEMA = vol.Schema({DOMAIN: vol.Schema({})}, extra=vol.ALLOW_EXTRA)
 
-PLATFORMS = ["light", "cover"]
+PLATFORMS = ["light", "cover", "sensor", "lock"]
 
 
 async def async_setup(hass: HomeAssistant, config: dict):
