@@ -48,6 +48,8 @@ class TahomaSwitch(TahomaDevice, SwitchEntity):
     @property
     def device_class(self):
         """Return the class of the device."""
+
+        #TODO Map GarageDoor as Cover with DEVICE_CLASS_GARAGE
         if self.tahoma_device.type == "rts:GarageDoor4TRTSComponent":
             return "garage"
         return None
