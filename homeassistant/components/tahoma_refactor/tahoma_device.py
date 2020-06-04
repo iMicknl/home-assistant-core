@@ -7,6 +7,7 @@ from .const import (
     ATTR_RSSI_LEVEL,
     CORE_RSSI_LEVEL_STATE,
     CORE_STATUS_STATE,
+    CORE_SENSOR_DEFECT_STATE
 )
 
 class TahomaDevice(Entity):
@@ -32,8 +33,8 @@ class TahomaDevice(Entity):
                 self.tahoma_device.active_states.get(CORE_STATUS_STATE) == "available"
             )
 
-        if "core:SensorDefectState" in self.tahoma_device.active_states:
-            return self.tahoma_device.active_states.get(CORE_STATUS_STATE) != "dead"
+        if CORE_SENSOR_DEFECT_STATE in self.tahoma_device.active_states:
+            return self.tahoma_device.active_states.get(CORE_SENSOR_DEFECT_STATE) != "dead"
 
         # A RTS power socket doesn't have a feedback channel,
         # so we must assume the socket is available.
@@ -41,12 +42,13 @@ class TahomaDevice(Entity):
 
     @property
     def unique_id(self) -> str:
+        """Return a unique ID."""
         return self.tahoma_device.url
 
     @property
     def assumed_state(self):
         """Return True if unable to access real state of the entity."""
-        if self.tahoma_device.type.startswith("rts:"):
+        if self.tahoma_device.type.startswith("rts"):
             return True
 
         return False
@@ -67,9 +69,9 @@ class TahomaDevice(Entity):
             ]
 
         # TODO Parse 'lowBattery' for low battery warning. 'dead' for not available.
-        if "core:SensorDefectState" in self.tahoma_device.active_states:
+        if CORE_SENSOR_DEFECT_STATE in self.tahoma_device.active_states:
             attr[ATTR_BATTERY_LEVEL] = self.tahoma_device.active_states[
-                "core:SensorDefectState"
+                CORE_SENSOR_DEFECT_STATE
             ]
 
         return attr
