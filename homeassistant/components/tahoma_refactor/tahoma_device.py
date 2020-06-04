@@ -7,8 +7,9 @@ from .const import (
     ATTR_RSSI_LEVEL,
     CORE_RSSI_LEVEL_STATE,
     CORE_STATUS_STATE,
-    CORE_SENSOR_DEFECT_STATE
+    CORE_SENSOR_DEFECT_STATE,
 )
+
 
 class TahomaDevice(Entity):
     """Representation of a Tahoma device entity."""
@@ -34,7 +35,9 @@ class TahomaDevice(Entity):
             )
 
         if CORE_SENSOR_DEFECT_STATE in self.tahoma_device.active_states:
-            return self.tahoma_device.active_states.get(CORE_SENSOR_DEFECT_STATE) != "dead"
+            return (
+                self.tahoma_device.active_states.get(CORE_SENSOR_DEFECT_STATE) != "dead"
+            )
 
         # A RTS power socket doesn't have a feedback channel,
         # so we must assume the socket is available.

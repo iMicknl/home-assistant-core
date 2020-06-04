@@ -31,7 +31,7 @@ PLATFORMS = [
     "light",
     "lock",
     "sensor",
-    "switch", 
+    "switch",
 ]
 
 
