@@ -1,4 +1,5 @@
 from homeassistant.helpers.entity import Entity
+from homeassistant.const import ATTR_BATTERY_LEVEL
 
 from .tahoma_api import Action
 
