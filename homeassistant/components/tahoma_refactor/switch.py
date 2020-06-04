@@ -19,7 +19,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
     controller = data.get("controller")
 
     for device in data.get("devices"):
-        if TAHOMA_TYPES[device.uiclass] == "sensor":
+        if TAHOMA_TYPES[device.uiclass] == "switch":
             entities.append(TahomaSwitch(device, controller))
 
     async_add_entities(entities)
