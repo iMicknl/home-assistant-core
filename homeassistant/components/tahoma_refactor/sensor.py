@@ -45,20 +45,17 @@ class TahomaSensor(TahomaDevice, Entity):
     @property
     def unit_of_measurement(self):
         """Return the unit of measurement of this entity, if any."""
-        if self.tahoma_device.type == "io:TemperatureIOSystemSensor":
+
+        if self.tahoma_device.uiclass == "TemperatureSensor":
             return TEMP_CELSIUS
-        if self.tahoma_device.type == "io:SomfyContactIOSystemSensor":
-            return None
-        if self.tahoma_device.type == "io:SomfyBasicContactIOSystemSensor":
-            return None
-        if self.tahoma_device.type == "io:LightIOSystemSensor":
-            return "lx"
-        if self.tahoma_device.type == "Humidity Sensor":
+
+        if self.tahoma_device.uiclass == "HumiditySensor":
             return UNIT_PERCENTAGE
-        if self.tahoma_device.type == "rtds:RTDSContactSensor":
-            return None
-        if self.tahoma_device.type == "rtds:RTDSMotionSensor":
-            return None
+
+        if self.tahoma_device.uiclass == "LightSensor":
+            return "lx"
+
+        return None
 
     def update(self):
         """Update the state."""
