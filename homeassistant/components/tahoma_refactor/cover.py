@@ -22,7 +22,7 @@ from homeassistant.components.cover import (
 )
 from homeassistant.util.dt import utcnow
 
-from . import TahomaDevice
+from .tahoma_device import TahomaDevice
 
 from .const import (
     DOMAIN,

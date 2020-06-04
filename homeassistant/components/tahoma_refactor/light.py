@@ -12,7 +12,8 @@ from homeassistant.components.light import (
 
 from homeassistant.const import STATE_OFF, STATE_ON
 
-from . import DOMAIN, TahomaDevice, TAHOMA_TYPES
+from .const import DOMAIN, TAHOMA_TYPES
+from .tahoma_device import TahomaDevice
 
 _LOGGER = logging.getLogger(__name__)
 

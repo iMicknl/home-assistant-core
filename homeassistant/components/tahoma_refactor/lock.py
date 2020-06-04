@@ -5,8 +5,8 @@ import logging
 from homeassistant.components.lock import LockEntity
 from homeassistant.const import ATTR_BATTERY_LEVEL, STATE_LOCKED, STATE_UNLOCKED
 
-from . import TahomaDevice
 from .const import DOMAIN, TAHOMA_TYPES
+from .tahoma_device import TahomaDevice
 
 _LOGGER = logging.getLogger(__name__)
 

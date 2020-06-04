@@ -5,8 +5,8 @@ import logging
 from homeassistant.const import ATTR_BATTERY_LEVEL, TEMP_CELSIUS, UNIT_PERCENTAGE
 from homeassistant.helpers.entity import Entity
 
-from . import TahomaDevice
 from .const import DOMAIN, TAHOMA_TYPES
+from .tahoma_device import TahomaDevice
 
 _LOGGER = logging.getLogger(__name__)
 
