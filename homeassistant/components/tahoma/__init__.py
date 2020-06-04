@@ -9,10 +9,7 @@ from homeassistant.core import HomeAssistant
 
 from homeassistant.const import CONF_PASSWORD, CONF_USERNAME, CONF_EXCLUDE
 
-from .const import (
-    DOMAIN,
-    TAHOMA_TYPES,
-)
+from .const import DOMAIN, TAHOMA_TYPES
 from .tahoma_api import TahomaApi
 from requests.exceptions import RequestException
 
