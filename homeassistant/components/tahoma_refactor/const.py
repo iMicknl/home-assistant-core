@@ -31,6 +31,7 @@ TAHOMA_COVER_DEVICE_CLASSES = {
     "ExteriorScreen": DEVICE_CLASS_BLIND,
     "Pergola": DEVICE_CLASS_AWNING,
     "RollerShutter": DEVICE_CLASS_SHUTTER,
+    "Window": DEVICE_CLASS_WINDOW
 }
 
 # Tahoma Attributes
