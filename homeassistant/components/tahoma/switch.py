@@ -4,22 +4,25 @@ import logging
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.const import STATE_OFF, STATE_ON
 
-from . import DOMAIN as TAHOMA_DOMAIN, TahomaDevice
+from .const import DOMAIN, TAHOMA_TYPES
+from .tahoma_device import TahomaDevice
 
 _LOGGER = logging.getLogger(__name__)
 
-ATTR_RSSI_LEVEL = "rssi_level"
 
+async def async_setup_entry(hass, entry, async_add_entities):
+    """Set up the Tahoma sensors from a config entry."""
 
-def setup_platform(hass, config, add_entities, discovery_info=None):
-    """Set up Tahoma switches."""
-    if discovery_info is None:
-        return
-    controller = hass.data[TAHOMA_DOMAIN]["controller"]
-    devices = []
-    for switch in hass.data[TAHOMA_DOMAIN]["devices"]["switch"]:
-        devices.append(TahomaSwitch(switch, controller))
-    add_entities(devices, True)
+    data = hass.data[DOMAIN][entry.entry_id]
+
+    entities = []
+    controller = data.get("controller")
+
+    for device in data.get("devices"):
+        if TAHOMA_TYPES[device.uiclass] == "switch":
+            entities.append(TahomaSwitch(device, controller))
+
+    async_add_entities(entities)
 
 
 class TahomaSwitch(TahomaDevice, SwitchEntity):
@@ -30,7 +33,6 @@ class TahomaSwitch(TahomaDevice, SwitchEntity):
         super().__init__(tahoma_device, controller)
         self._state = STATE_OFF
         self._skip_update = False
-        self._available = False
 
     def update(self):
         """Update method."""
@@ -41,26 +43,13 @@ class TahomaSwitch(TahomaDevice, SwitchEntity):
 
         self.controller.get_states([self.tahoma_device])
 
-        if self.tahoma_device.type == "io:OnOffLightIOComponent":
-            if self.tahoma_device.active_states.get("core:OnOffState") == "on":
-                self._state = STATE_ON
-            else:
-                self._state = STATE_OFF
-
-        # A RTS power socket doesn't have a feedback channel,
-        # so we must assume the socket is available.
-        if self.tahoma_device.type == "rts:OnOffRTSComponent":
-            self._available = True
-        else:
-            self._available = bool(
-                self.tahoma_device.active_states.get("core:StatusState") == "available"
-            )
-
         _LOGGER.debug("Update %s, state: %s", self._name, self._state)
 
     @property
     def device_class(self):
         """Return the class of the device."""
+
+        #TODO Map GarageDoor as Cover with DEVICE_CLASS_GARAGE
         if self.tahoma_device.type == "rts:GarageDoor4TRTSComponent":
             return "garage"
         return None
@@ -95,22 +84,3 @@ class TahomaSwitch(TahomaDevice, SwitchEntity):
         if self.tahoma_device.type == "rts:GarageDoor4TRTSComponent":
             return False
         return bool(self._state == STATE_ON)
-
-    @property
-    def device_state_attributes(self):
-        """Return the device state attributes."""
-        attr = {}
-        super_attr = super().device_state_attributes
-        if super_attr is not None:
-            attr.update(super_attr)
-
-        if "core:RSSILevelState" in self.tahoma_device.active_states:
-            attr[ATTR_RSSI_LEVEL] = self.tahoma_device.active_states[
-                "core:RSSILevelState"
-            ]
-        return attr
-
-    @property
-    def available(self):
-        """Return True if entity is available."""
-        return self._available

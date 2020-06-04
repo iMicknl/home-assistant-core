@@ -11,55 +11,51 @@ from homeassistant.components.cover import (
     DEVICE_CLASS_SHUTTER,
     DEVICE_CLASS_WINDOW,
     CoverEntity,
+    SUPPORT_OPEN,
+    SUPPORT_CLOSE,
+    SUPPORT_SET_POSITION,
+    SUPPORT_STOP,
+    SUPPORT_OPEN_TILT,
+    SUPPORT_CLOSE_TILT,
+    SUPPORT_STOP_TILT,
+    SUPPORT_SET_TILT_POSITION,
 )
 from homeassistant.util.dt import utcnow
 
-from . import DOMAIN as TAHOMA_DOMAIN, TahomaDevice
+from .tahoma_device import TahomaDevice
+
+from .const import (
+    DOMAIN,
+    TAHOMA_TYPES,
+    TAHOMA_COVER_DEVICE_CLASSES,
+    ATTR_MEM_POS,
+    ATTR_LOCK_START_TS,
+    ATTR_LOCK_END_TS,
+    ATTR_LOCK_LEVEL,
+    ATTR_LOCK_ORIG,
+    CORE_CLOSURE_STATE,
+    CORE_DEPLOYMENT_STATE,
+    CORE_PRIORITY_LOCK_TIMER_STATE,
+    CORE_SLATS_ORIENTATION_STATE,
+    IO_PRIORITY_LOCK_LEVEL_STATE,
+    IO_PRIORITY_LOCK_ORIGINATOR_STATE
+)
 
 _LOGGER = logging.getLogger(__name__)
 
-ATTR_MEM_POS = "memorized_position"
-ATTR_RSSI_LEVEL = "rssi_level"
-ATTR_LOCK_START_TS = "lock_start_ts"
-ATTR_LOCK_END_TS = "lock_end_ts"
-ATTR_LOCK_LEVEL = "lock_level"
-ATTR_LOCK_ORIG = "lock_originator"
+async def async_setup_entry(hass, entry, async_add_entities):
+    """Set up the Tahoma covers from a config entry."""
 
-HORIZONTAL_AWNING = "io:HorizontalAwningIOComponent"
+    data = hass.data[DOMAIN][entry.entry_id]
 
-TAHOMA_DEVICE_CLASSES = {
-    HORIZONTAL_AWNING: DEVICE_CLASS_AWNING,
-    "io:AwningValanceIOComponent": DEVICE_CLASS_AWNING,
-    "io:DiscreteGarageOpenerWithPartialPositionIOComponent": DEVICE_CLASS_GARAGE,
-    "io:DiscreteGarageOpenerIOComponent": DEVICE_CLASS_GARAGE,
-    "io:ExteriorVenetianBlindIOComponent": DEVICE_CLASS_BLIND,
-    "io:GarageOpenerIOComponent": DEVICE_CLASS_GARAGE,
-    "io:RollerShutterGenericIOComponent": DEVICE_CLASS_SHUTTER,
-    "io:RollerShutterUnoIOComponent": DEVICE_CLASS_SHUTTER,
-    "io:RollerShutterVeluxIOComponent": DEVICE_CLASS_SHUTTER,
-    "io:RollerShutterWithLowSpeedManagementIOComponent": DEVICE_CLASS_SHUTTER,
-    "io:VerticalExteriorAwningIOComponent": DEVICE_CLASS_AWNING,
-    "io:VerticalInteriorBlindVeluxIOComponent": DEVICE_CLASS_BLIND,
-    "io:WindowOpenerVeluxIOComponent": DEVICE_CLASS_WINDOW,
-    "rts:BlindRTSComponent": DEVICE_CLASS_BLIND,
-    "rts:CurtainRTSComponent": DEVICE_CLASS_CURTAIN,
-    "rts:DualCurtainRTSComponent": DEVICE_CLASS_CURTAIN,
-    "rts:ExteriorVenetianBlindRTSComponent": DEVICE_CLASS_BLIND,
-    "rts:RollerShutterRTSComponent": DEVICE_CLASS_SHUTTER,
-    "rts:VenetianBlindRTSComponent": DEVICE_CLASS_BLIND,
-}
+    entities = []
+    controller = data.get("controller")
 
+    for device in data.get("devices"):
+        if TAHOMA_TYPES[device.uiclass] == "cover":
+            entities.append(TahomaCover(device, controller))
 
-def setup_platform(hass, config, add_entities, discovery_info=None):
-    """Set up the Tahoma covers."""
-    if discovery_info is None:
-        return
-    controller = hass.data[TAHOMA_DOMAIN]["controller"]
-    devices = []
-    for device in hass.data[TAHOMA_DOMAIN]["devices"]["cover"]:
-        devices.append(TahomaCover(device, controller))
-    add_entities(devices, True)
-
+    async_add_entities(entities)
 
 class TahomaCover(TahomaDevice, CoverEntity):
     """Representation a Tahoma Cover."""
@@ -68,20 +64,23 @@ class TahomaCover(TahomaDevice, CoverEntity):
         """Initialize the device."""
         super().__init__(tahoma_device, controller)
 
-        self._closure = 0
-        # 100 equals open
-        self._position = 100
+        # if 'setPosition' in self.tahoma_device.command_definitions or 'setClosure' in self.tahoma_device.command_definitions:
+        #     self._position = 100
+
+        # if 'setOrientation' in self.tahoma_device.command_definitions:
+        #     self._tilt_position = 100
+
         self._closed = False
-        self._rssi_level = None
         self._icon = None
-        # Can be 0 and bigger
-        self._lock_timer = 0
+        self._lock_timer = 0  # Can be 0 and bigger
         self._lock_start_ts = None
         self._lock_end_ts = None
+
         # Can be 'comfortLevel1', 'comfortLevel2', 'comfortLevel3',
         # 'comfortLevel4', 'environmentProtection', 'humanProtection',
         # 'userLevel1', 'userLevel2'
         self._lock_level = None
+
         # Can be 'LSC', 'SAAC', 'SFC', 'UPS', 'externalGateway', 'localUser',
         # 'myself', 'rain', 'security', 'temperature', 'timer', 'user', 'wind'
         self._lock_originator = None
@@ -90,18 +89,27 @@ class TahomaCover(TahomaDevice, CoverEntity):
         """Update method."""
         self.controller.get_states([self.tahoma_device])
 
-        # For vertical covers
-        self._closure = self.tahoma_device.active_states.get("core:ClosureState")
-        # For horizontal covers
-        if self._closure is None:
-            self._closure = self.tahoma_device.active_states.get("core:DeploymentState")
+        # Set position for vertical covers
+        if CORE_CLOSURE_STATE in self.tahoma_device.active_states:
+            self._closure = self.tahoma_device.active_states.get(CORE_CLOSURE_STATE)
 
-        # For all, if available
-        if "core:PriorityLockTimerState" in self.tahoma_device.active_states:
+        # Set position for horizontal covers
+        if CORE_DEPLOYMENT_STATE in self.tahoma_device.active_states:
+            self._closure = self.tahoma_device.active_states.get(CORE_DEPLOYMENT_STATE)
+
+        # Set position for pergola covers
+        if CORE_SLATS_ORIENTATION_STATE in self.tahoma_device.active_states:
+            self._closure = self.tahoma_device.active_states.get(
+                CORE_SLATS_ORIENTATION_STATE
+            )
+
+        # Set Lock Timers
+        if CORE_PRIORITY_LOCK_TIMER_STATE in self.tahoma_device.active_states:
             old_lock_timer = self._lock_timer
             self._lock_timer = self.tahoma_device.active_states[
-                "core:PriorityLockTimerState"
+                CORE_PRIORITY_LOCK_TIMER_STATE
             ]
+
             # Derive timestamps from _lock_timer, only if not already set or
             # something has changed
             if self._lock_timer > 0:
@@ -118,17 +126,17 @@ class TahomaCover(TahomaDevice, CoverEntity):
             self._lock_start_ts = None
             self._lock_end_ts = None
 
+        # Set Lock Level
         self._lock_level = self.tahoma_device.active_states.get(
-            "io:PriorityLockLevelState"
+            IO_PRIORITY_LOCK_LEVEL_STATE
         )
 
+        # Set Lock Originator
         self._lock_originator = self.tahoma_device.active_states.get(
-            "io:PriorityLockOriginatorState"
+            IO_PRIORITY_LOCK_ORIGINATOR_STATE
         )
 
-        self._rssi_level = self.tahoma_device.active_states.get("core:RSSILevelState")
-
-        # Define which icon to use
+        # Set icon for lock timer
         if self._lock_timer > 0:
             if self._lock_originator == "wind":
                 self._icon = "mdi:weather-windy"
@@ -140,36 +148,56 @@ class TahomaCover(TahomaDevice, CoverEntity):
         # Define current position.
         #   _position: 0 is closed, 100 is fully open.
         #   'core:ClosureState': 100 is closed, 0 is fully open.
-        if self._closure is not None:
-            if self.tahoma_device.type == HORIZONTAL_AWNING:
-                self._position = self._closure
-            else:
-                self._position = 100 - self._closure
-            if self._position <= 5:
-                self._position = 0
-            if self._position >= 95:
-                self._position = 100
-            self._closed = self._position == 0
-        else:
-            self._position = None
-            if "core:OpenClosedState" in self.tahoma_device.active_states:
-                self._closed = (
-                    self.tahoma_device.active_states["core:OpenClosedState"] == "closed"
-                )
-            if "core:OpenClosedPartialState" in self.tahoma_device.active_states:
-                self._closed = (
-                    self.tahoma_device.active_states["core:OpenClosedPartialState"]
-                    == "closed"
-                )
-            else:
-                self._closed = False
 
-        _LOGGER.debug("Update %s, position: %d", self._name, self._position)
+        if (
+            "setPosition" in self.tahoma_device.command_definitions
+            or "setClosure" in self.tahoma_device.command_definitions
+        ):
+            if self._closure is not None:
+                if self.tahoma_device.type == "io:HorizontalAwningIOComponent":
+                    self._position = self._closure
+                else:
+                    self._position = 100 - self._closure
+                if self._position <= 5:
+                    self._position = 0
+                if self._position >= 95:
+                    self._position = 100
+                self._closed = self._position == 0
+            else:
+                self._position = None
+                if "core:OpenClosedState" in self.tahoma_device.active_states:
+                    self._closed = (
+                        self.tahoma_device.active_states["core:OpenClosedState"]
+                        == "closed"
+                    )
+                if "core:OpenClosedPartialState" in self.tahoma_device.active_states:
+                    self._closed = (
+                        self.tahoma_device.active_states["core:OpenClosedPartialState"]
+                        == "closed"
+                    )
+                else:
+                    self._closed = False
+
+        if "setOrientation" in self.tahoma_device.command_definitions:
+            self._tilt_position = 100 - self._closure
+
+            if self._tilt_position <= 5:
+                self._tilt_position = 0
+            if self._tilt_position >= 95:
+                self._tilt_position = 100
+            self._closed = self._tilt_position == 0
 
     @property
     def current_cover_position(self):
         """Return current position of cover."""
-        return self._position
+        return getattr(self, "_position", None)
+
+    @property
+    def current_cover_tilt_position(self):
+        """Return current position of cover tilt.
+        None is unknown, 0 is closed, 100 is fully open.
+        """
+        return getattr(self, "_tilt_position", None)
 
     def set_cover_position(self, **kwargs):
         """Move the cover to a specific position."""
@@ -178,10 +206,14 @@ class TahomaCover(TahomaDevice, CoverEntity):
         else:
             command = "setPosition"
 
-        if self.tahoma_device.type == HORIZONTAL_AWNING:
+        if self.tahoma_device.type == "io:HorizontalAwningIOComponent":
             self.apply_action(command, kwargs.get(ATTR_POSITION, 0))
         else:
             self.apply_action(command, 100 - kwargs.get(ATTR_POSITION, 0))
+
+    def set_cover_tilt_position(self, **kwargs):
+        """Move the cover tilt to a specific position."""
+        self.apply_action("setOrientation", 100 - kwargs.get(ATTR_POSITION, 0))
 
     @property
     def is_closed(self):
@@ -191,7 +223,7 @@ class TahomaCover(TahomaDevice, CoverEntity):
     @property
     def device_class(self):
         """Return the class of the device."""
-        return TAHOMA_DEVICE_CLASSES.get(self.tahoma_device.type)
+        return TAHOMA_COVER_DEVICE_CLASSES.get(self.tahoma_device.widget) or TAHOMA_COVER_DEVICE_CLASSES.get(self.tahoma_device.uiclass) or DEVICE_CLASS_BLIND
 
     @property
     def device_state_attributes(self):
@@ -205,8 +237,6 @@ class TahomaCover(TahomaDevice, CoverEntity):
             attr[ATTR_MEM_POS] = self.tahoma_device.active_states[
                 "core:Memorized1PositionState"
             ]
-        if self._rssi_level is not None:
-            attr[ATTR_RSSI_LEVEL] = self._rssi_level
         if self._lock_start_ts is not None:
             attr[ATTR_LOCK_START_TS] = self._lock_start_ts.isoformat()
         if self._lock_end_ts is not None:
@@ -246,7 +276,7 @@ class TahomaCover(TahomaDevice, CoverEntity):
         }:
             self.apply_action("my")
         elif self.tahoma_device.type in {
-            HORIZONTAL_AWNING,
+            "io:HorizontalAwningIOComponent",
             "io:AwningValanceIOComponent",
             "io:RollerShutterGenericIOComponent",
             "io:VerticalExteriorAwningIOComponent",
@@ -256,3 +286,28 @@ class TahomaCover(TahomaDevice, CoverEntity):
             self.apply_action("stop")
         else:
             self.apply_action("stopIdentify")
+
+    def stop_cover_tilt(self, **kwargs):
+        """Stop the cover."""
+        self.apply_action("stop")
+
+    @property
+    def supported_features(self):
+        """Flag supported features."""
+
+        supported_features = 0
+
+        if self.current_cover_position is not None:
+            supported_features |= (
+                SUPPORT_OPEN | SUPPORT_CLOSE | SUPPORT_STOP | SUPPORT_SET_POSITION
+            )
+
+        if self.current_cover_tilt_position is not None:
+            supported_features |= (
+                SUPPORT_OPEN_TILT
+                | SUPPORT_CLOSE_TILT
+                | SUPPORT_STOP_TILT
+                | SUPPORT_SET_TILT_POSITION
+            )
+
+        return supported_features

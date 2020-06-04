@@ -9,7 +9,7 @@ from homeassistant.components.cover import (
 
 """Constants for the Tahoma integration."""
 
-DOMAIN = "tahoma_refactor"
+DOMAIN = "tahoma"
 
 # Tahoma to Home Assistant mapping
 TAHOMA_TYPES = {

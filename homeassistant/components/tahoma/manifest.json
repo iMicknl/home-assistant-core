@@ -1,7 +1,8 @@
 {
   "domain": "tahoma",
   "name": "Tahoma",
+  "config_flow": true,
   "documentation": "https://www.home-assistant.io/integrations/tahoma",
-  "requirements": ["tahoma-api==0.0.16"],
-  "codeowners": ["@philklei"]
+  "requirements": [],
+  "codeowners": ["@philklei", "@imicknl", "@vlebourl"]
 }
