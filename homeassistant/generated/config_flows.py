@@ -142,7 +142,7 @@ FLOWS = [
     "starline",
     "synology_dsm",
     "tado",
-    "tahoma_refactor",
+    "tahoma",
     "tellduslive",
     "tesla",
     "tibber",

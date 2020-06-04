@@ -399,8 +399,7 @@ homeassistant/components/synology_dsm/* @ProtoThis @Quentame
 homeassistant/components/synology_srm/* @aerialls
 homeassistant/components/syslog/* @fabaff
 homeassistant/components/tado/* @michaelarnauts @bdraco
-homeassistant/components/tahoma/* @philklei
-homeassistant/components/tahoma_refactor/* @imicknl
+homeassistant/components/tahoma/* @philklei @imicknl @vlebourl
 homeassistant/components/tankerkoenig/* @guillempages
 homeassistant/components/tautulli/* @ludeeus
 homeassistant/components/tellduslive/* @fredrike
