@@ -146,6 +146,10 @@ DHCP = [
         "macaddress": "80A589*"
     },
     {
+        "domain": "sagemcom_fast",
+        "macaddress": "D8A756*"
+    },
+    {
         "domain": "screenlogic",
         "hostname": "pentair: *",
         "macaddress": "00C033*"

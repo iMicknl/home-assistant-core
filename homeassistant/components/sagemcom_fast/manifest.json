@@ -1,0 +1,18 @@
+{
+  "domain": "sagemcom_fast",
+  "name": "Sagemcom F@st",
+  "config_flow": true,
+  "documentation": "https://www.home-assistant.io/integrations/sagemcom_fast",
+  "requirements": [
+    "sagemcom_api===1.0.4"
+  ],
+  "dhcp": [
+    {
+      "macaddress": "D8A756*"
+    }
+  ],
+  "codeowners": [
+    "@imicknl",
+    "@arunpoudel"
+  ]
+}
