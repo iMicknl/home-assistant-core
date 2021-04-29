@@ -97,7 +97,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         "Initialized DataUpdateCoordinator with %s interval", str(update_interval)
     )
 
-    await overkiz_coordinator.async_refresh()
+    await overkiz_coordinator.async_config_entry_first_refresh()
 
     platforms = defaultdict(list)
     platforms[SCENE] = scenarios
@@ -133,10 +133,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
                 device.deviceurl,
             )
 
-    for platform in platforms:
-        hass.async_create_task(
-            hass.config_entries.async_forward_entry_setup(entry, platform)
-        )
+    hass.config_entries.async_setup_platforms(entry, platforms)
 
     device_registry = dr.async_get(hass)
 
@@ -172,16 +169,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
     """Unload a config entry."""
-    devices_per_platform = hass.data[DOMAIN][entry.entry_id]["platforms"]
-
-    unload_ok = all(
-        await asyncio.gather(
-            *[
-                hass.config_entries.async_forward_entry_unload(entry, platform)
-                for platform in devices_per_platform
-            ]
-        )
-    )
+    platforms = hass.data[DOMAIN][entry.entry_id]["platforms"]
+    unload_ok = await hass.config_entries.async_unload_platforms(entry, platforms)
 
     if unload_ok:
         hass.data[DOMAIN].pop(entry.entry_id)
