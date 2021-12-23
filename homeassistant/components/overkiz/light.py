@@ -31,7 +31,7 @@ async def async_setup_entry(
     """Set up the Overkiz lights from a config entry."""
     data: HomeAssistantOverkizData = hass.data[DOMAIN][entry.entry_id]
 
-    entities = [
+    entities: list[OverkizLight] = [
         OverkizLight(device.device_url, data.coordinator)
         for device in data.platforms[Platform.LIGHT]
     ]
@@ -46,7 +46,7 @@ class OverkizLight(OverkizEntity, LightEntity):
         """Initialize a device."""
         super().__init__(device_url, coordinator)
 
-        self._attr_supported_color_modes = set()
+        self._attr_supported_color_modes: set[str] = set()
 
         if self.executor.has_command(OverkizCommand.SET_RGB):
             self._attr_supported_color_modes.add(COLOR_MODE_RGB)
@@ -54,17 +54,6 @@ class OverkizLight(OverkizEntity, LightEntity):
             self._attr_supported_color_modes.add(COLOR_MODE_BRIGHTNESS)
         if not self.supported_color_modes:
             self._attr_supported_color_modes = {COLOR_MODE_ONOFF}
-
-    # @property
-    # def color_mode(self) -> str:
-    #     """Return the color mode of the light."""
-    #     if self.executor.has_command(OverkizCommand.SET_RGB):
-    #         return COLOR_MODE_RGB
-
-    #     if self.executor.has_command(OverkizCommand.SET_INTENSITY):
-    #         return COLOR_MODE_BRIGHTNESS
-
-    #     return COLOR_MODE_ONOFF
 
     @property
     def is_on(self) -> bool:
@@ -76,19 +65,19 @@ class OverkizLight(OverkizEntity, LightEntity):
 
     @property
     def rgb_color(self) -> tuple[int, int, int] | None:
-        """Return the rgb color value [int, int, int]."""
+        """Return the rgb color value [int, int, int] (0-255)."""
         red = self.executor.select_state(OverkizState.CORE_RED_COLOR_INTENSITY)
         green = self.executor.select_state(OverkizState.CORE_GREEN_COLOR_INTENSITY)
         blue = self.executor.select_state(OverkizState.CORE_BLUE_COLOR_INTENSITY)
 
-        if None in [red, green, blue]:
+        if red is None or green is None or blue is None:
             return None
 
         return (int(red), int(green), int(blue))
 
     @property
     def brightness(self) -> int | None:
-        """Return the brightness of this light between 0..255."""
+        """Return the brightness of this light (0-255)."""
         if brightness := self.executor.select_state(OverkizState.CORE_LIGHT_INTENSITY):
             return round(int(brightness) * 255 / 100)
 
