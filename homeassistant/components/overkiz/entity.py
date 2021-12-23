@@ -3,10 +3,12 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
+from typing import Dict
 
 from pyoverkiz.enums import OverkizAttribute, OverkizState
 from pyoverkiz.models import Device
 
+from homeassistant.components.binary_sensor import BinarySensorEntityDescription
 from homeassistant.components.sensor import SensorEntityDescription
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
@@ -91,6 +93,13 @@ class OverkizSensorDescription(SensorEntityDescription):
     ] | None = lambda val: val
 
 
+@dataclass
+class OverkizBinarySensorDescription(BinarySensorEntityDescription):
+    """Class to describe an Overkiz binary sensor."""
+
+    is_on: Callable[[str | Dict], bool | None] = lambda state: state
+
+
 class OverkizDescriptiveEntity(OverkizEntity):
     """Representation of a Overkiz device entity based on a description."""
 
@@ -98,7 +107,7 @@ class OverkizDescriptiveEntity(OverkizEntity):
         self,
         device_url: str,
         coordinator: OverkizDataUpdateCoordinator,
-        description: OverkizSensorDescription,
+        description: OverkizSensorDescription | OverkizBinarySensorDescription,
     ) -> None:
         """Initialize the device."""
         super().__init__(device_url, coordinator)
