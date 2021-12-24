@@ -10,7 +10,6 @@ from homeassistant.components.light import (
     COLOR_MODE_ONOFF,
     COLOR_MODE_RGB,
     LightEntity,
-    brightness_supported,
 )
 from homeassistant.components.overkiz import HomeAssistantOverkizData
 from homeassistant.components.overkiz.coordinator import OverkizDataUpdateCoordinator
@@ -42,7 +41,9 @@ async def async_setup_entry(
 class OverkizLight(OverkizEntity, LightEntity):
     """Representation of an Overkiz Light."""
 
-    def __init__(self, device_url: str, coordinator: OverkizDataUpdateCoordinator):
+    def __init__(
+        self, device_url: str, coordinator: OverkizDataUpdateCoordinator
+    ) -> None:
         """Initialize a device."""
         super().__init__(device_url, coordinator)
 
@@ -85,18 +86,18 @@ class OverkizLight(OverkizEntity, LightEntity):
 
     async def async_turn_on(self, **kwargs) -> None:
         """Turn the light on."""
-        if ATTR_RGB_COLOR in kwargs and COLOR_MODE_RGB in self.supported_color_modes:
+        rgb_color = kwargs.get(ATTR_RGB_COLOR)
+        brightness = kwargs.get(ATTR_BRIGHTNESS)
+
+        if rgb_color is not None:
             await self.executor.async_execute_command(
                 OverkizCommand.SET_RGB,
                 *[round(float(c)) for c in kwargs[ATTR_RGB_COLOR]],
             )
 
-        if ATTR_BRIGHTNESS in kwargs and brightness_supported(
-            self.supported_color_modes
-        ):
-            brightness = round(float(kwargs[ATTR_BRIGHTNESS]) / 255 * 100)
+        if brightness is not None:
             await self.executor.async_execute_command(
-                OverkizCommand.SET_INTENSITY, brightness
+                OverkizCommand.SET_INTENSITY, round(float(brightness) / 255 * 100)
             )
 
         else:
