@@ -27,6 +27,7 @@ PLATFORMS: list[Platform] = [
     Platform.NUMBER,
     Platform.SCENE,
     Platform.SENSOR,
+    Platform.SIREN,
     Platform.SWITCH,
 ]
 
@@ -36,14 +37,16 @@ IGNORED_OVERKIZ_DEVICES: list[UIClass | UIWidget] = [
 ]
 
 # Used to map the Somfy widget and ui_class to the Home Assistant platform
-OVERKIZ_DEVICE_TO_PLATFORM: dict[UIClass | UIWidget, Platform] = {
+OVERKIZ_DEVICE_TO_PLATFORM: dict[UIClass | UIWidget, Platform | None] = {
     UIClass.DOOR_LOCK: Platform.LOCK,
-    UIWidget.DOMESTIC_HOT_WATER_TANK: Platform.SWITCH,  # widgetName, uiClass is WaterHeatingSystem (not supported)
     UIClass.LIGHT: Platform.LIGHT,
     UIClass.ON_OFF: Platform.SWITCH,
+    UIClass.SIREN: Platform.SIREN,
+    UIClass.SWIMMING_POOL: Platform.SWITCH,
+    UIWidget.DOMESTIC_HOT_WATER_TANK: Platform.SWITCH,  # widgetName, uiClass is WaterHeatingSystem (not supported)
     UIWidget.RTD_INDOOR_SIREN: Platform.SWITCH,  # widgetName, uiClass is Siren (not supported)
     UIWidget.RTD_OUTDOOR_SIREN: Platform.SWITCH,  # widgetName, uiClass is Siren (not supported)
-    UIClass.SWIMMING_POOL: Platform.SWITCH,
+    UIWidget.SIREN_STATUS: None,  # widgetName, uiClass is Siren (siren)
 }
 
 # Map Overkiz camelCase to Home Assistant snake_case for translation
