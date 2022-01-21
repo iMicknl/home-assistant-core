@@ -21,6 +21,7 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 from homeassistant.util.decorator import Registry
 
 from .const import DOMAIN, LOGGER, UPDATE_INTERVAL
+from .executor import Execution
 
 EVENT_HANDLERS = Registry()
 
@@ -56,7 +57,7 @@ class OverkizDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Device]]):
             or device.device_url.startswith("internal://")
             for device in devices
         )
-        self.executions: dict[str, dict[str, str]] = {}
+        self.executions: dict[str, Execution | None] = {}
         self.areas = self._places_to_area(places)
         self.config_entry_id = config_entry_id
 
@@ -182,7 +183,7 @@ async def on_execution_registered(
 ) -> None:
     """Handle execution registered event."""
     if event.exec_id and event.exec_id not in coordinator.executions:
-        coordinator.executions[event.exec_id] = {}
+        coordinator.executions[event.exec_id] = None
 
     if not coordinator.is_stateless:
         coordinator.update_interval = timedelta(seconds=1)

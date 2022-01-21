@@ -1,6 +1,7 @@
 """Class for helpers and communication with the OverKiz API."""
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Any
 from urllib.parse import urlparse
 
@@ -9,6 +10,14 @@ from pyoverkiz.types import StateType as OverkizStateType
 
 from .const import LOGGER
 from .coordinator import OverkizDataUpdateCoordinator
+
+
+@dataclass
+class Execution:
+    """Representation of an Overkiz execution."""
+
+    device_url: str
+    command_name: str
 
 
 class OverkizExecutor:
@@ -69,10 +78,9 @@ class OverkizExecutor:
             return
 
         # ExecutionRegisteredEvent doesn't contain the device_url, thus we need to register it here
-        self.coordinator.executions[exec_id] = {
-            "device_url": self.device.device_url,
-            "command_name": command_name,
-        }
+        self.coordinator.executions[exec_id] = Execution(
+            device_url=self.device.device_url, command_name=command_name
+        )
 
         await self.coordinator.async_refresh()
 
@@ -86,8 +94,9 @@ class OverkizExecutor:
                 exec_id
                 # Reverse dictionary to cancel the last added execution
                 for exec_id, execution in reversed(self.coordinator.executions.items())
-                if execution.get("device_url") == self.device.device_url
-                and execution.get("command_name") in commands_to_cancel
+                if execution
+                and execution.device_url == self.device.device_url
+                and execution.command_name in commands_to_cancel
             ),
             None,
         )
