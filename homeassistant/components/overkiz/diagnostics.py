@@ -1,10 +1,13 @@
 """Provides diagnostics for Overkiz."""
 from __future__ import annotations
 
-from typing import Any, cast
+from typing import Any
+
+from pyoverkiz.obfuscate import obfuscate_id
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.device_registry import DeviceEntry
 
 from . import HomeAssistantOverkizData
 from .const import DOMAIN
@@ -14,8 +17,31 @@ async def async_get_config_entry_diagnostics(
     hass: HomeAssistant, entry: ConfigEntry
 ) -> dict[str, Any]:
     """Return diagnostics for a config entry."""
-    data: HomeAssistantOverkizData = hass.data[DOMAIN][entry.entry_id]
-    client = data.coordinator.client
-    setup = await client.get_diagnostic_data()
+    entry_data: HomeAssistantOverkizData = hass.data[DOMAIN][entry.entry_id]
+    client = entry_data.coordinator.client
 
-    return cast(dict, setup)
+    data = {"setup": await client.get_diagnostic_data()}
+
+    return data
+
+
+async def async_get_device_diagnostics(
+    hass: HomeAssistant, entry: ConfigEntry, device: DeviceEntry
+) -> dict[str, Any]:
+    """Return diagnostics for a device entry."""
+    entry_data: HomeAssistantOverkizData = hass.data[DOMAIN][entry.entry_id]
+    client = entry_data.coordinator.client
+
+    device_url = min(device.identifiers)[1]
+
+    data = {
+        "device": {
+            "controllable_name": device.hw_version,
+            "firmware": device.sw_version,
+            "device_url": obfuscate_id(device_url),
+            "model": device.model,
+        },
+        "setup": await client.get_diagnostic_data(),
+    }
+
+    return data
