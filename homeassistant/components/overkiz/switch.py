@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, cast
 
 from pyoverkiz.enums import OverkizCommand, OverkizCommandParam, OverkizState
 from pyoverkiz.enums.ui import UIClass, UIWidget
@@ -113,6 +113,7 @@ SWITCH_DESCRIPTIONS: list[OverkizSwitchDescription] = [
         turn_on=lambda execute_command: execute_command(OverkizCommand.ON),
         turn_off=lambda execute_command: execute_command(OverkizCommand.OFF),
         icon="mdi:patio-heater",
+        is_on=lambda select_state: cast(int, select_state(OverkizState.CORE_LEVEL)) > 0,
     ),
 ]
 

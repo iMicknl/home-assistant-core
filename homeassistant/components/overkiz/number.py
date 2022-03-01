@@ -78,9 +78,9 @@ NUMBER_DESCRIPTIONS: list[OverkizNumberDescription] = [
     ),
     # DimmerExteriorHeating/ExteriorHeatingSystem (0 - 100)
     OverkizNumberDescription(
-        key="core:LevelState",
+        key=OverkizState.CORE_LEVEL,
         icon="mdi:patio-heater",
-        command="setLevel",
+        command=OverkizCommand.SET_LEVEL,
     ),
 ]
 
