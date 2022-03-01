@@ -59,6 +59,7 @@ OVERKIZ_DEVICE_TO_PLATFORM: dict[UIClass | UIWidget, Platform | None] = {
     UIClass.VENETIAN_BLIND: Platform.COVER,
     UIClass.WINDOW: Platform.COVER,
     UIWidget.ATLANTIC_ELECTRICAL_HEATER: Platform.CLIMATE,  # widgetName, uiClass is HeatingSystem (not supported)
+    UIWidget.DIMMER_EXTERIOR_HEATING: Platform.SWITCH,  # widgetName, uiClass is ExteriorHeatingSystem (not supported)
     UIWidget.DOMESTIC_HOT_WATER_TANK: Platform.SWITCH,  # widgetName, uiClass is WaterHeatingSystem (not supported)
     UIWidget.MY_FOX_SECURITY_CAMERA: Platform.SWITCH,  # widgetName, uiClass is Camera (not supported)
     UIWidget.RTD_INDOOR_SIREN: Platform.SWITCH,  # widgetName, uiClass is Siren (not supported)

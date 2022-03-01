@@ -108,6 +108,12 @@ SWITCH_DESCRIPTIONS: list[OverkizSwitchDescription] = [
         ),
         entity_category=EntityCategory.CONFIG,
     ),
+    OverkizSwitchDescription(
+        key=UIWidget.DIMMER_EXTERIOR_HEATING,
+        turn_on=lambda execute_command: execute_command(OverkizCommand.ON),
+        turn_off=lambda execute_command: execute_command(OverkizCommand.OFF),
+        icon="mdi:patio-heater",
+    ),
 ]
 
 SUPPORTED_DEVICES = {
