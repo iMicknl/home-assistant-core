@@ -76,6 +76,12 @@ NUMBER_DESCRIPTIONS: list[OverkizNumberDescription] = [
         max_value=15,
         entity_category=EntityCategory.CONFIG,
     ),
+    # DimmerExteriorHeating/ExteriorHeatingSystem (0 - 100)
+    OverkizNumberDescription(
+        key="core:LevelState",
+        icon="mdi:patio-heater",
+        command="setLevel",
+    ),
 ]
 
 SUPPORTED_STATES = {description.key: description for description in NUMBER_DESCRIPTIONS}
