@@ -5,24 +5,36 @@ from typing import Any, cast
 
 from aiohttp import ClientError
 from pyoverkiz.client import OverkizClient
-from pyoverkiz.const import SUPPORTED_SERVERS
+from pyoverkiz.const import SUPPORTED_SERVERS as DEFAULT_SUPPORTED_SERVERS
 from pyoverkiz.exceptions import (
     BadCredentialsException,
     MaintenanceException,
     TooManyAttemptsBannedException,
     TooManyRequestsException,
 )
-from pyoverkiz.models import obfuscate_id
+from pyoverkiz.models import OverkizServer, obfuscate_id
 import voluptuous as vol
 
 from homeassistant import config_entries
 from homeassistant.components import dhcp, zeroconf
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CONF_PASSWORD, CONF_USERNAME
+from homeassistant.const import CONF_API_TOKEN, CONF_HOST, CONF_PASSWORD, CONF_USERNAME
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers.aiohttp_client import async_create_clientsession
 
 from .const import CONF_HUB, DEFAULT_HUB, DOMAIN, LOGGER
+
+SUPPORTED_SERVERS = {
+    **DEFAULT_SUPPORTED_SERVERS,
+    **{
+        "local": OverkizServer(
+            name="Local",
+            endpoint="/enduser-mobile-web/1/enduserAPI/",
+            manufacturer="Somfy",
+            configuration_url=None,
+        )
+    },
+}
 
 
 class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -64,11 +76,33 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
         """Handle the initial step via config flow."""
-        errors = {}
+        errors: dict = {}
+
+        if user_input:
+            self._default_hub = user_input[CONF_HUB]
+            return await self.async_step_auth()
+
+        return self.async_show_form(
+            step_id="user",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(CONF_HUB, default=self._default_hub): vol.In(
+                        {key: hub.name for key, hub in SUPPORTED_SERVERS.items()}
+                    ),
+                }
+            ),
+            errors=errors,
+        )
+
+    async def async_step_auth(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Handle the initial step via config flow."""
+        errors: dict = {}
 
         if user_input:
             self._default_user = user_input[CONF_USERNAME]
-            self._default_hub = user_input[CONF_HUB]
+            user_input[CONF_HUB] = self._default_hub
 
             try:
                 await self.async_validate_input(user_input)
@@ -114,15 +148,24 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     title=user_input[CONF_USERNAME], data=user_input
                 )
 
+        if self._default_hub == "local":
+            return self.async_show_form(
+                step_id="user",
+                data_schema=vol.Schema(
+                    {
+                        vol.Required(CONF_HOST): str,
+                        vol.Required(CONF_API_TOKEN): str,
+                    }
+                ),
+                errors=errors,
+            )
+
         return self.async_show_form(
             step_id="user",
             data_schema=vol.Schema(
                 {
                     vol.Required(CONF_USERNAME, default=self._default_user): str,
                     vol.Required(CONF_PASSWORD): str,
-                    vol.Required(CONF_HUB, default=self._default_hub): vol.In(
-                        {key: hub.name for key, hub in SUPPORTED_SERVERS.items()}
-                    ),
                 }
             ),
             errors=errors,
