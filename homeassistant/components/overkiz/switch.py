@@ -15,7 +15,7 @@ from homeassistant.components.switch import (
     SwitchEntityDescription,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import EntityCategory, Platform
+from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
@@ -107,6 +107,34 @@ SWITCH_DESCRIPTIONS: list[OverkizSwitchDescription] = [
         ),
         entity_category=EntityCategory.CONFIG,
     ),
+    OverkizSwitchDescription(
+        key=UIWidget.VALVE_HEATING_TEMPERATURE_INTERFACE,
+        name="Open window detection",
+        turn_on=OverkizCommand.SET_VALVE_SETTINGS,
+        turn_on_args={OverkizCommandParam.OPEN_WINDOW: True},
+        turn_off=OverkizCommand.SET_VALVE_SETTINGS,
+        turn_off_args={OverkizCommandParam.OPEN_WINDOW: False},
+        is_on=lambda select_state: (
+            select_state(OverkizState.CORE_OPEN_WINDOW_DETECTION_ACTIVATION)
+            == OverkizCommandParam.ACTIVE
+        ),
+        icon="mdi:window-open",
+        entity_category=EntityCategory.CONFIG,
+    ),
+    OverkizSwitchDescription(
+        key=UIWidget.VALVE_HEATING_TEMPERATURE_INTERFACE,
+        name="Child lock",
+        turn_on=OverkizCommand.SET_VALVE_SETTINGS,
+        turn_on_args={OverkizCommandParam.LOCK_KEY: True},
+        turn_off=OverkizCommand.SET_VALVE_SETTINGS,
+        turn_off_args={OverkizCommandParam.LOCK_KEY: False},
+        is_on=lambda select_state: (
+            select_state(OverkizState.IO_LOCK_KEY_ACTIVATION)
+            == OverkizCommandParam.ENABLE
+        ),
+        icon="mdi:lock",
+        entity_category=EntityCategory.CONFIG,
+    ),
 ]
 
 SUPPORTED_DEVICES = {
@@ -123,7 +151,7 @@ async def async_setup_entry(
     data: HomeAssistantOverkizData = hass.data[DOMAIN][entry.entry_id]
     entities: list[OverkizSwitch] = []
 
-    for device in data.platforms[Platform.SWITCH]:
+    for device in data.coordinator.data.values():
         if description := SUPPORTED_DEVICES.get(device.widget) or SUPPORTED_DEVICES.get(
             device.ui_class
         ):
