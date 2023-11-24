@@ -78,6 +78,35 @@
         }
       }
     },
+    "button": {
+      "bip": {
+        "name": "Bip"
+      },
+      "ding_dong": {
+        "name": "Ding dong"
+      },
+      "fast_bip_sequence": {
+        "name": "Fast bip sequence"
+      },
+      "identify": {
+        "name": "Identify"
+      },
+      "my_position": {
+        "name": "My position"
+      },
+      "ring": {
+        "name": "Ring"
+      },
+      "start_identify": {
+        "name": "Start identify"
+      },
+      "stop_identify": {
+        "name": "Stop identify"
+      },
+      "toggle": {
+        "name": "Toggle"
+      }
+    },
     "select": {
       "open_closed_pedestrian": {
         "state": {

@@ -27,48 +27,51 @@ class OverkizButtonDescription(ButtonEntityDescription):
 BUTTON_DESCRIPTIONS: list[OverkizButtonDescription] = [
     # My Position (cover, light)
     OverkizButtonDescription(
-        key="my",
-        name="My position",
-        icon="mdi:star",
+        key="my", name="My position", icon="mdi:star", translation_key="my_position"
     ),
     # Identify
     OverkizButtonDescription(
         key="identify",  # startIdentify and identify are reversed... Swap this when fixed in API.
-        name="Start identify",
+        translation_key="start_identify",
         icon="mdi:human-greeting-variant",
         entity_category=EntityCategory.DIAGNOSTIC,
         entity_registry_enabled_default=False,
     ),
     OverkizButtonDescription(
         key="stopIdentify",
-        name="Stop identify",
+        translation_key="stop_identify",
         icon="mdi:human-greeting-variant",
         entity_category=EntityCategory.DIAGNOSTIC,
         entity_registry_enabled_default=False,
     ),
     OverkizButtonDescription(
         key="startIdentify",  # startIdentify and identify are reversed... Swap this when fixed in API.
-        name="Identify",
+        translation_key="identify",
         icon="mdi:human-greeting-variant",
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
     # RTDIndoorSiren / RTDOutdoorSiren
-    OverkizButtonDescription(key="dingDong", name="Ding dong", icon="mdi:bell-ring"),
-    OverkizButtonDescription(key="bip", name="Bip", icon="mdi:bell-ring"),
     OverkizButtonDescription(
-        key="fastBipSequence", name="Fast bip sequence", icon="mdi:bell-ring"
+        key="dingDong",
+        translation_key="ding_dong",
+        name="Ding dong",
+        icon="mdi:bell-ring",
     ),
-    OverkizButtonDescription(key="ring", name="Ring", icon="mdi:bell-ring"),
+    OverkizButtonDescription(key="bip", translation_key="bip", icon="mdi:bell-ring"),
+    OverkizButtonDescription(
+        key="fastBipSequence", translation_key="fast_bip_sequence", icon="mdi:bell-ring"
+    ),
+    OverkizButtonDescription(key="ring", translation_key="ring", icon="mdi:bell-ring"),
     # DynamicScreen (ogp:blind) uses goToAlias (id 1: favorite1) instead of 'my'
     OverkizButtonDescription(
         key="goToAlias",
         press_args="1",
-        name="My position",
+        translation_key="my_position",
         icon="mdi:star",
     ),
     OverkizButtonDescription(
         key=OverkizCommand.CYCLE,
-        name="Toggle",
+        translation_key="toggle",
         icon="mdi:sync",
     ),
 ]
