@@ -3,12 +3,13 @@
 from datetime import timedelta
 import logging
 
+from PyTado.exceptions import TadoWrongCredentialsException
 import requests.exceptions
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_PASSWORD, CONF_USERNAME, Platform
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.exceptions import ConfigEntryNotReady
+from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.helpers.typing import ConfigType
@@ -66,19 +67,20 @@ async def async_setup_entry(hass: HomeAssistant, entry: TadoConfigEntry) -> bool
 
     try:
         await hass.async_add_executor_job(tadoconnector.setup)
-    except KeyError:
-        _LOGGER.error("Failed to login to tado")
-        return False
+    except KeyError as exc:
+        raise ConfigEntryAuthFailed("Failed to login to Tado") from exc
     except RuntimeError as exc:
         _LOGGER.error("Failed to setup tado: %s", exc)
         return False
-    except requests.exceptions.Timeout as ex:
-        raise ConfigEntryNotReady from ex
-    except requests.exceptions.HTTPError as ex:
-        if ex.response.status_code > 400 and ex.response.status_code < 500:
-            _LOGGER.error("Failed to login to tado: %s", ex)
-            return False
-        raise ConfigEntryNotReady from ex
+    except TadoWrongCredentialsException as exc:
+        raise ConfigEntryAuthFailed("Your username or password is invalid") from exc
+    except requests.exceptions.Timeout as exc:
+        raise ConfigEntryNotReady from exc
+    except requests.exceptions.HTTPError as exc:
+        if exc.response.status_code > 400 and exc.response.status_code < 500:
+            raise ConfigEntryAuthFailed("Failed to login to Tado") from exc
+
+        raise ConfigEntryNotReady from exc
 
     # Do first update
     await hass.async_add_executor_job(tadoconnector.update)
