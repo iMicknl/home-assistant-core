@@ -603,7 +603,7 @@ async def test_local_reauth_legacy(hass: HomeAssistant) -> None:
     mock_entry = MockConfigEntry(
         domain=DOMAIN,
         unique_id=TEST_GATEWAY_ID,
-        version=2,
+        version=1,  # Old version with username/password
         data={
             "host": TEST_HOST,
             "username": TEST_EMAIL,
@@ -915,7 +915,6 @@ async def test_local_zeroconf_flow(
 
     assert result4["type"] is FlowResultType.CREATE_ENTRY
     assert result4["title"] == "gateway-1234-5678-9123.local:8443"
-
     # Verify no username/password in data
     assert result4["data"] == {
         "host": "gateway-1234-5678-9123.local:8443",
