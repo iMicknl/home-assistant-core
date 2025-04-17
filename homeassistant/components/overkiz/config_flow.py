@@ -239,6 +239,8 @@ class OverkizConfigFlow(ConfigFlow, domain=DOMAIN):
             except TooManyAttemptsBannedException:
                 errors["base"] = "too_many_attempts"
             except UnknownUserException:
+                # Somfy Protect accounts are not supported since they don't use
+                # the Overkiz API server. Login will return unknown user.
                 description_placeholders["unsupported_device"] = "Somfy Protect"
                 errors["base"] = "unsupported_hardware"
             except Exception:  # noqa: BLE001
