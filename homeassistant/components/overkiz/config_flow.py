@@ -52,6 +52,8 @@ class OverkizConfigFlow(ConfigFlow, domain=DOMAIN):
     async def async_validate_input(self, user_input: dict[str, Any]) -> dict[str, Any]:
         """Validate user credentials."""
         user_input[CONF_API_TYPE] = self._api_type
+        user_input[CONF_VERIFY_SSL] = self._verify_ssl
+        gateway_id = None
 
         if self._api_type == APIType.LOCAL:
             user_input[CONF_VERIFY_SSL] = self._verify_ssl
@@ -218,7 +220,8 @@ class OverkizConfigFlow(ConfigFlow, domain=DOMAIN):
             user_input[CONF_HUB] = self._server
 
             try:
-                user_input = await self.async_validate_input(user_input)
+                # Pass the combined data to validation
+                validated_data = await self.async_validate_input(data)
             except TooManyRequestsException:
                 errors["base"] = "too_many_requests"
             except (
@@ -238,8 +241,7 @@ class OverkizConfigFlow(ConfigFlow, domain=DOMAIN):
             except TooManyAttemptsBannedException:
                 errors["base"] = "too_many_attempts"
             except UnknownUserException:
-                # Somfy Protect accounts are not supported since they don't use
-                # the Overkiz API server. Login will return unknown user.
+                # This shouldn't happen with token auth, but keep for safety
                 description_placeholders["unsupported_device"] = "Somfy Protect"
                 errors["base"] = "unsupported_hardware"
             except Exception:  # noqa: BLE001
@@ -247,18 +249,31 @@ class OverkizConfigFlow(ConfigFlow, domain=DOMAIN):
                 LOGGER.exception("Unknown error")
             else:
                 if self.source == SOURCE_REAUTH:
-                    self._abort_if_unique_id_mismatch(reason="reauth_wrong_account")
+                    # Check unique ID before updating
+                    current_entry = self._get_reauth_entry()
+                    if self.unique_id != current_entry.unique_id:
+                        return self.async_abort(reason="reauth_wrong_account")
 
                     return self.async_update_reload_and_abort(
-                        self._get_reauth_entry(), data_updates=user_input
+                        current_entry, data=validated_data
                     )
 
                 # Create new entry
-                self._abort_if_unique_id_configured()
+                # Unique ID should be set in async_validate_input now
+                self._abort_if_unique_id_configured(updates=validated_data)
 
                 return self.async_create_entry(
-                    title=user_input[CONF_HOST], data=user_input
+                    title=validated_data[CONF_HOST], data=validated_data
                 )
+
+        # Pre-fill data if available (e.g., from discovery or reauth)
+        data_schema = vol.Schema(
+            {
+                vol.Required(CONF_HOST, default=self._host): str,
+                vol.Required(CONF_TOKEN): str,
+                vol.Required(CONF_VERIFY_SSL, default=True): bool,
+            }
+        )
 
         return self.async_show_form(
             step_id="local",
