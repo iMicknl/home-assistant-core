@@ -52,7 +52,6 @@ class OverkizConfigFlow(ConfigFlow, domain=DOMAIN):
     async def async_validate_input(self, user_input: dict[str, Any]) -> dict[str, Any]:
         """Validate user credentials."""
         user_input[CONF_API_TYPE] = self._api_type
-        user_input[CONF_VERIFY_SSL] = self._verify_ssl
 
         if self._api_type == APIType.LOCAL:
             user_input[CONF_VERIFY_SSL] = self._verify_ssl
