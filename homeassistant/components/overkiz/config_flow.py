@@ -219,8 +219,7 @@ class OverkizConfigFlow(ConfigFlow, domain=DOMAIN):
             user_input[CONF_HUB] = self._server
 
             try:
-                # Pass the combined data to validation
-                validated_data = await self.async_validate_input(data)
+                user_input = await self.async_validate_input(user_input)
             except TooManyRequestsException:
                 errors["base"] = "too_many_requests"
             except (
@@ -247,30 +246,18 @@ class OverkizConfigFlow(ConfigFlow, domain=DOMAIN):
                 LOGGER.exception("Unknown error")
             else:
                 if self.source == SOURCE_REAUTH:
-                    # Check unique ID before updating
-                    current_entry = self._get_reauth_entry()
-                    if self.unique_id != current_entry.unique_id:
-                        return self.async_abort(reason="reauth_wrong_account")
+                    self._abort_if_unique_id_mismatch(reason="reauth_wrong_account")
 
                     return self.async_update_reload_and_abort(
-                        current_entry, data=validated_data
+                        self._get_reauth_entry(), data_updates=user_input
                     )
 
                 # Create new entry
-                # Unique ID should be set in async_validate_input now
-                self._abort_if_unique_id_configured(updates=validated_data)
+                self._abort_if_unique_id_configured()
 
                 return self.async_create_entry(
-                    title=validated_data[CONF_HOST], data=validated_data
+                    title=user_input[CONF_HOST], data=user_input
                 )
-
-        data_schema = vol.Schema(
-            {
-                vol.Required(CONF_HOST, default=self._host): str,
-                vol.Required(CONF_TOKEN): str,
-                vol.Required(CONF_VERIFY_SSL, default=self._verify_ssl): bool,
-            }
-        )
 
         return self.async_show_form(
             step_id="local",
