@@ -53,7 +53,6 @@ class OverkizConfigFlow(ConfigFlow, domain=DOMAIN):
         """Validate user credentials."""
         user_input[CONF_API_TYPE] = self._api_type
         user_input[CONF_VERIFY_SSL] = self._verify_ssl
-        gateway_id = None
 
         if self._api_type == APIType.LOCAL:
             user_input[CONF_VERIFY_SSL] = self._verify_ssl
@@ -241,7 +240,6 @@ class OverkizConfigFlow(ConfigFlow, domain=DOMAIN):
             except TooManyAttemptsBannedException:
                 errors["base"] = "too_many_attempts"
             except UnknownUserException:
-                # This shouldn't happen with token auth, but keep for safety
                 description_placeholders["unsupported_device"] = "Somfy Protect"
                 errors["base"] = "unsupported_hardware"
             except Exception:  # noqa: BLE001
