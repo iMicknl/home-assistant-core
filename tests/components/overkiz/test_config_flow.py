@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Generator
 from ipaddress import ip_address
+from typing import Any
 from unittest.mock import AsyncMock, Mock, patch
 
 from aiohttp import ClientConnectorCertificateError, ClientError
@@ -20,12 +22,9 @@ from homeassistant import config_entries
 from homeassistant.components.overkiz.const import DOMAIN
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
-from homeassistant.helpers.service_info.dhcp import DhcpServiceInfo
 from homeassistant.helpers.service_info.zeroconf import ZeroconfServiceInfo
 
 from tests.common import MockConfigEntry
-
-pytestmark = pytest.mark.usefixtures("mock_setup_entry")
 
 TEST_EMAIL = "test@testdomain.com"
 TEST_EMAIL2 = "test@testdomain.nl"
@@ -42,9 +41,33 @@ TEST_HOST = "gateway-1234-5678-9123.local:8443"
 TEST_HOST2 = "192.168.11.104:8443"
 TEST_TOKEN = "1234123412341234"
 
+# Common test error mappings
+ERROR_MAPPING = [
+    (BadCredentialsException, "invalid_auth"),
+    (TooManyRequestsException, "too_many_requests"),
+    (TimeoutError, "cannot_connect"),
+    (ClientError, "cannot_connect"),
+    (MaintenanceException, "server_in_maintenance"),
+    (TooManyAttemptsBannedException, "too_many_attempts"),
+    (UnknownUserException, "unsupported_hardware"),
+    (Exception, "unknown"),
+]
+
+# Additional mapping for local API
+LOCAL_ERROR_MAPPING = [
+    *ERROR_MAPPING,
+    (
+        ClientConnectorCertificateError(Mock(host=TEST_HOST), Exception),
+        "certificate_verify_failed",
+    ),
+    (NotSuchTokenException, "invalid_auth"),
+]
+
+# Mock gateway responses
 MOCK_GATEWAY_RESPONSE = [Mock(id=TEST_GATEWAY_ID)]
 MOCK_GATEWAY2_RESPONSE = [Mock(id=TEST_GATEWAY_ID3), Mock(id=TEST_GATEWAY_ID2)]
 
+# Zeroconf discovery info
 FAKE_ZERO_CONF_INFO = ZeroconfServiceInfo(
     ip_address=ip_address("192.168.0.51"),
     ip_addresses=[ip_address("192.168.0.51")],
@@ -74,976 +97,292 @@ FAKE_ZERO_CONF_INFO_LOCAL = ZeroconfServiceInfo(
 )
 
 
-async def test_form_cloud(hass: HomeAssistant, mock_setup_entry: AsyncMock) -> None:
-    """Test we get the form."""
+@pytest.fixture(name="mock_setup")
+def mock_setup_fixture() -> Generator[tuple[AsyncMock, AsyncMock]]:
+    """Mock setup."""
+    with (
+        patch("pyoverkiz.client.OverkizClient.login", return_value=True) as mock_login,
+        patch(
+            "pyoverkiz.client.OverkizClient.get_gateways",
+            return_value=MOCK_GATEWAY_RESPONSE,
+        ) as mock_gateways,
+    ):
+        yield mock_login, mock_gateways
+
+
+async def init_config_flow_cloud(
+    hass: HomeAssistant,
+    mock_setup: tuple[AsyncMock, AsyncMock],
+    data: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Test the cloud API configuration flow."""
     result = await hass.config_entries.flow.async_init(
         DOMAIN, context={"source": config_entries.SOURCE_USER}
     )
-
-    assert result["type"] is FlowResultType.FORM
+    assert result["type"] == FlowResultType.FORM
 
     result2 = await hass.config_entries.flow.async_configure(
         result["flow_id"],
         {"hub": TEST_SERVER},
     )
-
-    assert result2["type"] is FlowResultType.FORM
+    assert result2["type"] == FlowResultType.FORM
     assert result2["step_id"] == "local_or_cloud"
 
     result3 = await hass.config_entries.flow.async_configure(
         result["flow_id"],
         {"api_type": "cloud"},
     )
-
-    assert result3["type"] is FlowResultType.FORM
+    assert result3["type"] == FlowResultType.FORM
     assert result3["step_id"] == "cloud"
 
-    with (
-        patch("pyoverkiz.client.OverkizClient.login", return_value=True),
-        patch(
-            "pyoverkiz.client.OverkizClient.get_gateways",
-            return_value=MOCK_GATEWAY_RESPONSE,
-        ),
-    ):
-        await hass.config_entries.flow.async_configure(
-            result["flow_id"],
-            {"username": TEST_EMAIL, "password": TEST_PASSWORD},
-        )
-
-    await hass.async_block_till_done()
-
-    assert len(mock_setup_entry.mock_calls) == 1
+    return result
 
 
-async def test_form_only_cloud_supported(
-    hass: HomeAssistant, mock_setup_entry: AsyncMock
-) -> None:
-    """Test we get the form."""
+async def init_config_flow_local(
+    hass: HomeAssistant,
+    mock_setup: tuple[AsyncMock, AsyncMock],
+    data: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Test the local API configuration flow."""
     result = await hass.config_entries.flow.async_init(
         DOMAIN, context={"source": config_entries.SOURCE_USER}
     )
-
-    assert result["type"] is FlowResultType.FORM
-
-    result2 = await hass.config_entries.flow.async_configure(
-        result["flow_id"],
-        {"hub": TEST_SERVER2},
-    )
-
-    assert result2["type"] is FlowResultType.FORM
-    assert result2["step_id"] == "cloud"
-
-    with (
-        patch("pyoverkiz.client.OverkizClient.login", return_value=True),
-        patch(
-            "pyoverkiz.client.OverkizClient.get_gateways",
-            return_value=MOCK_GATEWAY_RESPONSE,
-        ),
-    ):
-        await hass.config_entries.flow.async_configure(
-            result["flow_id"],
-            {"username": TEST_EMAIL, "password": TEST_PASSWORD},
-        )
-
-    await hass.async_block_till_done()
-
-    assert len(mock_setup_entry.mock_calls) == 1
-
-
-async def test_form_local_happy_flow(
-    hass: HomeAssistant, mock_setup_entry: AsyncMock
-) -> None:
-    """Test local API configuration flow."""
-    result = await hass.config_entries.flow.async_init(
-        DOMAIN, context={"source": config_entries.SOURCE_USER}
-    )
-
-    assert result["type"] is FlowResultType.FORM
+    assert result["type"] == FlowResultType.FORM
 
     result2 = await hass.config_entries.flow.async_configure(
         result["flow_id"],
         {"hub": TEST_SERVER},
     )
-
-    assert result2["type"] is FlowResultType.FORM
+    assert result2["type"] == FlowResultType.FORM
     assert result2["step_id"] == "local_or_cloud"
 
     result3 = await hass.config_entries.flow.async_configure(
         result["flow_id"],
         {"api_type": "local"},
     )
-
-    assert result3["type"] is FlowResultType.FORM
+    assert result3["type"] == FlowResultType.FORM
     assert result3["step_id"] == "local"
 
-    with patch.multiple(
-        "pyoverkiz.client.OverkizClient",
-        login=AsyncMock(return_value=True),
-        get_gateways=AsyncMock(return_value=MOCK_GATEWAY_RESPONSE),
-    ):
-        result4 = await hass.config_entries.flow.async_configure(
-            result["flow_id"],
-            {
-                "host": "gateway-1234-5678-1234.local:8443",
-                "token": TEST_TOKEN,
-                "verify_ssl": True,
-            },
-        )
+    return result
 
-    await hass.async_block_till_done()
 
-    assert result4["type"] is FlowResultType.CREATE_ENTRY
-    assert result4["title"] == "gateway-1234-5678-1234.local:8443"
-    assert result4["data"] == {
-        "host": "gateway-1234-5678-1234.local:8443",
+async def complete_cloud_flow(
+    hass: HomeAssistant,
+    result: dict[str, Any],
+    mock_setup: tuple[AsyncMock, AsyncMock],
+) -> dict[str, Any]:
+    """Complete the cloud configuration flow."""
+    return await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        {"username": TEST_EMAIL, "password": TEST_PASSWORD},
+    )
+
+
+async def complete_local_flow(
+    hass: HomeAssistant,
+    result: dict[str, Any],
+    mock_setup: tuple[AsyncMock, AsyncMock],
+) -> dict[str, Any]:
+    """Complete the local configuration flow."""
+    return await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        {
+            "host": TEST_HOST,
+            "token": TEST_TOKEN,
+            "verify_ssl": True,
+        },
+    )
+
+
+def create_mock_entry(
+    *,
+    unique_id: str = TEST_GATEWAY_ID,
+    version: int = 2,
+    data: dict[str, Any],
+) -> MockConfigEntry:
+    """Create a mock config entry."""
+    return MockConfigEntry(
+        domain=DOMAIN,
+        unique_id=unique_id,
+        version=version,
+        data=data,
+    )
+
+
+@pytest.mark.parametrize(("exception", "error"), ERROR_MAPPING)
+async def test_cloud_errors(
+    hass: HomeAssistant,
+    mock_setup: tuple[AsyncMock, AsyncMock],
+    exception: type[Exception],
+    error: str,
+) -> None:
+    """Test we handle cloud API errors."""
+    mock_login, _ = mock_setup
+    mock_login.side_effect = exception
+
+    result = await init_config_flow_cloud(hass, mock_setup)
+    result2 = await complete_cloud_flow(hass, result, mock_setup)
+
+    assert result2["type"] == FlowResultType.FORM
+    assert result2["errors"] == {"base": error}
+
+    # Test recovery from error
+    mock_login.side_effect = None
+    result3 = await complete_cloud_flow(hass, result, mock_setup)
+
+    assert result3["type"] == FlowResultType.CREATE_ENTRY
+    assert result3["title"] == TEST_EMAIL
+    assert result3["data"] == {
+        "username": TEST_EMAIL,
+        "password": TEST_PASSWORD,
+        "hub": TEST_SERVER,
+        "api_type": "cloud",
+    }
+    assert result3["result"].unique_id == TEST_GATEWAY_ID
+
+
+@pytest.mark.parametrize(("exception", "error"), LOCAL_ERROR_MAPPING)
+async def test_local_errors(
+    hass: HomeAssistant,
+    mock_setup: tuple[AsyncMock, AsyncMock],
+    exception: type[Exception],
+    error: str,
+) -> None:
+    """Test we handle local API errors."""
+    mock_login, _ = mock_setup
+    mock_login.side_effect = exception
+
+    result = await init_config_flow_local(hass, mock_setup)
+    result2 = await complete_local_flow(hass, result, mock_setup)
+
+    assert result2["type"] == FlowResultType.FORM
+    assert result2["errors"] == {"base": error}
+
+    # Test recovery from error
+    mock_login.side_effect = None
+    result3 = await complete_local_flow(hass, result, mock_setup)
+
+    assert result3["type"] == FlowResultType.CREATE_ENTRY
+    assert result3["title"] == TEST_HOST
+    assert result3["data"] == {
+        "host": TEST_HOST,
         "token": TEST_TOKEN,
         "verify_ssl": True,
         "hub": TEST_SERVER,
         "api_type": "local",
     }
-    assert len(mock_setup_entry.mock_calls) == 1
+    assert result3["result"].unique_id == TEST_GATEWAY_ID
 
 
 @pytest.mark.parametrize(
-    ("side_effect", "error"),
+    ("zeroconf_info", "expected_api_type"),
     [
-        (BadCredentialsException, "invalid_auth"),
-        (TooManyRequestsException, "too_many_requests"),
-        (TimeoutError, "cannot_connect"),
-        (ClientError, "cannot_connect"),
-        (MaintenanceException, "server_in_maintenance"),
-        (TooManyAttemptsBannedException, "too_many_attempts"),
-        (UnknownUserException, "unsupported_hardware"),
-        (Exception, "unknown"),
+        (FAKE_ZERO_CONF_INFO, "cloud"),
+        (FAKE_ZERO_CONF_INFO_LOCAL, "local"),
     ],
 )
-async def test_form_invalid_auth_cloud(
-    hass: HomeAssistant, side_effect: Exception, error: str
+async def test_zeroconf_discovery(
+    hass: HomeAssistant,
+    mock_setup: tuple[AsyncMock, AsyncMock],
+    zeroconf_info: ZeroconfServiceInfo,
+    expected_api_type: str,
 ) -> None:
-    """Test we handle invalid auth (cloud)."""
+    """Test zeroconf discovery for both cloud and local APIs."""
     result = await hass.config_entries.flow.async_init(
-        DOMAIN, context={"source": config_entries.SOURCE_USER}
+        DOMAIN,
+        context={"source": config_entries.SOURCE_ZEROCONF},
+        data=zeroconf_info,
     )
 
-    assert result["type"] is FlowResultType.FORM
+    assert result["type"] == FlowResultType.FORM
+    assert result["step_id"] == config_entries.SOURCE_USER
 
     result2 = await hass.config_entries.flow.async_configure(
         result["flow_id"],
         {"hub": TEST_SERVER},
     )
 
-    assert result2["type"] is FlowResultType.FORM
+    assert result2["type"] == FlowResultType.FORM
     assert result2["step_id"] == "local_or_cloud"
 
     result3 = await hass.config_entries.flow.async_configure(
         result["flow_id"],
-        {"api_type": "cloud"},
+        {"api_type": expected_api_type},
     )
 
-    assert result3["type"] is FlowResultType.FORM
-    assert result3["step_id"] == "cloud"
+    assert result3["type"] == FlowResultType.FORM
+    assert result3["step_id"] == expected_api_type
 
-    # Test the error condition
-    with patch("pyoverkiz.client.OverkizClient.login", side_effect=side_effect):
-        result4 = await hass.config_entries.flow.async_configure(
-            result["flow_id"],
-            {"username": TEST_EMAIL, "password": TEST_PASSWORD},
-        )
+    if expected_api_type == "cloud":
+        result4 = await complete_cloud_flow(hass, result, mock_setup)
+        expected_title = TEST_EMAIL
+        expected_data = {
+            "username": TEST_EMAIL,
+            "password": TEST_PASSWORD,
+            "hub": TEST_SERVER,
+            "api_type": "cloud",
+        }
+    else:
+        result4 = await complete_local_flow(hass, result, mock_setup)
+        expected_title = TEST_HOST
+        expected_data = {
+            "host": TEST_HOST,
+            "token": TEST_TOKEN,
+            "verify_ssl": True,
+            "hub": TEST_SERVER,
+            "api_type": "local",
+        }
 
-    await hass.async_block_till_done()
-
-    assert result4["type"] is FlowResultType.FORM
-    assert result4["errors"] == {"base": error}
-
-    # Test recovery from the error
-    with (
-        patch("pyoverkiz.client.OverkizClient.login", return_value=True),
-        patch(
-            "pyoverkiz.client.OverkizClient.get_gateways",
-            return_value=MOCK_GATEWAY_RESPONSE,
-        ),
-    ):
-        result5 = await hass.config_entries.flow.async_configure(
-            result["flow_id"],
-            {"username": TEST_EMAIL, "password": TEST_PASSWORD},
-        )
-
-    assert result5["type"] is FlowResultType.CREATE_ENTRY
-    assert result5["title"] == TEST_EMAIL
-    assert result5["data"] == {
-        "username": TEST_EMAIL,
-        "password": TEST_PASSWORD,
-        "hub": TEST_SERVER,
-        "api_type": "cloud",
-    }
-    assert result5["result"].unique_id == TEST_GATEWAY_ID
+    assert result4["type"] == FlowResultType.CREATE_ENTRY
+    assert result4["title"] == expected_title
+    assert result4["data"] == expected_data
+    assert result4["result"].unique_id == TEST_GATEWAY_ID
 
 
 @pytest.mark.parametrize(
-    ("side_effect", "error"),
+    ("api_type", "config_data"),
     [
-        (BadCredentialsException, "invalid_auth"),
-        (TooManyRequestsException, "too_many_requests"),
         (
-            ClientConnectorCertificateError(Mock(host=TEST_HOST), Exception),
-            "certificate_verify_failed",
-        ),
-        (TimeoutError, "cannot_connect"),
-        (ClientError, "cannot_connect"),
-        (MaintenanceException, "server_in_maintenance"),
-        (TooManyAttemptsBannedException, "too_many_attempts"),
-        (UnknownUserException, "unsupported_hardware"),
-        (NotSuchTokenException, "invalid_auth"),
-        (Exception, "unknown"),
-    ],
-)
-async def test_form_invalid_auth_local(
-    hass: HomeAssistant, side_effect: Exception, error: str
-) -> None:
-    """Test we handle invalid auth (local)."""
-    result = await hass.config_entries.flow.async_init(
-        DOMAIN, context={"source": config_entries.SOURCE_USER}
-    )
-
-    assert result["type"] is FlowResultType.FORM
-
-    result2 = await hass.config_entries.flow.async_configure(
-        result["flow_id"],
-        {"hub": TEST_SERVER},
-    )
-
-    assert result2["type"] is FlowResultType.FORM
-    assert result2["step_id"] == "local_or_cloud"
-
-    result3 = await hass.config_entries.flow.async_configure(
-        result["flow_id"],
-        {"api_type": "local"},
-    )
-
-    assert result3["type"] is FlowResultType.FORM
-    assert result3["step_id"] == "local"
-
-    # Test the error condition
-    with patch("pyoverkiz.client.OverkizClient.login", side_effect=side_effect):
-        result4 = await hass.config_entries.flow.async_configure(
-            result["flow_id"],
-            {
-                "host": TEST_HOST,
-                "token": TEST_TOKEN,
-                "verify_ssl": True,
-            },
-        )
-
-    await hass.async_block_till_done()
-
-    assert result4["type"] is FlowResultType.FORM
-    assert result4["errors"] == {"base": error}
-
-    # Test recovery from the error
-    with patch.multiple(
-        "pyoverkiz.client.OverkizClient",
-        login=AsyncMock(return_value=True),
-        get_gateways=AsyncMock(return_value=MOCK_GATEWAY_RESPONSE),
-    ):
-        result5 = await hass.config_entries.flow.async_configure(
-            result["flow_id"],
-            {
-                "host": TEST_HOST,
-                "token": TEST_TOKEN,
-                "verify_ssl": True,
-            },
-        )
-
-    assert result5["type"] is FlowResultType.CREATE_ENTRY
-    assert result5["title"] == TEST_HOST
-    assert result5["data"] == {
-        "host": TEST_HOST,
-        "token": TEST_TOKEN,
-        "verify_ssl": True,
-        "hub": TEST_SERVER,
-        "api_type": "local",
-    }
-    assert result5["result"].unique_id == TEST_GATEWAY_ID
-
-
-@pytest.mark.parametrize(
-    ("side_effect", "error"),
-    [
-        (BadCredentialsException, "unsupported_hardware"),
-    ],
-)
-async def test_form_invalid_cozytouch_auth(
-    hass: HomeAssistant, side_effect: Exception, error: str
-) -> None:
-    """Test we handle invalid auth (cloud)."""
-    result = await hass.config_entries.flow.async_init(
-        DOMAIN, context={"source": config_entries.SOURCE_USER}
-    )
-
-    assert result["type"] is FlowResultType.FORM
-
-    result2 = await hass.config_entries.flow.async_configure(
-        result["flow_id"],
-        {"hub": TEST_SERVER_COZYTOUCH},
-    )
-
-    assert result2["type"] is FlowResultType.FORM
-    assert result2["step_id"] == "cloud"
-
-    # Test the error condition
-    with patch("pyoverkiz.client.OverkizClient.login", side_effect=side_effect):
-        result3 = await hass.config_entries.flow.async_configure(
-            result["flow_id"],
-            {"username": TEST_EMAIL, "password": TEST_PASSWORD},
-        )
-
-    await hass.async_block_till_done()
-
-    assert result3["type"] is FlowResultType.FORM
-    assert result3["errors"] == {"base": error}
-    assert result3["step_id"] == "cloud"
-
-    # Test recovery from the error
-    with (
-        patch("pyoverkiz.client.OverkizClient.login", return_value=True),
-        patch(
-            "pyoverkiz.client.OverkizClient.get_gateways",
-            return_value=MOCK_GATEWAY_RESPONSE,
-        ),
-    ):
-        result4 = await hass.config_entries.flow.async_configure(
-            result["flow_id"],
-            {"username": TEST_EMAIL, "password": TEST_PASSWORD},
-        )
-
-    assert result4["type"] is FlowResultType.CREATE_ENTRY
-    assert result4["title"] == TEST_EMAIL
-    assert result4["data"] == {
-        "username": TEST_EMAIL,
-        "password": TEST_PASSWORD,
-        "hub": TEST_SERVER_COZYTOUCH,
-        "api_type": "cloud",
-    }
-    assert result4["result"].unique_id == TEST_GATEWAY_ID
-
-
-async def test_cloud_abort_on_duplicate_entry(
-    hass: HomeAssistant, mock_setup_entry: AsyncMock
-) -> None:
-    """Test we get the form."""
-
-    MockConfigEntry(
-        domain=DOMAIN,
-        unique_id=TEST_GATEWAY_ID,
-        data={"username": TEST_EMAIL, "password": TEST_PASSWORD, "hub": TEST_SERVER},
-    ).add_to_hass(hass)
-
-    result = await hass.config_entries.flow.async_init(
-        DOMAIN, context={"source": config_entries.SOURCE_USER}
-    )
-
-    assert result["type"] is FlowResultType.FORM
-
-    result2 = await hass.config_entries.flow.async_configure(
-        result["flow_id"],
-        {"hub": TEST_SERVER},
-    )
-
-    assert result2["type"] is FlowResultType.FORM
-    assert result2["step_id"] == "local_or_cloud"
-
-    result3 = await hass.config_entries.flow.async_configure(
-        result["flow_id"],
-        {"api_type": "cloud"},
-    )
-
-    assert result3["type"] is FlowResultType.FORM
-    assert result3["step_id"] == "cloud"
-
-    with (
-        patch("pyoverkiz.client.OverkizClient.login", return_value=True),
-        patch(
-            "pyoverkiz.client.OverkizClient.get_gateways",
-            return_value=MOCK_GATEWAY_RESPONSE,
-        ),
-    ):
-        result4 = await hass.config_entries.flow.async_configure(
-            result["flow_id"],
-            {"username": TEST_EMAIL, "password": TEST_PASSWORD},
-        )
-
-    assert result4["type"] is FlowResultType.ABORT
-    assert result4["reason"] == "already_configured"
-
-
-async def test_local_abort_on_duplicate_entry(
-    hass: HomeAssistant, mock_setup_entry: AsyncMock
-) -> None:
-    """Test local API configuration is aborted if gateway already exists."""
-
-    MockConfigEntry(
-        domain=DOMAIN,
-        unique_id=TEST_GATEWAY_ID,
-        version=2,
-        data={
-            "host": TEST_HOST,
-            "token": TEST_TOKEN,
-            "verify_ssl": True,
-            "hub": TEST_SERVER,
-            "api_type": "local",
-        },
-    ).add_to_hass(hass)
-
-    result = await hass.config_entries.flow.async_init(
-        DOMAIN, context={"source": config_entries.SOURCE_USER}
-    )
-
-    assert result["type"] is FlowResultType.FORM
-
-    result2 = await hass.config_entries.flow.async_configure(
-        result["flow_id"],
-        {"hub": TEST_SERVER},
-    )
-
-    assert result2["type"] is FlowResultType.FORM
-    assert result2["step_id"] == "local_or_cloud"
-
-    result3 = await hass.config_entries.flow.async_configure(
-        result["flow_id"],
-        {"api_type": "local"},
-    )
-
-    assert result3["type"] is FlowResultType.FORM
-    assert result3["step_id"] == "local"
-
-    with patch.multiple(
-        "pyoverkiz.client.OverkizClient",
-        login=AsyncMock(return_value=True),
-        get_gateways=AsyncMock(return_value=MOCK_GATEWAY_RESPONSE),
-        get_setup_option=AsyncMock(return_value=True),
-    ):
-        result4 = await hass.config_entries.flow.async_configure(
-            result["flow_id"],
-            {
-                "host": TEST_HOST,
-                "token": TEST_TOKEN,
-                "verify_ssl": True,
-            },
-        )
-
-    assert result4["type"] is FlowResultType.ABORT
-    assert result4["reason"] == "already_configured"
-
-
-async def test_cloud_allow_multiple_unique_entries(
-    hass: HomeAssistant, mock_setup_entry: AsyncMock
-) -> None:
-    """Test we get the form."""
-
-    MockConfigEntry(
-        version=1,
-        domain=DOMAIN,
-        unique_id=TEST_GATEWAY_ID2,
-        data={"username": TEST_EMAIL, "password": TEST_PASSWORD, "hub": TEST_SERVER},
-    ).add_to_hass(hass)
-
-    result = await hass.config_entries.flow.async_init(
-        DOMAIN, context={"source": config_entries.SOURCE_USER}
-    )
-
-    assert result["type"] is FlowResultType.FORM
-
-    result2 = await hass.config_entries.flow.async_configure(
-        result["flow_id"],
-        {"hub": TEST_SERVER},
-    )
-
-    assert result2["type"] is FlowResultType.FORM
-    assert result2["step_id"] == "local_or_cloud"
-
-    result3 = await hass.config_entries.flow.async_configure(
-        result["flow_id"],
-        {"api_type": "cloud"},
-    )
-
-    assert result3["type"] is FlowResultType.FORM
-    assert result3["step_id"] == "cloud"
-
-    with (
-        patch("pyoverkiz.client.OverkizClient.login", return_value=True),
-        patch(
-            "pyoverkiz.client.OverkizClient.get_gateways",
-            return_value=MOCK_GATEWAY_RESPONSE,
-        ),
-    ):
-        result4 = await hass.config_entries.flow.async_configure(
-            result["flow_id"],
-            {"username": TEST_EMAIL, "password": TEST_PASSWORD},
-        )
-
-    assert result4["type"] is FlowResultType.CREATE_ENTRY
-    assert result4["title"] == TEST_EMAIL
-    assert result4["data"] == {
-        "api_type": "cloud",
-        "username": TEST_EMAIL,
-        "password": TEST_PASSWORD,
-        "hub": TEST_SERVER,
-    }
-
-
-async def test_cloud_reauth_success(hass: HomeAssistant) -> None:
-    """Test reauthentication flow."""
-
-    mock_entry = MockConfigEntry(
-        domain=DOMAIN,
-        unique_id=TEST_GATEWAY_ID,
-        version=2,
-        data={
-            "username": TEST_EMAIL,
-            "password": TEST_PASSWORD,
-            "hub": TEST_SERVER2,
-            "api_type": "cloud",
-        },
-    )
-    mock_entry.add_to_hass(hass)
-
-    result = await mock_entry.start_reauth_flow(hass)
-
-    assert result["type"] is FlowResultType.FORM
-    assert result["step_id"] == "cloud"
-
-    with (
-        patch("pyoverkiz.client.OverkizClient.login", return_value=True),
-        patch(
-            "pyoverkiz.client.OverkizClient.get_gateways",
-            return_value=MOCK_GATEWAY_RESPONSE,
-        ),
-    ):
-        result2 = await hass.config_entries.flow.async_configure(
-            result["flow_id"],
-            user_input={
-                "username": TEST_EMAIL,
-                "password": TEST_PASSWORD2,
-            },
-        )
-
-        assert result2["type"] is FlowResultType.ABORT
-        assert result2["reason"] == "reauth_successful"
-        assert mock_entry.data["username"] == TEST_EMAIL
-        assert mock_entry.data["password"] == TEST_PASSWORD2
-
-
-async def test_cloud_reauth_wrong_account(hass: HomeAssistant) -> None:
-    """Test reauthentication flow."""
-
-    mock_entry = MockConfigEntry(
-        domain=DOMAIN,
-        unique_id=TEST_GATEWAY_ID,
-        version=2,
-        data={
-            "username": TEST_EMAIL,
-            "password": TEST_PASSWORD,
-            "hub": TEST_SERVER2,
-            "api_type": "cloud",
-        },
-    )
-    mock_entry.add_to_hass(hass)
-
-    result = await mock_entry.start_reauth_flow(hass)
-
-    assert result["type"] is FlowResultType.FORM
-    assert result["step_id"] == "cloud"
-
-    with (
-        patch("pyoverkiz.client.OverkizClient.login", return_value=True),
-        patch(
-            "pyoverkiz.client.OverkizClient.get_gateways",
-            return_value=MOCK_GATEWAY2_RESPONSE,
-        ),
-    ):
-        result2 = await hass.config_entries.flow.async_configure(
-            result["flow_id"],
-            user_input={
-                "username": TEST_EMAIL,
-                "password": TEST_PASSWORD2,
-            },
-        )
-
-        assert result2["type"] is FlowResultType.ABORT
-        assert result2["reason"] == "reauth_wrong_account"
-
-
-async def test_local_reauth_legacy(hass: HomeAssistant) -> None:
-    """Test legacy reauthentication flow with username/password."""
-    mock_entry = MockConfigEntry(
-        domain=DOMAIN,
-        unique_id=TEST_GATEWAY_ID,
-        version=2,
-        data={
-            "host": TEST_HOST,
-            "username": TEST_EMAIL,
-            "password": TEST_PASSWORD,
-            "verify_ssl": True,
-            "hub": TEST_SERVER,
-            "api_type": "local",
-        },
-    )
-    mock_entry.add_to_hass(hass)
-
-    result = await mock_entry.start_reauth_flow(hass)
-
-    assert result["type"] is FlowResultType.FORM
-    assert result["step_id"] == "local_or_cloud"
-
-    result2 = await hass.config_entries.flow.async_configure(
-        result["flow_id"],
-        {"api_type": "local"},
-    )
-
-    assert result2["step_id"] == "local"
-
-    with patch.multiple(
-        "pyoverkiz.client.OverkizClient",
-        login=AsyncMock(return_value=True),
-        get_gateways=AsyncMock(return_value=MOCK_GATEWAY_RESPONSE),
-    ):
-        result3 = await hass.config_entries.flow.async_configure(
-            result["flow_id"],
-            {
-                "host": TEST_HOST,
-                "token": "new_token",
-                "verify_ssl": True,
-            },
-        )
-
-        assert result3["type"] is FlowResultType.ABORT
-        assert result3["reason"] == "reauth_successful"
-        assert mock_entry.data["host"] == TEST_HOST
-        assert mock_entry.data["token"] == "new_token"
-        assert mock_entry.data["verify_ssl"] is True
-
-
-async def test_local_reauth_success(hass: HomeAssistant) -> None:
-    """Test modern local reauth flow."""
-    mock_entry = MockConfigEntry(
-        domain=DOMAIN,
-        unique_id=TEST_GATEWAY_ID,
-        version=2,
-        data={
-            "host": TEST_HOST,
-            "token": "old_token",
-            "verify_ssl": True,
-            "hub": TEST_SERVER,
-            "api_type": "local",
-        },
-    )
-    mock_entry.add_to_hass(hass)
-
-    result = await mock_entry.start_reauth_flow(hass)
-    assert result["type"] is FlowResultType.FORM
-    assert result["step_id"] == "local_or_cloud"
-
-    result2 = await hass.config_entries.flow.async_configure(
-        result["flow_id"],
-        {"api_type": "local"},
-    )
-
-    assert result2["step_id"] == "local"
-
-    with patch.multiple(
-        "pyoverkiz.client.OverkizClient",
-        login=AsyncMock(return_value=True),
-        get_gateways=AsyncMock(return_value=MOCK_GATEWAY_RESPONSE),
-    ):
-        result3 = await hass.config_entries.flow.async_configure(
-            result["flow_id"],
-            {
-                "host": TEST_HOST,
-                "token": "new_token",
-                "verify_ssl": True,
-            },
-        )
-
-        assert result3["type"] is FlowResultType.ABORT
-        assert result3["reason"] == "reauth_successful"
-        assert mock_entry.data["host"] == TEST_HOST
-        assert mock_entry.data["token"] == "new_token"
-        assert mock_entry.data["verify_ssl"] is True
-        assert "username" not in mock_entry.data
-        assert "password" not in mock_entry.data
-
-
-async def test_local_reauth_wrong_account(hass: HomeAssistant) -> None:
-    """Test local reauth flow with wrong gateway account."""
-
-    mock_entry = MockConfigEntry(
-        domain=DOMAIN,
-        unique_id=TEST_GATEWAY_ID2,
-        version=2,
-        data={
-            "host": TEST_HOST,
-            "token": "old_token",
-            "verify_ssl": True,
-            "hub": TEST_SERVER,
-            "api_type": "local",
-        },
-    )
-    mock_entry.add_to_hass(hass)
-
-    result = await mock_entry.start_reauth_flow(hass)
-    assert result["type"] is FlowResultType.FORM
-    assert result["step_id"] == "local_or_cloud"
-
-    result2 = await hass.config_entries.flow.async_configure(
-        result["flow_id"],
-        {"api_type": "local"},
-    )
-
-    assert result2["step_id"] == "local"
-
-    with patch.multiple(
-        "pyoverkiz.client.OverkizClient",
-        login=AsyncMock(return_value=True),
-        get_gateways=AsyncMock(return_value=MOCK_GATEWAY_RESPONSE),
-    ):
-        result3 = await hass.config_entries.flow.async_configure(
-            result["flow_id"],
-            {
-                "host": TEST_HOST,
-                "token": "new_token",
-                "verify_ssl": True,
-            },
-        )
-
-        assert result3["type"] is FlowResultType.ABORT
-        assert result3["reason"] == "reauth_wrong_account"
-
-
-async def test_dhcp_flow(hass: HomeAssistant, mock_setup_entry: AsyncMock) -> None:
-    """Test that DHCP discovery for new bridge works."""
-    result = await hass.config_entries.flow.async_init(
-        DOMAIN,
-        data=DhcpServiceInfo(
-            hostname="gateway-1234-5678-9123",
-            ip="192.168.1.4",
-            macaddress="f8811a000000",
-        ),
-        context={"source": config_entries.SOURCE_DHCP},
-    )
-
-    assert result["type"] is FlowResultType.FORM
-    assert result["step_id"] == config_entries.SOURCE_USER
-
-    result2 = await hass.config_entries.flow.async_configure(
-        result["flow_id"],
-        {"hub": TEST_SERVER},
-    )
-
-    assert result2["type"] is FlowResultType.FORM
-    assert result2["step_id"] == "local_or_cloud"
-
-    await hass.config_entries.flow.async_configure(
-        result["flow_id"],
-        {"api_type": "cloud"},
-    )
-
-    with (
-        patch("pyoverkiz.client.OverkizClient.login", return_value=True),
-        patch("pyoverkiz.client.OverkizClient.get_gateways", return_value=None),
-    ):
-        result4 = await hass.config_entries.flow.async_configure(
-            result["flow_id"],
+            "cloud",
             {
                 "username": TEST_EMAIL,
                 "password": TEST_PASSWORD,
+                "hub": TEST_SERVER,
+                "api_type": "cloud",
             },
-        )
-
-    assert result4["type"] is FlowResultType.CREATE_ENTRY
-    assert result4["title"] == TEST_EMAIL
-    assert result4["data"] == {
-        "username": TEST_EMAIL,
-        "password": TEST_PASSWORD,
-        "hub": TEST_SERVER,
-        "api_type": "cloud",
-    }
-    assert result4["result"].unique_id == TEST_GATEWAY_ID
-
-    assert len(mock_setup_entry.mock_calls) == 1
-
-
-async def test_dhcp_flow_already_configured(hass: HomeAssistant) -> None:
-    """Test that DHCP doesn't setup already configured gateways."""
-    config_entry = MockConfigEntry(
-        domain=DOMAIN,
-        unique_id=TEST_GATEWAY_ID,
-        data={"username": TEST_EMAIL, "password": TEST_PASSWORD, "hub": TEST_SERVER},
-    )
-    config_entry.add_to_hass(hass)
-
-    result = await hass.config_entries.flow.async_init(
-        DOMAIN,
-        data=DhcpServiceInfo(
-            hostname="gateway-1234-5678-9123",
-            ip="192.168.1.4",
-            macaddress="f8811a000000",
         ),
-        context={"source": config_entries.SOURCE_DHCP},
-    )
-
-    assert result["type"] is FlowResultType.ABORT
-    assert result["reason"] == "already_configured"
-
-
-async def test_zeroconf_flow(hass: HomeAssistant, mock_setup_entry: AsyncMock) -> None:
-    """Test that Zeroconf discovery works."""
-    result = await hass.config_entries.flow.async_init(
-        DOMAIN,
-        context={"source": config_entries.SOURCE_ZEROCONF},
-        data=FAKE_ZERO_CONF_INFO,
-    )
-
-    assert result["type"] is FlowResultType.FORM
-    assert result["step_id"] == config_entries.SOURCE_USER
-
-    result2 = await hass.config_entries.flow.async_configure(
-        result["flow_id"],
-        {"hub": TEST_SERVER},
-    )
-
-    assert result2["type"] is FlowResultType.FORM
-    assert result2["step_id"] == "local_or_cloud"
-
-    await hass.config_entries.flow.async_configure(
-        result["flow_id"],
-        {"api_type": "cloud"},
-    )
-
-    with (
-        patch("pyoverkiz.client.OverkizClient.login", return_value=True),
-        patch(
-            "pyoverkiz.client.OverkizClient.get_gateways",
-            return_value=MOCK_GATEWAY_RESPONSE,
-        ),
-    ):
-        result4 = await hass.config_entries.flow.async_configure(
-            result["flow_id"],
-            {
-                "username": TEST_EMAIL,
-                "password": TEST_PASSWORD,
-            },
-        )
-
-    assert result4["type"] is FlowResultType.CREATE_ENTRY
-    assert result4["title"] == TEST_EMAIL
-    assert result4["data"] == {
-        "username": TEST_EMAIL,
-        "password": TEST_PASSWORD,
-        "hub": TEST_SERVER,
-        "api_type": "cloud",
-    }
-    assert result4["result"].unique_id == TEST_GATEWAY_ID
-
-    assert len(mock_setup_entry.mock_calls) == 1
-
-
-async def test_zeroconf_flow_already_configured(hass: HomeAssistant) -> None:
-    """Test that Zeroconf doesn't setup already configured gateways."""
-    config_entry = MockConfigEntry(
-        domain=DOMAIN,
-        unique_id=TEST_GATEWAY_ID,
-        data={
-            "username": TEST_EMAIL,
-            "password": TEST_PASSWORD,
-            "hub": TEST_SERVER,
-        },
-    )
-    config_entry.add_to_hass(hass)
-
-    result = await hass.config_entries.flow.async_init(
-        DOMAIN,
-        context={"source": config_entries.SOURCE_ZEROCONF},
-        data=FAKE_ZERO_CONF_INFO,
-    )
-
-    assert result["type"] is FlowResultType.ABORT
-    assert result["reason"] == "already_configured"
-
-
-async def test_local_zeroconf_flow(
-    hass: HomeAssistant, mock_setup_entry: AsyncMock
-) -> None:
-    """Test that local Zeroconf discovery works."""
-    result = await hass.config_entries.flow.async_init(
-        DOMAIN,
-        context={"source": config_entries.SOURCE_ZEROCONF},
-        data=FAKE_ZERO_CONF_INFO_LOCAL,
-    )
-
-    assert result["type"] is FlowResultType.FORM
-    assert result["step_id"] == config_entries.SOURCE_USER
-
-    result2 = await hass.config_entries.flow.async_configure(
-        result["flow_id"],
-        {"hub": TEST_SERVER},
-    )
-
-    assert result2["type"] is FlowResultType.FORM
-    assert result2["step_id"] == "local_or_cloud"
-
-    await hass.config_entries.flow.async_configure(
-        result["flow_id"],
-        {"api_type": "local"},
-    )
-
-    with patch.multiple(
-        "pyoverkiz.client.OverkizClient",
-        login=AsyncMock(return_value=True),
-        get_gateways=AsyncMock(return_value=MOCK_GATEWAY_RESPONSE),
-    ):
-        result4 = await hass.config_entries.flow.async_configure(
-            result["flow_id"],
+        (
+            "local",
             {
                 "host": TEST_HOST,
                 "token": TEST_TOKEN,
                 "verify_ssl": True,
+                "hub": TEST_SERVER,
+                "api_type": "local",
             },
-        )
-
-    assert result4["type"] is FlowResultType.CREATE_ENTRY
-    assert result4["title"] == TEST_HOST
-    assert result4["data"] == {
-        "host": TEST_HOST,
-        "token": TEST_TOKEN,
-        "verify_ssl": True,
-        "hub": TEST_SERVER,
-        "api_type": "local",
-    }
-    assert result4["result"].unique_id == TEST_GATEWAY_ID
-
-    assert len(mock_setup_entry.mock_calls) == 1
-
-
-async def test_local_zeroconf_flow_already_configured(hass: HomeAssistant) -> None:
-    """Test that local Zeroconf doesn't setup already configured gateways."""
-    config_entry = MockConfigEntry(
+        ),
+    ],
+)
+async def test_abort_on_duplicate_entry(
+    hass: HomeAssistant,
+    mock_setup: tuple[AsyncMock, AsyncMock],
+    api_type: str,
+    config_data: dict[str, Any],
+) -> None:
+    """Test we handle duplicate entries."""
+    MockConfigEntry(
         domain=DOMAIN,
         unique_id=TEST_GATEWAY_ID,
-        data={
-            "host": TEST_HOST,
-            "token": TEST_TOKEN,
-            "verify_ssl": True,
-            "hub": TEST_SERVER,
-            "api_type": "local",
-        },
-    )
-    config_entry.add_to_hass(hass)
+        data=config_data,
+    ).add_to_hass(hass)
 
-    result = await hass.config_entries.flow.async_init(
-        DOMAIN,
-        context={"source": config_entries.SOURCE_ZEROCONF},
-        data=FAKE_ZERO_CONF_INFO_LOCAL,
-    )
+    # Start flow based on API type
+    if api_type == "cloud":
+        result = await init_config_flow_cloud(hass, mock_setup)
+        result3 = await complete_cloud_flow(hass, result, mock_setup)
+    else:
+        result = await init_config_flow_local(hass, mock_setup)
+        result3 = await complete_local_flow(hass, result, mock_setup)
 
-    assert result["type"] is FlowResultType.ABORT
-    assert result["reason"] == "already_configured"
+    assert result3["type"] == FlowResultType.ABORT
+    assert result3["reason"] == "already_configured"
