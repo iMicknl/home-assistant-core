@@ -915,6 +915,7 @@ async def test_local_zeroconf_flow(
 
     assert result4["type"] is FlowResultType.CREATE_ENTRY
     assert result4["title"] == "gateway-1234-5678-9123.local:8443"
+
     # Verify no username/password in data
     assert result4["data"] == {
         "host": "gateway-1234-5678-9123.local:8443",
