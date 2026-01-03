@@ -54,7 +54,6 @@ class HomeAssistantOverkizData:
     coordinator: OverkizDataUpdateCoordinator
     platforms: defaultdict[Platform, list[Device]]
     scenarios: list[ActionGroup]
-    api_type: APIType
 
 
 type OverkizDataConfigEntry = ConfigEntry[HomeAssistantOverkizData]
@@ -139,7 +138,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: OverkizDataConfigEntry) 
         coordinator=coordinator,
         platforms=platforms,
         scenarios=scenarios,
-        api_type=api_type,
     )
 
     # Map Overkiz entities to Home Assistant platform
