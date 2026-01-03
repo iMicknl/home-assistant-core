@@ -11,7 +11,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceEntry
 
 from . import OverkizDataConfigEntry
-from .const import CONF_API_TYPE, CONF_HUB
+from .const import CONF_HUB
 
 
 async def async_get_config_entry_diagnostics(
@@ -19,15 +19,16 @@ async def async_get_config_entry_diagnostics(
 ) -> dict[str, Any]:
     """Return diagnostics for a config entry."""
     client = entry.runtime_data.coordinator.client
+    api_type = entry.runtime_data.api_type
 
     data = {
         "setup": await client.get_diagnostic_data(),
         "server": entry.data[CONF_HUB],
-        "api_type": entry.data.get(CONF_API_TYPE, APIType.CLOUD),
+        "api_type": api_type,
     }
 
     # Only Overkiz cloud servers expose an endpoint with execution history
-    if client.api_type == APIType.CLOUD:
+    if api_type == APIType.CLOUD:
         execution_history = [
             repr(execution) for execution in await client.get_execution_history()
         ]
@@ -41,8 +42,8 @@ async def async_get_device_diagnostics(
 ) -> dict[str, Any]:
     """Return diagnostics for a device entry."""
     client = entry.runtime_data.coordinator.client
-
     device_url = min(device.identifiers)[1]
+    api_type = client.server_config.type
 
     data = {
         "device": {
@@ -53,11 +54,11 @@ async def async_get_device_diagnostics(
         },
         "setup": await client.get_diagnostic_data(),
         "server": entry.data[CONF_HUB],
-        "api_type": entry.data.get(CONF_API_TYPE, APIType.CLOUD),
+        "api_type": api_type,
     }
 
     # Only Overkiz cloud servers expose an endpoint with execution history
-    if client.api_type == APIType.CLOUD:
+    if api_type == APIType.CLOUD:
         data["execution_history"] = [
             repr(execution)
             for execution in await client.get_execution_history()

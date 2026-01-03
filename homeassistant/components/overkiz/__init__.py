@@ -6,6 +6,7 @@ from collections import defaultdict
 from dataclasses import dataclass
 
 from aiohttp import ClientError
+from pyoverkiz.auth import LocalTokenCredentials, UsernamePasswordCredentials
 from pyoverkiz.client import OverkizClient
 from pyoverkiz.const import SUPPORTED_SERVERS
 from pyoverkiz.enums import APIType, OverkizState, UIClass, UIWidget
@@ -16,8 +17,8 @@ from pyoverkiz.exceptions import (
     NotSuchTokenException,
     TooManyRequestsException,
 )
-from pyoverkiz.models import ActionGroup, Device, OverkizServer
-from pyoverkiz.utils import generate_local_server
+from pyoverkiz.models import ActionGroup, Device, ServerConfig
+from pyoverkiz.utils import create_local_server_config
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
@@ -53,6 +54,7 @@ class HomeAssistantOverkizData:
     coordinator: OverkizDataUpdateCoordinator
     platforms: defaultdict[Platform, list[Device]]
     scenarios: list[ActionGroup]
+    api_type: APIType
 
 
 type OverkizDataConfigEntry = ConfigEntry[HomeAssistantOverkizData]
@@ -134,7 +136,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: OverkizDataConfigEntry) 
     platforms: defaultdict[Platform, list[Device]] = defaultdict(list)
 
     entry.runtime_data = HomeAssistantOverkizData(
-        coordinator=coordinator, platforms=platforms, scenarios=scenarios
+        coordinator=coordinator,
+        platforms=platforms,
+        scenarios=scenarios,
+        api_type=api_type,
     )
 
     # Map Overkiz entities to Home Assistant platform
@@ -161,10 +166,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: OverkizDataConfigEntry) 
             config_entry_id=entry.entry_id,
             identifiers={(DOMAIN, gateway.id)},
             model=gateway.sub_type.beautify_name if gateway.sub_type else None,
-            manufacturer=client.server.manufacturer,
+            manufacturer=client.server_config.manufacturer,
             name=gateway.type.beautify_name if gateway.type else gateway.id,
             sw_version=gateway.connectivity.protocol_version,
-            configuration_url=client.server.configuration_url,
+            configuration_url=client.server_config.configuration_url,
         )
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
@@ -243,24 +248,27 @@ def create_local_client(
 ) -> OverkizClient:
     """Create Overkiz local client."""
     session = async_create_clientsession(hass, verify_ssl=verify_ssl)
+    server_config = create_local_server_config(host=host)
+    credentials = LocalTokenCredentials(token=token)
 
     return OverkizClient(
-        username="",
-        password="",
-        token=token,
+        server=server_config,
+        credentials=credentials,
         session=session,
-        server=generate_local_server(host=host),
         verify_ssl=verify_ssl,
     )
 
 
 def create_cloud_client(
-    hass: HomeAssistant, username: str, password: str, server: OverkizServer
+    hass: HomeAssistant, username: str, password: str, server: ServerConfig
 ) -> OverkizClient:
     """Create Overkiz cloud client."""
     # To allow users with multiple accounts/hubs, we create a new session so they have separate cookies
     session = async_create_clientsession(hass)
+    credentials = UsernamePasswordCredentials(username=username, password=password)
 
     return OverkizClient(
-        username=username, password=password, session=session, server=server
+        server=server,
+        credentials=credentials,
+        session=session,
     )

@@ -73,7 +73,7 @@ class OverkizEntity(CoordinatorEntity[OverkizDataUpdateCoordinator]):
         manufacturer = (
             self.executor.select_attribute(OverkizAttribute.CORE_MANUFACTURER)
             or self.executor.select_state(OverkizState.CORE_MANUFACTURER_NAME)
-            or self.coordinator.client.server.manufacturer
+            or self.coordinator.client.server_config.manufacturer
         )
 
         model = (
@@ -103,7 +103,7 @@ class OverkizEntity(CoordinatorEntity[OverkizDataUpdateCoordinator]):
             hw_version=self.device.controllable_name,
             suggested_area=suggested_area,
             via_device=(DOMAIN, self.executor.get_gateway_id()),
-            configuration_url=self.coordinator.client.server.configuration_url,
+            configuration_url=self.coordinator.client.server_config.configuration_url,
         )
 
 

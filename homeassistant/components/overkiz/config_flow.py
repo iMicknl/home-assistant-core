@@ -6,6 +6,7 @@ from collections.abc import Mapping
 from typing import Any, cast
 
 from aiohttp import ClientConnectorCertificateError, ClientError
+from pyoverkiz.auth import LocalTokenCredentials, UsernamePasswordCredentials
 from pyoverkiz.client import OverkizClient
 from pyoverkiz.const import SERVERS_WITH_LOCAL_API, SUPPORTED_SERVERS
 from pyoverkiz.enums import APIType, Server
@@ -20,7 +21,7 @@ from pyoverkiz.exceptions import (
     UnknownUserException,
 )
 from pyoverkiz.obfuscate import obfuscate_id
-from pyoverkiz.utils import generate_local_server, is_overkiz_gateway
+from pyoverkiz.utils import create_local_server_config, is_overkiz_gateway
 import voluptuous as vol
 
 from homeassistant.config_entries import SOURCE_REAUTH, ConfigFlow, ConfigFlowResult
@@ -58,20 +59,24 @@ class OverkizConfigFlow(ConfigFlow, domain=DOMAIN):
             session = async_create_clientsession(
                 self.hass, verify_ssl=user_input[CONF_VERIFY_SSL]
             )
+            server_config = create_local_server_config(host=user_input[CONF_HOST])
+            local_credentials = LocalTokenCredentials(token=user_input[CONF_TOKEN])
             client = OverkizClient(
-                username="",
-                password="",
-                token=user_input[CONF_TOKEN],
+                server=server_config,
+                credentials=local_credentials,
                 session=session,
-                server=generate_local_server(host=user_input[CONF_HOST]),
                 verify_ssl=user_input[CONF_VERIFY_SSL],
             )
         else:  # APIType.CLOUD
             session = async_create_clientsession(self.hass)
-            client = OverkizClient(
+            server_config = SUPPORTED_SERVERS[user_input[CONF_HUB]]
+            cloud_credentials = UsernamePasswordCredentials(
                 username=user_input[CONF_USERNAME],
                 password=user_input[CONF_PASSWORD],
-                server=SUPPORTED_SERVERS[user_input[CONF_HUB]],
+            )
+            client = OverkizClient(
+                server=server_config,
+                credentials=cloud_credentials,
                 session=session,
             )
 
