@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-from typing import Any, cast
+from typing import Any
 from urllib.parse import urlparse
 
 from pyoverkiz.enums import OverkizCommand, Protocol
 from pyoverkiz.exceptions import BaseOverkizException
-from pyoverkiz.models import Command, Device, StateDefinition
+from pyoverkiz.models import Action, Command, Device, StateDefinition
 from pyoverkiz.types import StateType as OverkizStateType
 
 from homeassistant.exceptions import HomeAssistantError
@@ -82,7 +82,7 @@ class OverkizExecutor:
         return None
 
     async def async_execute_command(
-        self, command_name: str, *args: Any, refresh_afterwards: bool = True
+        self, command_name: OverkizCommand, *args: Any, refresh_afterwards: bool = True
     ) -> None:
         """Execute device command in async context.
 
@@ -99,10 +99,14 @@ class OverkizExecutor:
             parameters.append(0)
 
         try:
-            exec_id = await self.coordinator.client.execute_command(
-                self.device.device_url,
-                Command(command_name, parameters),
-                "Home Assistant",
+            exec_id = await self.coordinator.client.execute_action_group(
+                actions=[
+                    Action(
+                        device_url=self.device.device_url,
+                        commands=[Command(name=command_name, parameters=parameters)],
+                    )
+                ],
+                label="Home Assistant",
             )
         # Catch Overkiz exceptions to support `continue_on_error` functionality
         except BaseOverkizException as exception:
@@ -139,18 +143,16 @@ class OverkizExecutor:
             return True
 
         # Retrieve executions initiated outside Home Assistant via API
-        executions = cast(Any, await self.coordinator.client.get_current_executions())
-        # executions.action_group is typed incorrectly in the upstream library
-        # or the below code is incorrect.
+        executions = await self.coordinator.client.get_current_executions()
         exec_id = next(
             (
                 execution.id
                 for execution in executions
-                # Reverse dictionary to cancel the last added execution
-                for action in reversed(execution.action_group.get("actions"))
-                for command in action.get("commands")
-                if action.get("device_url") == self.device.device_url
-                and command.get("name") in commands_to_cancel
+                # Reverse list to cancel the last added execution
+                for action in reversed(execution.action_group.actions)
+                for command in action.commands
+                if action.device_url == self.device.device_url
+                and command.name in commands_to_cancel
             ),
             None,
         )

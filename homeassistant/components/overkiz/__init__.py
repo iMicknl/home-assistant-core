@@ -16,7 +16,7 @@ from pyoverkiz.exceptions import (
     NotSuchTokenException,
     TooManyRequestsException,
 )
-from pyoverkiz.models import Device, OverkizServer, Scenario
+from pyoverkiz.models import ActionGroup, Device, OverkizServer
 from pyoverkiz.utils import generate_local_server
 
 from homeassistant.config_entries import ConfigEntry
@@ -52,7 +52,7 @@ class HomeAssistantOverkizData:
 
     coordinator: OverkizDataUpdateCoordinator
     platforms: defaultdict[Platform, list[Device]]
-    scenarios: list[Scenario]
+    scenarios: list[ActionGroup]
 
 
 type OverkizDataConfigEntry = ConfigEntry[HomeAssistantOverkizData]
@@ -90,7 +90,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: OverkizDataConfigEntry) 
         # Local API does expose scenarios, but they are not functional.
         # Tracked in https://github.com/Somfy-Developer/Somfy-TaHoma-Developer-Mode/issues/21
         if api_type == APIType.CLOUD:
-            scenarios = await client.get_scenarios()
+            scenarios = await client.get_action_groups()
         else:
             scenarios = []
     except (

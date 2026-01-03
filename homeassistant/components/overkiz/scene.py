@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from pyoverkiz.client import OverkizClient
-from pyoverkiz.models import Scenario
+from pyoverkiz.models import ActionGroup
 
 from homeassistant.components.scene import Scene
 from homeassistant.core import HomeAssistant
@@ -30,7 +30,7 @@ async def async_setup_entry(
 class OverkizScene(Scene):
     """Representation of an Overkiz Scene."""
 
-    def __init__(self, scenario: Scenario, client: OverkizClient) -> None:
+    def __init__(self, scenario: ActionGroup, client: OverkizClient) -> None:
         """Initialize the scene."""
         self.scenario = scenario
         self.client = client

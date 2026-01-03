@@ -48,7 +48,7 @@ async def init_integration(
         "pyoverkiz.client.OverkizClient",
         login=AsyncMock(return_value=True),
         get_setup=AsyncMock(return_value=load_setup_fixture()),
-        get_scenarios=AsyncMock(return_value=[]),
+        get_action_groups=AsyncMock(return_value=[]),
         fetch_events=AsyncMock(return_value=[]),
     ):
         await hass.config_entries.async_setup(mock_config_entry.entry_id)
