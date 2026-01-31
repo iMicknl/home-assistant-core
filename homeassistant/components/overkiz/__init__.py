@@ -254,6 +254,7 @@ def create_local_client(
         credentials=credentials,
         session=session,
         verify_ssl=verify_ssl,
+        action_queue=True,
     )
 
 
@@ -266,7 +267,5 @@ def create_cloud_client(
     credentials = UsernamePasswordCredentials(username=username, password=password)
 
     return OverkizClient(
-        server=server,
-        credentials=credentials,
-        session=session,
+        server=server, credentials=credentials, session=session, action_queue=True
     )
