@@ -53,8 +53,11 @@ class OverkizGenericCover(OverkizEntity, CoverEntity):
 
         None is unknown, 0 is closed, 100 is fully open.
         """
-        position = self.executor.select_state(
-            OverkizState.CORE_SLATS_ORIENTATION, OverkizState.CORE_SLATE_ORIENTATION
+        position = self.device.select_first_state_value(
+            [
+                OverkizState.CORE_SLATS_ORIENTATION,
+                OverkizState.CORE_SLATE_ORIENTATION,
+            ]
         )
         if position is not None:
             return 100 - cast(int, position)
@@ -63,7 +66,7 @@ class OverkizGenericCover(OverkizEntity, CoverEntity):
 
     async def async_set_cover_tilt_position(self, **kwargs: Any) -> None:
         """Move the cover tilt to a specific position."""
-        if command := self.executor.select_command(*COMMANDS_SET_TILT_POSITION):
+        if command := self.executor.select_command(COMMANDS_SET_TILT_POSITION):
             await self.executor.async_execute_command(
                 command,
                 100 - kwargs[ATTR_TILT_POSITION],
@@ -73,13 +76,15 @@ class OverkizGenericCover(OverkizEntity, CoverEntity):
     def is_closed(self) -> bool | None:
         """Return if the cover is closed."""
 
-        state = self.executor.select_state(
-            OverkizState.CORE_OPEN_CLOSED,
-            OverkizState.CORE_SLATS_OPEN_CLOSED,
-            OverkizState.CORE_OPEN_CLOSED_PARTIAL,
-            OverkizState.CORE_OPEN_CLOSED_PEDESTRIAN,
-            OverkizState.CORE_OPEN_CLOSED_UNKNOWN,
-            OverkizState.MYFOX_SHUTTER_STATUS,
+        state = self.device.select_first_state_value(
+            [
+                OverkizState.CORE_OPEN_CLOSED,
+                OverkizState.CORE_SLATS_OPEN_CLOSED,
+                OverkizState.CORE_OPEN_CLOSED_PARTIAL,
+                OverkizState.CORE_OPEN_CLOSED_PEDESTRIAN,
+                OverkizState.CORE_OPEN_CLOSED_UNKNOWN,
+                OverkizState.MYFOX_SHUTTER_STATUS,
+            ]
         )
         if state is not None:
             return state == OverkizCommandParam.CLOSED
@@ -95,22 +100,22 @@ class OverkizGenericCover(OverkizEntity, CoverEntity):
 
     async def async_open_cover_tilt(self, **kwargs: Any) -> None:
         """Open the cover tilt."""
-        if command := self.executor.select_command(*COMMANDS_OPEN_TILT):
+        if command := self.device.select_first_command(COMMANDS_OPEN_TILT):
             await self.executor.async_execute_command(command)
 
     async def async_close_cover_tilt(self, **kwargs: Any) -> None:
         """Close the cover tilt."""
-        if command := self.executor.select_command(*COMMANDS_CLOSE_TILT):
+        if command := self.device.select_first_command(COMMANDS_CLOSE_TILT):
             await self.executor.async_execute_command(command)
 
     async def async_stop_cover(self, **kwargs: Any) -> None:
         """Stop the cover."""
-        if command := self.executor.select_command(*COMMANDS_STOP):
+        if command := self.device.select_first_command(COMMANDS_STOP):
             await self.executor.async_execute_command(command)
 
     async def async_stop_cover_tilt(self, **kwargs: Any) -> None:
         """Stop the cover tilt."""
-        if command := self.executor.select_command(*COMMANDS_STOP_TILT):
+        if command := self.device.select_first_command(COMMANDS_STOP_TILT):
             await self.executor.async_execute_command(command)
 
     def is_running(self, commands: list[OverkizCommand]) -> bool:
@@ -126,16 +131,16 @@ class OverkizGenericCover(OverkizEntity, CoverEntity):
         """Flag supported features."""
         supported_features = CoverEntityFeature(0)
 
-        if self.executor.has_command(*COMMANDS_OPEN_TILT):
+        if self.device.supports_any_command(COMMANDS_OPEN_TILT):
             supported_features |= CoverEntityFeature.OPEN_TILT
 
-            if self.executor.has_command(*COMMANDS_STOP_TILT):
+            if self.device.supports_any_command(COMMANDS_STOP_TILT):
                 supported_features |= CoverEntityFeature.STOP_TILT
 
-        if self.executor.has_command(*COMMANDS_CLOSE_TILT):
+        if self.device.supports_any_command(COMMANDS_CLOSE_TILT):
             supported_features |= CoverEntityFeature.CLOSE_TILT
 
-        if self.executor.has_command(*COMMANDS_SET_TILT_POSITION):
+        if self.device.supports_any_command(COMMANDS_SET_TILT_POSITION):
             supported_features |= CoverEntityFeature.SET_TILT_POSITION
 
         return supported_features

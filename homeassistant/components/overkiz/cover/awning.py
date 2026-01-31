@@ -30,16 +30,16 @@ class Awning(OverkizGenericCover):
         """Flag supported features."""
         supported_features = super().supported_features
 
-        if self.executor.has_command(OverkizCommand.SET_DEPLOYMENT):
+        if self.device.supports_command(OverkizCommand.SET_DEPLOYMENT):
             supported_features |= CoverEntityFeature.SET_POSITION
 
-        if self.executor.has_command(OverkizCommand.DEPLOY):
+        if self.device.supports_command(OverkizCommand.DEPLOY):
             supported_features |= CoverEntityFeature.OPEN
 
-            if self.executor.has_command(*COMMANDS_STOP):
+            if self.device.supports_any_command(COMMANDS_STOP):
                 supported_features |= CoverEntityFeature.STOP
 
-        if self.executor.has_command(OverkizCommand.UNDEPLOY):
+        if self.device.supports_command(OverkizCommand.UNDEPLOY):
             supported_features |= CoverEntityFeature.CLOSE
 
         return supported_features
@@ -50,7 +50,7 @@ class Awning(OverkizGenericCover):
 
         None is unknown, 0 is closed, 100 is fully open.
         """
-        current_position = self.executor.select_state(OverkizState.CORE_DEPLOYMENT)
+        current_position = self.device.get_state_value(OverkizState.CORE_DEPLOYMENT)
         if current_position is not None:
             return cast(int, current_position)
 

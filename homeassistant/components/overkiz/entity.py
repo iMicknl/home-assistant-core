@@ -68,7 +68,7 @@ class OverkizEntity(CoordinatorEntity[OverkizDataUpdateCoordinator]):
         )
 
         model = (
-            self.device.get_state_value(
+            self.device.select_first_state_value(
                 [
                     OverkizState.CORE_MODEL,
                     OverkizState.CORE_PRODUCT_MODEL_NAME,
@@ -92,7 +92,7 @@ class OverkizEntity(CoordinatorEntity[OverkizDataUpdateCoordinator]):
             sw_version=cast(
                 str,
                 self.device.get_attribute_value(
-                    [OverkizAttribute.CORE_FIRMWARE_REVISION]
+                    OverkizAttribute.CORE_FIRMWARE_REVISION
                 ),
             ),
             hw_version=self.device.controllable_name,

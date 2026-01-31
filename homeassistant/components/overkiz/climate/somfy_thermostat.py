@@ -79,7 +79,7 @@ class SomfyThermostat(OverkizEntity, ClimateEntity):
     @property
     def hvac_mode(self) -> HVACMode:
         """Return hvac operation ie. heat, cool mode."""
-        if derogation_activation := self.executor.select_state(
+        if derogation_activation := self.device.get_state_value(
             OverkizState.CORE_DEROGATION_ACTIVATION
         ):
             return OVERKIZ_TO_HVAC_MODES[cast(str, derogation_activation)]
@@ -94,7 +94,7 @@ class SomfyThermostat(OverkizEntity, ClimateEntity):
         else:
             state_key = OverkizState.SOMFY_THERMOSTAT_DEROGATION_HEATING_MODE
 
-        if state := self.executor.select_state(state_key):
+        if state := self.device.get_state_value(state_key):
             return OVERKIZ_TO_PRESET_MODES[OverkizCommandParam(cast(str, state))]
 
         return PRESET_NONE
@@ -116,11 +116,11 @@ class SomfyThermostat(OverkizEntity, ClimateEntity):
                 return None
             return cast(
                 float,
-                self.executor.select_state(TARGET_TEMP_TO_OVERKIZ[self.preset_mode]),
+                self.device.get_state_value(TARGET_TEMP_TO_OVERKIZ[self.preset_mode]),
             )
         return cast(
             float,
-            self.executor.select_state(OverkizState.CORE_DEROGATED_TARGET_TEMPERATURE),
+            self.device.get_state_value(OverkizState.CORE_DEROGATED_TARGET_TEMPERATURE),
         )
 
     async def async_set_temperature(self, **kwargs: Any) -> None:

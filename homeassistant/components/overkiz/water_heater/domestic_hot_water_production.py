@@ -76,13 +76,13 @@ class DomesticHotWaterProduction(OverkizEntity, WaterHeaterEntity):
 
         if self.executor.has_state(OverkizState.IO_DHW_BOOST_MODE):
             return (
-                self.executor.select_state(OverkizState.IO_DHW_BOOST_MODE)
+                self.device.get_state_value(OverkizState.IO_DHW_BOOST_MODE)
                 == OverkizCommandParam.ON
             )
 
         if self.executor.has_state(OverkizState.MODBUSLINK_DHW_BOOST_MODE):
             return (
-                self.executor.select_state(OverkizState.MODBUSLINK_DHW_BOOST_MODE)
+                self.device.get_state_value(OverkizState.MODBUSLINK_DHW_BOOST_MODE)
                 == OverkizCommandParam.ON
             )
 
@@ -90,12 +90,12 @@ class DomesticHotWaterProduction(OverkizEntity, WaterHeaterEntity):
             return (
                 cast(
                     float,
-                    self.executor.select_state(OverkizState.CORE_BOOST_MODE_DURATION),
+                    self.device.get_state_value(OverkizState.CORE_BOOST_MODE_DURATION),
                 )
                 > 0
             )
 
-        operating_mode = self.executor.select_state(OverkizState.CORE_OPERATING_MODE)
+        operating_mode = self.device.get_state_value(OverkizState.CORE_OPERATING_MODE)
 
         if operating_mode:
             if isinstance(operating_mode, dict):
@@ -119,17 +119,17 @@ class DomesticHotWaterProduction(OverkizEntity, WaterHeaterEntity):
 
         if self.executor.has_state(OverkizState.IO_DHW_ABSENCE_MODE):
             return (
-                self.executor.select_state(OverkizState.IO_DHW_ABSENCE_MODE)
+                self.device.get_state_value(OverkizState.IO_DHW_ABSENCE_MODE)
                 == OverkizCommandParam.ON
             )
 
         if self.executor.has_state(OverkizState.MODBUSLINK_DHW_ABSENCE_MODE):
             return (
-                self.executor.select_state(OverkizState.MODBUSLINK_DHW_ABSENCE_MODE)
+                self.device.get_state_value(OverkizState.MODBUSLINK_DHW_ABSENCE_MODE)
                 == OverkizCommandParam.ON
             )
 
-        operating_mode = self.executor.select_state(OverkizState.CORE_OPERATING_MODE)
+        operating_mode = self.device.get_state_value(OverkizState.CORE_OPERATING_MODE)
 
         if operating_mode:
             if isinstance(operating_mode, dict):
@@ -232,20 +232,22 @@ class DomesticHotWaterProduction(OverkizEntity, WaterHeaterEntity):
         """Set new target temperature."""
         target_temperature = kwargs[ATTR_TEMPERATURE]
 
-        if self.executor.has_command(OverkizCommand.SET_TARGET_TEMPERATURE):
+        if self.device.supports_command(OverkizCommand.SET_TARGET_TEMPERATURE):
             await self.executor.async_execute_command(
                 OverkizCommand.SET_TARGET_TEMPERATURE, target_temperature
             )
-        elif self.executor.has_command(OverkizCommand.SET_WATER_TARGET_TEMPERATURE):
+        elif self.device.supports_command(OverkizCommand.SET_WATER_TARGET_TEMPERATURE):
             await self.executor.async_execute_command(
                 OverkizCommand.SET_WATER_TARGET_TEMPERATURE, target_temperature
             )
 
-        if self.executor.has_command(OverkizCommand.REFRESH_TARGET_TEMPERATURE):
+        if self.device.supports_command(OverkizCommand.REFRESH_TARGET_TEMPERATURE):
             await self.executor.async_execute_command(
                 OverkizCommand.REFRESH_TARGET_TEMPERATURE
             )
-        elif self.executor.has_command(OverkizCommand.REFRESH_WATER_TARGET_TEMPERATURE):
+        elif self.device.supports_command(
+            OverkizCommand.REFRESH_WATER_TARGET_TEMPERATURE
+        ):
             await self.executor.async_execute_command(
                 OverkizCommand.REFRESH_WATER_TARGET_TEMPERATURE
             )
@@ -258,7 +260,7 @@ class DomesticHotWaterProduction(OverkizEntity, WaterHeaterEntity):
 
         current_dwh_mode = cast(
             str,
-            self.executor.select_state(
+            self.device.get_state_value(
                 OverkizState.IO_DHW_MODE, OverkizState.MODBUSLINK_DHW_MODE
             ),
         )
@@ -271,12 +273,12 @@ class DomesticHotWaterProduction(OverkizEntity, WaterHeaterEntity):
         """Set new target operation mode."""
 
         if operation_mode == STATE_PERFORMANCE:
-            if self.executor.has_command(OverkizCommand.SET_BOOST_MODE):
+            if self.device.supports_command(OverkizCommand.SET_BOOST_MODE):
                 await self.executor.async_execute_command(
                     OverkizCommand.SET_BOOST_MODE, OverkizCommand.ON
                 )
 
-            if self.executor.has_command(OverkizCommand.SET_BOOST_MODE_DURATION):
+            if self.device.supports_command(OverkizCommand.SET_BOOST_MODE_DURATION):
                 await self.executor.async_execute_command(
                     OverkizCommand.SET_BOOST_MODE_DURATION, 7
                 )
@@ -284,8 +286,8 @@ class DomesticHotWaterProduction(OverkizEntity, WaterHeaterEntity):
                     OverkizCommand.REFRESH_BOOST_MODE_DURATION
                 )
 
-            if self.executor.has_command(OverkizCommand.SET_CURRENT_OPERATING_MODE):
-                current_operating_mode = self.executor.select_state(
+            if self.device.supports_command(OverkizCommand.SET_CURRENT_OPERATING_MODE):
+                current_operating_mode = self.device.get_state_value(
                     OverkizState.CORE_OPERATING_MODE
                 )
 
@@ -303,13 +305,13 @@ class DomesticHotWaterProduction(OverkizEntity, WaterHeaterEntity):
         if self._is_boost_mode_on:
             # We're setting a non Boost mode and the device is currently in Boost mode
             # The following code removes all boost operations
-            if self.executor.has_command(OverkizCommand.SET_BOOST_MODE):
+            if self.device.supports_command(OverkizCommand.SET_BOOST_MODE):
                 await self.executor.async_execute_command(
                     OverkizCommand.SET_BOOST_MODE, OverkizCommand.OFF
                 )
 
-            if self.executor.has_command(OverkizCommand.SET_CURRENT_OPERATING_MODE):
-                current_operating_mode = self.executor.select_state(
+            if self.device.supports_command(OverkizCommand.SET_CURRENT_OPERATING_MODE):
+                current_operating_mode = self.device.get_state_value(
                     OverkizState.CORE_OPERATING_MODE
                 )
 
@@ -326,10 +328,10 @@ class DomesticHotWaterProduction(OverkizEntity, WaterHeaterEntity):
             OverkizCommand.SET_DHW_MODE, self.operation_mode_to_overkiz[operation_mode]
         )
 
-        if self.executor.has_command(OverkizCommand.REFRESH_BOOST_MODE_DURATION):
+        if self.device.supports_command(OverkizCommand.REFRESH_BOOST_MODE_DURATION):
             await self.executor.async_execute_command(
                 OverkizCommand.REFRESH_BOOST_MODE_DURATION
             )
 
-        if self.executor.has_command(OverkizCommand.REFRESH_DHW_MODE):
+        if self.device.supports_command(OverkizCommand.REFRESH_DHW_MODE):
             await self.executor.async_execute_command(OverkizCommand.REFRESH_DHW_MODE)

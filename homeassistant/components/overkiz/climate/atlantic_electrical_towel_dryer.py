@@ -65,7 +65,7 @@ class AtlanticElectricalTowelDryer(OverkizEntity, ClimateEntity):
 
         # Not all AtlanticElectricalTowelDryer models support temporary presets,
         # thus we check if the command is available and then extend the presets
-        if self.executor.has_command(OverkizCommand.SET_TOWEL_DRYER_TEMPORARY_STATE):
+        if self.device.supports_command(OverkizCommand.SET_TOWEL_DRYER_TEMPORARY_STATE):
             # Extend preset modes with supported temporary presets, avoiding duplicates
             self._attr_preset_modes += [
                 mode
@@ -78,7 +78,7 @@ class AtlanticElectricalTowelDryer(OverkizEntity, ClimateEntity):
         """Return hvac operation ie. heat, cool mode."""
         if OverkizState.CORE_OPERATING_MODE in self.device.states:
             return OVERKIZ_TO_HVAC_MODE[
-                cast(str, self.executor.select_state(OverkizState.CORE_OPERATING_MODE))
+                cast(str, self.device.get_state_value(OverkizState.CORE_OPERATING_MODE))
             ]
 
         return HVACMode.OFF
@@ -99,7 +99,7 @@ class AtlanticElectricalTowelDryer(OverkizEntity, ClimateEntity):
             else OverkizState.CORE_TARGET_TEMPERATURE
         )
 
-        return cast(float, self.executor.select_state(state))
+        return cast(float, self.device.get_state_value(state))
 
     @property
     def current_temperature(self) -> float | None:
@@ -129,7 +129,7 @@ class AtlanticElectricalTowelDryer(OverkizEntity, ClimateEntity):
         """Return the current preset mode, e.g., home, away, temp."""
         if (
             OverkizState.CORE_OPERATING_MODE in self.device.states
-            and cast(str, self.executor.select_state(OverkizState.CORE_OPERATING_MODE))
+            and cast(str, self.device.get_state_value(OverkizState.CORE_OPERATING_MODE))
             == OverkizCommandParam.INTERNAL
         ):
             return PRESET_PROG
@@ -138,7 +138,7 @@ class AtlanticElectricalTowelDryer(OverkizEntity, ClimateEntity):
             return OVERKIZ_TO_PRESET_MODE[
                 cast(
                     str,
-                    self.executor.select_state(
+                    self.device.get_state_value(
                         OverkizState.IO_TOWEL_DRYER_TEMPORARY_STATE
                     ),
                 )

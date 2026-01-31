@@ -68,7 +68,7 @@ class AtlanticDomesticHotWaterProductionV2IOComponent(OverkizEntity, WaterHeater
 
         return cast(
             float,
-            self.executor.select_state(
+            self.device.get_state_value(
                 OverkizState.IO_MIDDLE_WATER_TEMPERATURE,
             ),
         )
@@ -79,7 +79,7 @@ class AtlanticDomesticHotWaterProductionV2IOComponent(OverkizEntity, WaterHeater
 
         return cast(
             float,
-            self.executor.select_state(OverkizState.CORE_TARGET_TEMPERATURE),
+            self.device.get_state_value(OverkizState.CORE_TARGET_TEMPERATURE),
         )
 
     async def async_set_temperature(self, **kwargs: Any) -> None:
@@ -99,7 +99,7 @@ class AtlanticDomesticHotWaterProductionV2IOComponent(OverkizEntity, WaterHeater
         """Return true if eco mode is on."""
 
         return (
-            self.executor.select_state(OverkizState.IO_DHW_MODE)
+            self.device.get_state_value(OverkizState.IO_DHW_MODE)
             == OverkizCommandParam.MANUAL_ECO_ACTIVE
         )
 
@@ -108,7 +108,7 @@ class AtlanticDomesticHotWaterProductionV2IOComponent(OverkizEntity, WaterHeater
         """Return true if performance mode is on."""
 
         return (
-            self.executor.select_state(OverkizState.IO_DHW_MODE)
+            self.device.get_state_value(OverkizState.IO_DHW_MODE)
             == OverkizCommandParam.AUTO_MODE
         )
 
@@ -117,7 +117,7 @@ class AtlanticDomesticHotWaterProductionV2IOComponent(OverkizEntity, WaterHeater
         """Return true if heat pump mode is on."""
 
         return (
-            self.executor.select_state(OverkizState.IO_DHW_MODE)
+            self.device.get_state_value(OverkizState.IO_DHW_MODE)
             == OverkizCommandParam.MANUAL_ECO_INACTIVE
         )
 
@@ -126,7 +126,7 @@ class AtlanticDomesticHotWaterProductionV2IOComponent(OverkizEntity, WaterHeater
         """Return true if away mode is on."""
 
         away_mode_duration = cast(
-            str, self.executor.select_state(OverkizState.IO_AWAY_MODE_DURATION)
+            str, self.device.get_state_value(OverkizState.IO_AWAY_MODE_DURATION)
         )
         # away_mode_duration can be either a Literal["always"]
         if away_mode_duration == OverkizCommandParam.ALWAYS:
@@ -164,7 +164,7 @@ class AtlanticDomesticHotWaterProductionV2IOComponent(OverkizEntity, WaterHeater
         return (
             cast(
                 int,
-                self.executor.select_state(OverkizState.CORE_BOOST_MODE_DURATION),
+                self.device.get_state_value(OverkizState.CORE_BOOST_MODE_DURATION),
             )
             > 0
         )

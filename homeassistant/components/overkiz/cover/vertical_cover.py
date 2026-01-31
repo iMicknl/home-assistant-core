@@ -62,16 +62,16 @@ class VerticalCover(OverkizGenericCover):
         """Flag supported features."""
         supported_features = super().supported_features
 
-        if self.executor.has_command(OverkizCommand.SET_CLOSURE):
+        if self.device.supports_command(OverkizCommand.SET_CLOSURE):
             supported_features |= CoverEntityFeature.SET_POSITION
 
-        if self.executor.has_command(*COMMANDS_OPEN):
+        if self.device.supports_any_command(COMMANDS_OPEN):
             supported_features |= CoverEntityFeature.OPEN
 
-            if self.executor.has_command(*COMMANDS_STOP):
+            if self.device.supports_any_command(COMMANDS_STOP):
                 supported_features |= CoverEntityFeature.STOP
 
-        if self.executor.has_command(*COMMANDS_CLOSE):
+        if self.device.supports_any_command(COMMANDS_CLOSE):
             supported_features |= CoverEntityFeature.CLOSE
 
         return supported_features
@@ -82,10 +82,12 @@ class VerticalCover(OverkizGenericCover):
 
         None is unknown, 0 is closed, 100 is fully open.
         """
-        position = self.executor.select_state(
-            OverkizState.CORE_CLOSURE,
-            OverkizState.CORE_CLOSURE_OR_ROCKER_POSITION,
-            OverkizState.CORE_PEDESTRIAN_POSITION,
+        position = self.device.get_state_value(
+            [
+                OverkizState.CORE_CLOSURE,
+                OverkizState.CORE_CLOSURE_OR_ROCKER_POSITION,
+                OverkizState.CORE_PEDESTRIAN_POSITION,
+            ]
         )
 
         if position is None:
@@ -100,12 +102,12 @@ class VerticalCover(OverkizGenericCover):
 
     async def async_open_cover(self, **kwargs: Any) -> None:
         """Open the cover."""
-        if command := self.executor.select_command(*COMMANDS_OPEN):
+        if command := self.device.select_first_command(COMMANDS_OPEN):
             await self.executor.async_execute_command(command)
 
     async def async_close_cover(self, **kwargs: Any) -> None:
         """Close the cover."""
-        if command := self.executor.select_command(*COMMANDS_CLOSE):
+        if command := self.device.select_first_command(COMMANDS_CLOSE):
             await self.executor.async_execute_command(command)
 
     @property
