@@ -69,7 +69,7 @@ class OverkizDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Device]]):
         self._default_update_interval = UPDATE_INTERVAL
 
         self.is_stateless = all(
-            device.protocol in (Protocol.RTS, Protocol.INTERNAL)
+            device.identifier.protocol in (Protocol.RTS, Protocol.INTERNAL)
             for device in devices
             if device.widget not in IGNORED_OVERKIZ_DEVICES
             and device.ui_class not in IGNORED_OVERKIZ_DEVICES
