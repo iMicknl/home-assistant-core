@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import timedelta
-from typing import Any
+from typing import Any, NamedTuple
 
 from freezegun.api import FrozenDateTimeFactory
 from pyoverkiz.models import Event
@@ -14,6 +14,14 @@ from homeassistant.core import HomeAssistant
 from .conftest import MockOverkizClient
 
 from tests.common import async_fire_time_changed
+
+
+class FixtureDevice(NamedTuple):
+    """Test device binding a fixture file to a device URL and entity id."""
+
+    fixture: str
+    device_url: str
+    entity_id: str
 
 
 def assert_command_call(
