@@ -6,7 +6,7 @@ from datetime import timedelta
 from typing import Any
 
 from freezegun.api import FrozenDateTimeFactory
-from pyoverkiz.models import Event
+from pyoverkiz.models import Event, EventState
 
 from homeassistant.components.overkiz.const import UPDATE_INTERVAL
 from homeassistant.core import HomeAssistant
@@ -24,12 +24,15 @@ def assert_command_call(
     parameters: list[Any] | None = None,
 ) -> None:
     """Assert the latest command sent through the mocked Overkiz client."""
-    assert mock_client.execute_command.await_count == 1
-    args = mock_client.execute_command.await_args.args
-    assert args[0] == device_url
-    assert args[1].name == command_name
-    assert args[1].parameters == (parameters or [])
-    assert args[2] == "Home Assistant"
+    assert mock_client.execute_action_group.await_count == 1
+    kwargs = mock_client.execute_action_group.await_args.kwargs
+    actions = kwargs["actions"]
+    assert len(actions) == 1
+    assert actions[0].device_url == device_url
+    assert len(actions[0].commands) == 1
+    assert actions[0].commands[0].name == command_name
+    assert actions[0].commands[0].parameters == (parameters or [])
+    assert kwargs["label"] == "Home Assistant"
 
 
 def build_event(
@@ -41,10 +44,11 @@ def build_event(
     new_state: str | None = None,
 ) -> Event:
     """Create a pyoverkiz event object with a test-friendly interface."""
+    states = [EventState(**s) for s in device_states] if device_states else []
     return Event(
         name=name,
         device_url=device_url,
-        device_states=device_states,
+        device_states=states,
         exec_id=exec_id,
         new_state=new_state,
     )

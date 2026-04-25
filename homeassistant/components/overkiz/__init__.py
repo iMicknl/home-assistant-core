@@ -6,18 +6,22 @@ from collections import defaultdict
 from dataclasses import dataclass
 
 from aiohttp import ClientError
+from pyoverkiz.auth.credentials import (
+    LocalTokenCredentials,
+    UsernamePasswordCredentials,
+)
 from pyoverkiz.client import OverkizClient
 from pyoverkiz.const import SUPPORTED_SERVERS
 from pyoverkiz.enums import APIType, OverkizState, UIClass, UIWidget
 from pyoverkiz.exceptions import (
-    BadCredentialsException,
-    MaintenanceException,
-    NotAuthenticatedException,
-    NotSuchTokenException,
-    TooManyRequestsException,
+    BadCredentialsError,
+    MaintenanceError,
+    NoSuchTokenError,
+    NotAuthenticatedError,
+    TooManyRequestsError,
 )
-from pyoverkiz.models import Device, OverkizServer, Scenario
-from pyoverkiz.utils import generate_local_server
+from pyoverkiz.models import Device, PersistedActionGroup, ServerConfig
+from pyoverkiz.utils import create_local_server_config
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
@@ -52,7 +56,7 @@ class HomeAssistantOverkizData:
 
     coordinator: OverkizDataUpdateCoordinator
     platforms: defaultdict[Platform, list[Device]]
-    scenarios: list[Scenario]
+    action_groups: list[PersistedActionGroup]
 
 
 type OverkizDataConfigEntry = ConfigEntry[HomeAssistantOverkizData]
@@ -87,23 +91,23 @@ async def async_setup_entry(hass: HomeAssistant, entry: OverkizDataConfigEntry) 
         await client.login()
         setup = await client.get_setup()
 
-        # Local API does expose scenarios, but they are not functional.
+        # Local API does expose action groups, but they are not functional.
         # Tracked in https://github.com/Somfy-Developer/Somfy-TaHoma-Developer-Mode/issues/21
         if api_type == APIType.CLOUD:
-            scenarios = await client.get_scenarios()
+            action_groups = await client.get_action_groups()
         else:
-            scenarios = []
+            action_groups = []
     except (
-        BadCredentialsException,
-        NotSuchTokenException,
-        NotAuthenticatedException,
+        BadCredentialsError,
+        NoSuchTokenError,
+        NotAuthenticatedError,
     ) as exception:
         raise ConfigEntryAuthFailed("Invalid authentication") from exception
-    except TooManyRequestsException as exception:
+    except TooManyRequestsError as exception:
         raise ConfigEntryNotReady("Too many requests, try again later") from exception
     except (TimeoutError, ClientError) as exception:
         raise ConfigEntryNotReady("Failed to connect") from exception
-    except MaintenanceException as exception:
+    except MaintenanceError as exception:
         raise ConfigEntryNotReady("Server is down for maintenance") from exception
 
     coordinator = OverkizDataUpdateCoordinator(
@@ -134,7 +138,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: OverkizDataConfigEntry) 
     platforms: defaultdict[Platform, list[Device]] = defaultdict(list)
 
     entry.runtime_data = HomeAssistantOverkizData(
-        coordinator=coordinator, platforms=platforms, scenarios=scenarios
+        coordinator=coordinator, platforms=platforms, action_groups=action_groups
     )
 
     # Map Overkiz entities to Home Assistant platform
@@ -162,13 +166,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: OverkizDataConfigEntry) 
             identifiers={(DOMAIN, gateway.id)},
             model=gateway.type.beautify_name if gateway.type else None,
             model_id=str(gateway.type),
-            manufacturer=client.server.manufacturer,
+            manufacturer=client.server_config.manufacturer,
             name=gateway.type.beautify_name if gateway.type else gateway.id,
             sw_version=gateway.connectivity.protocol_version,
             hw_version=f"{gateway.type}:{gateway.sub_type}"
             if gateway.type and gateway.sub_type
             else None,
-            configuration_url=client.server.configuration_url,
+            configuration_url=client.server_config.configuration_url,
         )
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
@@ -189,14 +193,17 @@ async def _async_migrate_entries(
     """Migrate old entries to new unique IDs."""
     entity_registry = er.async_get(hass)
 
+    # pyoverkiz v2 renamed some UIWidget enum members (e.g. TSKALARM_CONTROLLER -> TSK_ALARM_CONTROLLER).
+    # Map the old v1 Python member names to the new v2 names for unique_id migration.
+    v1_widget_renames: dict[str, str] = {
+        "TSKALARM_CONTROLLER": "TSK_ALARM_CONTROLLER",
+        "IOSIREN": "IO_SIREN",
+        "IOSTACK": "IO_STACK",
+        "IOGENERIC": "IO_GENERIC",
+    }
+
     @callback
     def update_unique_id(entry: er.RegistryEntry) -> dict[str, str] | None:
-        # Python 3.11 treats (str, Enum) and StrEnum in a different way
-        # Since pyOverkiz switched to StrEnum, we need to rewrite the unique ids once to the new style
-        #
-        # io://xxxx-xxxx-xxxx/3541212-OverkizState.CORE_DISCRETE_RSSI_LEVEL -> io://xxxx-xxxx-xxxx/3541212-core:DiscreteRSSILevelState
-        # internal://xxxx-xxxx-xxxx/alarm/0-UIWidget.TSKALARM_CONTROLLER -> internal://xxxx-xxxx-xxxx/alarm/0-TSKAlarmController
-        # io://xxxx-xxxx-xxxx/xxxxxxx-UIClass.ON_OFF -> io://xxxx-xxxx-xxxx/xxxxxxx-OnOff
         if (key := entry.unique_id.split("-")[-1]).startswith(
             ("OverkizState", "UIWidget", "UIClass")
         ):
@@ -206,7 +213,7 @@ async def _async_migrate_entries(
             if key.startswith("UIClass"):
                 new_key = UIClass[state]
             elif key.startswith("UIWidget"):
-                new_key = UIWidget[state]
+                new_key = UIWidget[v1_widget_renames.get(state, state)]
             else:
                 new_key = OverkizState[state]
 
@@ -249,22 +256,22 @@ def create_local_client(
     session = async_create_clientsession(hass, verify_ssl=verify_ssl)
 
     return OverkizClient(
-        username="",
-        password="",
-        token=token,
+        server=create_local_server_config(host=host),
+        credentials=LocalTokenCredentials(token),
         session=session,
-        server=generate_local_server(host=host),
         verify_ssl=verify_ssl,
     )
 
 
 def create_cloud_client(
-    hass: HomeAssistant, username: str, password: str, server: OverkizServer
+    hass: HomeAssistant, username: str, password: str, server: ServerConfig
 ) -> OverkizClient:
     """Create Overkiz cloud client."""
     # To allow users with multiple accounts/hubs, we create a new session so they have separate cookies
     session = async_create_clientsession(hass)
 
     return OverkizClient(
-        username=username, password=password, session=session, server=server
+        server=server,
+        credentials=UsernamePasswordCredentials(username, password),
+        session=session,
     )
