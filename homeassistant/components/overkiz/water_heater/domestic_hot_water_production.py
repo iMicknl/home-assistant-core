@@ -74,28 +74,28 @@ class DomesticHotWaterProduction(OverkizEntity, WaterHeaterEntity):
     def _is_boost_mode_on(self) -> bool:
         """Return true if boost mode is on."""
 
-        if self.executor.has_state(OverkizState.IO_DHW_BOOST_MODE):
+        if self.device.has_state_value(OverkizState.IO_DHW_BOOST_MODE):
             return (
-                self.executor.select_state(OverkizState.IO_DHW_BOOST_MODE)
+                self.device.get_state_value(OverkizState.IO_DHW_BOOST_MODE)
                 == OverkizCommandParam.ON
             )
 
-        if self.executor.has_state(OverkizState.MODBUSLINK_DHW_BOOST_MODE):
+        if self.device.has_state_value(OverkizState.MODBUSLINK_DHW_BOOST_MODE):
             return (
-                self.executor.select_state(OverkizState.MODBUSLINK_DHW_BOOST_MODE)
+                self.device.get_state_value(OverkizState.MODBUSLINK_DHW_BOOST_MODE)
                 == OverkizCommandParam.ON
             )
 
-        if self.executor.has_state(OverkizState.CORE_BOOST_MODE_DURATION):
+        if self.device.has_state_value(OverkizState.CORE_BOOST_MODE_DURATION):
             return (
                 cast(
                     float,
-                    self.executor.select_state(OverkizState.CORE_BOOST_MODE_DURATION),
+                    self.device.get_state_value(OverkizState.CORE_BOOST_MODE_DURATION),
                 )
                 > 0
             )
 
-        operating_mode = self.executor.select_state(OverkizState.CORE_OPERATING_MODE)
+        operating_mode = self.device.get_state_value(OverkizState.CORE_OPERATING_MODE)
 
         if operating_mode:
             if isinstance(operating_mode, dict):
@@ -117,19 +117,19 @@ class DomesticHotWaterProduction(OverkizEntity, WaterHeaterEntity):
     def is_away_mode_on(self) -> bool | None:
         """Return true if away mode is on."""
 
-        if self.executor.has_state(OverkizState.IO_DHW_ABSENCE_MODE):
+        if self.device.has_state_value(OverkizState.IO_DHW_ABSENCE_MODE):
             return (
-                self.executor.select_state(OverkizState.IO_DHW_ABSENCE_MODE)
+                self.device.get_state_value(OverkizState.IO_DHW_ABSENCE_MODE)
                 == OverkizCommandParam.ON
             )
 
-        if self.executor.has_state(OverkizState.MODBUSLINK_DHW_ABSENCE_MODE):
+        if self.device.has_state_value(OverkizState.MODBUSLINK_DHW_ABSENCE_MODE):
             return (
-                self.executor.select_state(OverkizState.MODBUSLINK_DHW_ABSENCE_MODE)
+                self.device.get_state_value(OverkizState.MODBUSLINK_DHW_ABSENCE_MODE)
                 == OverkizCommandParam.ON
             )
 
-        operating_mode = self.executor.select_state(OverkizState.CORE_OPERATING_MODE)
+        operating_mode = self.device.get_state_value(OverkizState.CORE_OPERATING_MODE)
 
         if operating_mode:
             if isinstance(operating_mode, dict):
@@ -266,8 +266,8 @@ class DomesticHotWaterProduction(OverkizEntity, WaterHeaterEntity):
 
         current_dwh_mode = cast(
             str,
-            self.executor.select_state(
-                OverkizState.IO_DHW_MODE, OverkizState.MODBUSLINK_DHW_MODE
+            self.device.select_first_state_value(
+                [OverkizState.IO_DHW_MODE, OverkizState.MODBUSLINK_DHW_MODE]
             ),
         )
         if current_dwh_mode in OVERKIZ_TO_OPERATION_MODE:
@@ -293,7 +293,7 @@ class DomesticHotWaterProduction(OverkizEntity, WaterHeaterEntity):
                 )
 
             if self.device.supports_command(OverkizCommand.SET_CURRENT_OPERATING_MODE):
-                current_operating_mode = self.executor.select_state(
+                current_operating_mode = self.device.get_state_value(
                     OverkizState.CORE_OPERATING_MODE
                 )
 
@@ -317,7 +317,7 @@ class DomesticHotWaterProduction(OverkizEntity, WaterHeaterEntity):
                 )
 
             if self.device.supports_command(OverkizCommand.SET_CURRENT_OPERATING_MODE):
-                current_operating_mode = self.executor.select_state(
+                current_operating_mode = self.device.get_state_value(
                     OverkizState.CORE_OPERATING_MODE
                 )
 

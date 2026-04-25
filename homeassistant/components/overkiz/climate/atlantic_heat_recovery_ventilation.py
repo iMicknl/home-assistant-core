@@ -83,7 +83,7 @@ class AtlanticHeatRecoveryVentilation(OverkizEntity, ClimateEntity):
     @property
     def preset_mode(self) -> str | None:
         """Return the current preset mode."""
-        ventilation_configuration = self.executor.select_state(
+        ventilation_configuration = self.device.get_state_value(
             OverkizState.IO_VENTILATION_CONFIGURATION_MODE
         )
 
@@ -94,7 +94,7 @@ class AtlanticHeatRecoveryVentilation(OverkizEntity, ClimateEntity):
             return PRESET_MANUAL
 
         ventilation_mode = cast(
-            dict, self.executor.select_state(OverkizState.IO_VENTILATION_MODE)
+            dict, self.device.get_state_value(OverkizState.IO_VENTILATION_MODE)
         )
         prog = ventilation_mode.get(OverkizCommandParam.PROG)
 
@@ -137,7 +137,7 @@ class AtlanticHeatRecoveryVentilation(OverkizEntity, ClimateEntity):
     def fan_mode(self) -> str | None:
         """Return the fan setting."""
         ventilation_mode = cast(
-            dict, self.executor.select_state(OverkizState.IO_VENTILATION_MODE)
+            dict, self.device.get_state_value(OverkizState.IO_VENTILATION_MODE)
         )
         cooling = ventilation_mode.get(OverkizCommandParam.COOLING)
 
@@ -145,7 +145,7 @@ class AtlanticHeatRecoveryVentilation(OverkizEntity, ClimateEntity):
             return FAN_BYPASS
 
         return OVERKIZ_TO_FAN_MODES[
-            cast(str, self.executor.select_state(OverkizState.IO_AIR_DEMAND_MODE))
+            cast(str, self.device.get_state_value(OverkizState.IO_AIR_DEMAND_MODE))
         ]
 
     async def async_set_fan_mode(self, fan_mode: str) -> None:
@@ -172,7 +172,7 @@ class AtlanticHeatRecoveryVentilation(OverkizEntity, ClimateEntity):
     ) -> None:
         """Execute ventilation mode command with all parameters."""
         ventilation_mode = cast(
-            dict, self.executor.select_state(OverkizState.IO_VENTILATION_MODE)
+            dict, self.device.get_state_value(OverkizState.IO_VENTILATION_MODE)
         )
 
         if cooling:

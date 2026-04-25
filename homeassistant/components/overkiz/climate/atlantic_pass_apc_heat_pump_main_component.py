@@ -47,7 +47,8 @@ class AtlanticPassAPCHeatPumpMainComponent(OverkizEntity, ClimateEntity):
         """Return hvac current mode: stop, cooling, heating."""
         return OVERKIZ_TO_HVAC_MODES[
             cast(
-                str, self.executor.select_state(OverkizState.IO_PASS_APC_OPERATING_MODE)
+                str,
+                self.device.get_state_value(OverkizState.IO_PASS_APC_OPERATING_MODE),
             )
         ]
 

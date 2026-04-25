@@ -50,7 +50,7 @@ class AtlanticPassAPCZoneControl(OverkizEntity, ClimateEntity):
 
         return self.device.supports_command(
             OverkizCommand.SET_HEATING_COOLING_AUTO_SWITCH
-        ) and self.executor.has_state(OverkizState.CORE_HEATING_COOLING_AUTO_SWITCH)
+        ) and self.device.has_state_value(OverkizState.CORE_HEATING_COOLING_AUTO_SWITCH)
 
     @property
     def hvac_mode(self) -> HVACMode:
@@ -60,7 +60,7 @@ class AtlanticPassAPCZoneControl(OverkizEntity, ClimateEntity):
             self.is_auto_hvac_mode_available
             and cast(
                 str,
-                self.executor.select_state(
+                self.device.get_state_value(
                     OverkizState.CORE_HEATING_COOLING_AUTO_SWITCH
                 ),
             )
@@ -70,7 +70,8 @@ class AtlanticPassAPCZoneControl(OverkizEntity, ClimateEntity):
 
         return OVERKIZ_TO_HVAC_MODE[
             cast(
-                str, self.executor.select_state(OverkizState.IO_PASS_APC_OPERATING_MODE)
+                str,
+                self.device.get_state_value(OverkizState.IO_PASS_APC_OPERATING_MODE),
             )
         ]
 

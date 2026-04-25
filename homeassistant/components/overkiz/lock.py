@@ -44,6 +44,6 @@ class OverkizLock(OverkizEntity, LockEntity):
     def is_locked(self) -> bool | None:
         """Return a boolean for the state of the lock."""
         return (
-            self.executor.select_state(OverkizState.CORE_LOCKED_UNLOCKED)
+            self.device.get_state_value(OverkizState.CORE_LOCKED_UNLOCKED)
             == OverkizCommandParam.LOCKED
         )
