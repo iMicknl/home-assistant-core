@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any, cast
 
 from pyoverkiz.enums import OverkizCommand, OverkizCommandParam, OverkizState
+from pyoverkiz.models import Command
 
 from homeassistant.components.climate import (
     PRESET_AWAY,
@@ -129,38 +130,63 @@ class SomfyThermostat(OverkizEntity, ClimateEntity):
         """Set new target temperature."""
         temperature = kwargs[ATTR_TEMPERATURE]
 
-        await self.executor.async_execute_command(
-            OverkizCommand.SET_DEROGATION,
-            [temperature, OverkizCommandParam.FURTHER_NOTICE],
+        await self.executor.async_execute_commands(
+            [
+                Command(
+                    name=OverkizCommand.SET_DEROGATION,
+                    parameters=[temperature, OverkizCommandParam.FURTHER_NOTICE],
+                ),
+                Command(
+                    name=OverkizCommand.SET_MODE_TEMPERATURE,
+                    parameters=[OverkizCommandParam.MANUAL_MODE, temperature],
+                ),
+                Command(name=OverkizCommand.REFRESH_STATE, parameters=[]),
+            ]
         )
-        await self.executor.async_execute_command(
-            OverkizCommand.SET_MODE_TEMPERATURE,
-            [OverkizCommandParam.MANUAL_MODE, temperature],
-        )
-        await self.executor.async_execute_command(OverkizCommand.REFRESH_STATE)
 
     async def async_set_hvac_mode(self, hvac_mode: HVACMode) -> None:
         """Set new target hvac mode."""
         if hvac_mode == HVACMode.AUTO:
-            await self.executor.async_execute_command(OverkizCommand.EXIT_DEROGATION)
-            await self.executor.async_execute_command(OverkizCommand.REFRESH_STATE)
+            await self.executor.async_execute_commands(
+                [
+                    Command(name=OverkizCommand.EXIT_DEROGATION, parameters=[]),
+                    Command(name=OverkizCommand.REFRESH_STATE, parameters=[]),
+                ]
+            )
         else:
             await self.async_set_preset_mode(PRESET_NONE)
 
     async def async_set_preset_mode(self, preset_mode: str) -> None:
         """Set new preset mode."""
+        commands: list[Command] = []
         if preset_mode in [PRESET_FREEZE, PRESET_NIGHT, PRESET_AWAY, PRESET_HOME]:
-            await self.executor.async_execute_command(
-                OverkizCommand.SET_DEROGATION,
-                [PRESET_MODES_TO_OVERKIZ[preset_mode], OverkizCommandParam.FURTHER_NOTICE],
+            commands.append(
+                Command(
+                    name=OverkizCommand.SET_DEROGATION,
+                    parameters=[
+                        PRESET_MODES_TO_OVERKIZ[preset_mode],
+                        OverkizCommandParam.FURTHER_NOTICE,
+                    ],
+                )
             )
         elif preset_mode == PRESET_NONE:
-            await self.executor.async_execute_command(
-                OverkizCommand.SET_DEROGATION,
-                [self.target_temperature, OverkizCommandParam.FURTHER_NOTICE],
+            commands.append(
+                Command(
+                    name=OverkizCommand.SET_DEROGATION,
+                    parameters=[
+                        self.target_temperature,
+                        OverkizCommandParam.FURTHER_NOTICE,
+                    ],
+                )
             )
-            await self.executor.async_execute_command(
-                OverkizCommand.SET_MODE_TEMPERATURE,
-                [OverkizCommandParam.MANUAL_MODE, self.target_temperature],
+            commands.append(
+                Command(
+                    name=OverkizCommand.SET_MODE_TEMPERATURE,
+                    parameters=[
+                        OverkizCommandParam.MANUAL_MODE,
+                        self.target_temperature,
+                    ],
+                )
             )
-        await self.executor.async_execute_command(OverkizCommand.REFRESH_STATE)
+        commands.append(Command(name=OverkizCommand.REFRESH_STATE, parameters=[]))
+        await self.executor.async_execute_commands(commands)

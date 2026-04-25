@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import cast
 
 from pyoverkiz.enums import OverkizCommand, OverkizCommandParam, OverkizState
+from pyoverkiz.models import Command
 
 from homeassistant.components.climate import (
     FAN_AUTO,
@@ -126,11 +127,14 @@ class AtlanticHeatRecoveryVentilation(OverkizEntity, ClimateEntity):
             )
             await self._set_ventilation_mode(prog=OverkizCommandParam.OFF)
 
-        await self.executor.async_execute_command(
-            OverkizCommand.REFRESH_VENTILATION_STATE,
-        )
-        await self.executor.async_execute_command(
-            OverkizCommand.REFRESH_VENTILATION_CONFIGURATION_MODE,
+        await self.executor.async_execute_commands(
+            [
+                Command(name=OverkizCommand.REFRESH_VENTILATION_STATE, parameters=[]),
+                Command(
+                    name=OverkizCommand.REFRESH_VENTILATION_CONFIGURATION_MODE,
+                    parameters=[],
+                ),
+            ]
         )
 
     @property

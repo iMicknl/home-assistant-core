@@ -3,6 +3,7 @@
 from typing import Any, cast
 
 from pyoverkiz.enums import OverkizCommand, OverkizCommandParam, OverkizState
+from pyoverkiz.models import Command
 
 from homeassistant.components.water_heater import (
     STATE_ECO,
@@ -180,28 +181,15 @@ class AtlanticDomesticHotWaterProductionMBLComponent(OverkizEntity, WaterHeaterE
             "minute": now.minute,
             "second": now.second,
         }
-        await self.executor.async_execute_command(
-            OverkizCommand.SET_DATE_TIME,
-            [now_date],
-            refresh_afterwards=False,
+        end_date = {**now_date, "year": now_date["year"] + 1}
+        await self.executor.async_execute_commands(
+            [
+                Command(OverkizCommand.SET_DATE_TIME, [now_date]),
+                Command(OverkizCommand.SET_ABSENCE_START_DATE, [now_date]),
+                Command(OverkizCommand.SET_ABSENCE_END_DATE, [end_date]),
+                Command(OverkizCommand.SET_ABSENCE_MODE, [OverkizCommandParam.PROG]),
+            ]
         )
-        await self.executor.async_execute_command(
-            OverkizCommand.SET_ABSENCE_START_DATE,
-            [now_date],
-            refresh_afterwards=False,
-        )
-        now_date["year"] = now_date["year"] + 1
-        await self.executor.async_execute_command(
-            OverkizCommand.SET_ABSENCE_END_DATE,
-            [now_date],
-            refresh_afterwards=False,
-        )
-        await self.executor.async_execute_command(
-            OverkizCommand.SET_ABSENCE_MODE,
-            [OverkizCommandParam.PROG],
-            refresh_afterwards=False,
-        )
-        await self.coordinator.async_refresh()
 
     async def async_turn_away_mode_off(self) -> None:
         """Turn away mode off."""

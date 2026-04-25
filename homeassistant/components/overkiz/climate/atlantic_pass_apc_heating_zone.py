@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any, cast
 
 from pyoverkiz.enums import OverkizCommand, OverkizCommandParam, OverkizState
+from pyoverkiz.models import Command
 
 from homeassistant.components.climate import (
     PRESET_AWAY,
@@ -135,23 +136,27 @@ class AtlanticPassAPCHeatingZone(OverkizEntity, ClimateEntity):
 
     async def async_set_heating_mode(self, mode: str) -> None:
         """Set new heating mode and refresh states."""
-        await self.executor.async_execute_command(
-            OverkizCommand.SET_PASS_APC_HEATING_MODE, [mode]
-        )
+        commands = [
+            Command(name=OverkizCommand.SET_PASS_APC_HEATING_MODE, parameters=[mode])
+        ]
 
         if self.current_heating_profile == OverkizCommandParam.DEROGATION:
             # If current mode is in derogation, disable it
-            await self.executor.async_execute_command(
-                OverkizCommand.SET_DEROGATION_ON_OFF_STATE, [OverkizCommandParam.OFF]
+            commands.append(
+                Command(
+                    name=OverkizCommand.SET_DEROGATION_ON_OFF_STATE,
+                    parameters=[OverkizCommandParam.OFF],
+                )
             )
 
         # We also needs to execute these 2 commands to make it work correctly
-        await self.executor.async_execute_command(
-            OverkizCommand.REFRESH_PASS_APC_HEATING_MODE
+        commands.append(
+            Command(name=OverkizCommand.REFRESH_PASS_APC_HEATING_MODE, parameters=[])
         )
-        await self.executor.async_execute_command(
-            OverkizCommand.REFRESH_PASS_APC_HEATING_PROFILE
+        commands.append(
+            Command(name=OverkizCommand.REFRESH_PASS_APC_HEATING_PROFILE, parameters=[])
         )
+        await self.executor.async_execute_commands(commands)
 
     async def async_set_hvac_mode(self, hvac_mode: HVACMode) -> None:
         """Set new target hvac mode."""
@@ -201,31 +206,41 @@ class AtlanticPassAPCHeatingZone(OverkizEntity, ClimateEntity):
         temperature = kwargs[ATTR_TEMPERATURE]
 
         if self.hvac_mode == HVACMode.AUTO:
-            await self.executor.async_execute_command(
-                OverkizCommand.SET_COMFORT_HEATING_TARGET_TEMPERATURE,
-                [temperature],
-            )
-            await self.executor.async_execute_command(
-                OverkizCommand.REFRESH_COMFORT_HEATING_TARGET_TEMPERATURE
-            )
-            await self.executor.async_execute_command(
-                OverkizCommand.REFRESH_TARGET_TEMPERATURE
+            await self.executor.async_execute_commands(
+                [
+                    Command(
+                        name=OverkizCommand.SET_COMFORT_HEATING_TARGET_TEMPERATURE,
+                        parameters=[temperature],
+                    ),
+                    Command(
+                        name=OverkizCommand.REFRESH_COMFORT_HEATING_TARGET_TEMPERATURE,
+                        parameters=[],
+                    ),
+                    Command(
+                        name=OverkizCommand.REFRESH_TARGET_TEMPERATURE, parameters=[]
+                    ),
+                ]
             )
         else:
-            await self.executor.async_execute_command(
-                OverkizCommand.SET_DEROGATED_TARGET_TEMPERATURE,
-                [temperature],
-            )
-            await self.executor.async_execute_command(
-                OverkizCommand.SET_DEROGATION_ON_OFF_STATE,
-                [OverkizCommandParam.ON],
-            )
-            await self.executor.async_execute_command(
-                OverkizCommand.REFRESH_TARGET_TEMPERATURE
-            )
-            await self.executor.async_execute_command(
-                OverkizCommand.REFRESH_PASS_APC_HEATING_MODE
-            )
-            await self.executor.async_execute_command(
-                OverkizCommand.REFRESH_PASS_APC_HEATING_PROFILE
+            await self.executor.async_execute_commands(
+                [
+                    Command(
+                        name=OverkizCommand.SET_DEROGATED_TARGET_TEMPERATURE,
+                        parameters=[temperature],
+                    ),
+                    Command(
+                        name=OverkizCommand.SET_DEROGATION_ON_OFF_STATE,
+                        parameters=[OverkizCommandParam.ON],
+                    ),
+                    Command(
+                        name=OverkizCommand.REFRESH_TARGET_TEMPERATURE, parameters=[]
+                    ),
+                    Command(
+                        name=OverkizCommand.REFRESH_PASS_APC_HEATING_MODE, parameters=[]
+                    ),
+                    Command(
+                        name=OverkizCommand.REFRESH_PASS_APC_HEATING_PROFILE,
+                        parameters=[],
+                    ),
+                ]
             )

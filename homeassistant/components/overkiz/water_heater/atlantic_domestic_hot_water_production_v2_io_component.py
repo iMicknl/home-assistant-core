@@ -3,6 +3,7 @@
 from typing import Any, cast
 
 from pyoverkiz.enums import OverkizCommand, OverkizCommandParam, OverkizState
+from pyoverkiz.models import Command
 
 from homeassistant.components.water_heater import (
     STATE_ECO,
@@ -90,15 +91,15 @@ class AtlanticDomesticHotWaterProductionV2IOComponent(OverkizEntity, WaterHeater
         """Set new temperature."""
 
         temperature = kwargs.get(ATTR_TEMPERATURE)
-        await self.executor.async_execute_command(
-            OverkizCommand.SET_TARGET_TEMPERATURE,
-            [temperature],
-            refresh_afterwards=False,
+        await self.executor.async_execute_commands(
+            [
+                Command(
+                    name=OverkizCommand.SET_TARGET_TEMPERATURE,
+                    parameters=[temperature],
+                ),
+                Command(name=OverkizCommand.REFRESH_TARGET_TEMPERATURE, parameters=[]),
+            ],
         )
-        await self.executor.async_execute_command(
-            OverkizCommand.REFRESH_TARGET_TEMPERATURE, refresh_afterwards=False
-        )
-        await self.coordinator.async_refresh()
 
     @property
     def is_state_eco(self) -> bool:
@@ -246,44 +247,42 @@ class AtlanticDomesticHotWaterProductionV2IOComponent(OverkizEntity, WaterHeater
     async def async_turn_away_mode_on(self, refresh_afterwards: bool = True) -> None:
         """Turn away mode on."""
 
-        await self.executor.async_execute_command(
-            OverkizCommand.SET_CURRENT_OPERATING_MODE,
-            [
-                {
-                    OverkizCommandParam.RELAUNCH: OverkizCommandParam.OFF,
-                    OverkizCommandParam.ABSENCE: OverkizCommandParam.ON,
-                },
-            ],
-            refresh_afterwards=False,
-        )
         # Toggling the AWAY mode changes away mode duration so we have to refresh it
-        await self.executor.async_execute_command(
-            OverkizCommand.REFRESH_AWAY_MODE_DURATION,
-            refresh_afterwards=False,
+        await self.executor.async_execute_commands(
+            [
+                Command(
+                    name=OverkizCommand.SET_CURRENT_OPERATING_MODE,
+                    parameters=[
+                        {
+                            OverkizCommandParam.RELAUNCH: OverkizCommandParam.OFF,
+                            OverkizCommandParam.ABSENCE: OverkizCommandParam.ON,
+                        },
+                    ],
+                ),
+                Command(name=OverkizCommand.REFRESH_AWAY_MODE_DURATION, parameters=[]),
+            ],
+            refresh_afterwards=refresh_afterwards,
         )
-        if refresh_afterwards:
-            await self.coordinator.async_refresh()
 
     async def async_turn_away_mode_off(self, refresh_afterwards: bool = True) -> None:
         """Turn away mode off."""
 
-        await self.executor.async_execute_command(
-            OverkizCommand.SET_CURRENT_OPERATING_MODE,
-            [
-                {
-                    OverkizCommandParam.RELAUNCH: OverkizCommandParam.OFF,
-                    OverkizCommandParam.ABSENCE: OverkizCommandParam.OFF,
-                },
-            ],
-            refresh_afterwards=False,
-        )
         # Toggling the AWAY mode changes away mode duration so we have to refresh it
-        await self.executor.async_execute_command(
-            OverkizCommand.REFRESH_AWAY_MODE_DURATION,
-            refresh_afterwards=False,
+        await self.executor.async_execute_commands(
+            [
+                Command(
+                    name=OverkizCommand.SET_CURRENT_OPERATING_MODE,
+                    parameters=[
+                        {
+                            OverkizCommandParam.RELAUNCH: OverkizCommandParam.OFF,
+                            OverkizCommandParam.ABSENCE: OverkizCommandParam.OFF,
+                        },
+                    ],
+                ),
+                Command(name=OverkizCommand.REFRESH_AWAY_MODE_DURATION, parameters=[]),
+            ],
+            refresh_afterwards=refresh_afterwards,
         )
-        if refresh_afterwards:
-            await self.coordinator.async_refresh()
 
     async def async_turn_boost_mode_on(self, refresh_afterwards: bool = True) -> None:
         """Turn boost mode on."""
@@ -293,54 +292,48 @@ class AtlanticDomesticHotWaterProductionV2IOComponent(OverkizEntity, WaterHeater
             # Switching from STATE_PERFORMANCE to BOOST requires a target temperature refresh
             refresh_target_temp = True
 
-        await self.executor.async_execute_command(
-            OverkizCommand.SET_BOOST_MODE_DURATION,
-            [MAX_BOOST_MODE_DURATION],
-            refresh_afterwards=False,
-        )
-
-        await self.executor.async_execute_command(
-            OverkizCommand.SET_CURRENT_OPERATING_MODE,
-            [
-                {
-                    OverkizCommandParam.RELAUNCH: OverkizCommandParam.ON,
-                    OverkizCommandParam.ABSENCE: OverkizCommandParam.OFF,
-                },
-            ],
-            refresh_afterwards=False,
-        )
-
-        await self.executor.async_execute_command(
-            OverkizCommand.REFRESH_BOOST_MODE_DURATION,
-            refresh_afterwards=False,
-        )
+        commands = [
+            Command(
+                name=OverkizCommand.SET_BOOST_MODE_DURATION,
+                parameters=[MAX_BOOST_MODE_DURATION],
+            ),
+            Command(
+                name=OverkizCommand.SET_CURRENT_OPERATING_MODE,
+                parameters=[
+                    {
+                        OverkizCommandParam.RELAUNCH: OverkizCommandParam.ON,
+                        OverkizCommandParam.ABSENCE: OverkizCommandParam.OFF,
+                    },
+                ],
+            ),
+            Command(name=OverkizCommand.REFRESH_BOOST_MODE_DURATION, parameters=[]),
+        ]
 
         if refresh_target_temp:
-            await self.executor.async_execute_command(
-                OverkizCommand.REFRESH_TARGET_TEMPERATURE, refresh_afterwards=False
+            commands.append(
+                Command(name=OverkizCommand.REFRESH_TARGET_TEMPERATURE, parameters=[])
             )
 
-        if refresh_afterwards:
-            await self.coordinator.async_refresh()
+        await self.executor.async_execute_commands(
+            commands, refresh_afterwards=refresh_afterwards
+        )
 
     async def async_turn_boost_mode_off(self, refresh_afterwards: bool = True) -> None:
         """Turn boost mode off."""
 
-        await self.executor.async_execute_command(
-            OverkizCommand.SET_CURRENT_OPERATING_MODE,
-            [
-                {
-                    OverkizCommandParam.RELAUNCH: OverkizCommandParam.OFF,
-                    OverkizCommandParam.ABSENCE: OverkizCommandParam.OFF,
-                },
-            ],
-            refresh_afterwards=False,
-        )
         # Toggling the BOOST mode changes boost mode duration so we have to refresh it
-        await self.executor.async_execute_command(
-            OverkizCommand.REFRESH_BOOST_MODE_DURATION,
-            refresh_afterwards=False,
+        await self.executor.async_execute_commands(
+            [
+                Command(
+                    name=OverkizCommand.SET_CURRENT_OPERATING_MODE,
+                    parameters=[
+                        {
+                            OverkizCommandParam.RELAUNCH: OverkizCommandParam.OFF,
+                            OverkizCommandParam.ABSENCE: OverkizCommandParam.OFF,
+                        },
+                    ],
+                ),
+                Command(name=OverkizCommand.REFRESH_BOOST_MODE_DURATION, parameters=[]),
+            ],
+            refresh_afterwards=refresh_afterwards,
         )
-
-        if refresh_afterwards:
-            await self.coordinator.async_refresh()
