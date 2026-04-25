@@ -544,15 +544,17 @@ async def async_setup_entry(
         ):
             continue
 
-        entities.extend(
-            OverkizStateSensor(
-                device.device_url,
-                data.coordinator,
-                description,
+        if device.definition:
+            entities.extend(
+                OverkizStateSensor(
+                    device.device_url,
+                    data.coordinator,
+                    description,
+                )
+                for state in device.definition.states
+                if state.qualified_name
+                and (description := SUPPORTED_STATES.get(state.qualified_name))
             )
-            for state in device.definition.states
-            if (description := SUPPORTED_STATES.get(state.qualified_name))
-        )
 
     async_add_entities(entities)
 
@@ -638,5 +640,5 @@ class OverkizHomeKitSetupCodeSensor(OverkizEntity, SensorEntity):
         # but it makes more sense to show this at the gateway device
         # in the entity registry.
         return DeviceInfo(
-            identifiers={(DOMAIN, self.executor.get_gateway_id())},
+            identifiers={(DOMAIN, self.device.identifier.gateway_id)},
         )
