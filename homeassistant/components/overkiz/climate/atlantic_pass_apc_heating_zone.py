@@ -101,7 +101,7 @@ class AtlanticPassAPCHeatingZone(OverkizEntity, ClimateEntity):
 
         # Temperature sensor use the same base_device_url and use the n+1 index
         self.temperature_device = self.executor.linked_device(
-            int(self.index_device_url) + 1
+            (self.device.identifier.subsystem_id or 0) + 1
         )
 
     @property
