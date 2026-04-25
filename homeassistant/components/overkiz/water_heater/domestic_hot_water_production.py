@@ -178,40 +178,26 @@ class DomesticHotWaterProduction(OverkizEntity, WaterHeaterEntity):
     @property
     def current_temperature(self) -> float | None:
         """Return the current temperature."""
-        current_temperature = self.device.states.get(
-            OverkizState.IO_MIDDLE_WATER_TEMPERATURE
-        )
-        if current_temperature:
-            return current_temperature.value_as_float
-        current_temperature = self.device.states.get(
-            OverkizState.MODBUSLINK_MIDDLE_WATER_TEMPERATURE
-        )
-        if current_temperature:
-            return current_temperature.value_as_float
+        if state := self.device.states.select(
+            [
+                OverkizState.IO_MIDDLE_WATER_TEMPERATURE,
+                OverkizState.MODBUSLINK_MIDDLE_WATER_TEMPERATURE,
+            ]
+        ):
+            return state.value_as_float
         return None
 
     @property
     def target_temperature(self) -> float | None:
         """Return the temperature we try to reach."""
-
-        target_temperature = self.device.states.get(
-            OverkizState.CORE_WATER_TARGET_TEMPERATURE
-        )
-        if target_temperature:
-            return target_temperature.value_as_float
-
-        target_temperature = self.device.states.get(
-            OverkizState.CORE_TARGET_DWH_TEMPERATURE
-        )
-        if target_temperature:
-            return target_temperature.value_as_float
-
-        target_temperature = self.device.states.get(
-            OverkizState.CORE_TARGET_TEMPERATURE
-        )
-        if target_temperature:
-            return target_temperature.value_as_float
-
+        if state := self.device.states.select(
+            [
+                OverkizState.CORE_WATER_TARGET_TEMPERATURE,
+                OverkizState.CORE_TARGET_DWH_TEMPERATURE,
+                OverkizState.CORE_TARGET_TEMPERATURE,
+            ]
+        ):
+            return state.value_as_float
         return None
 
     @property
