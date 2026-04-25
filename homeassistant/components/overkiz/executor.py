@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from pyoverkiz.enums import OverkizCommand, Protocol
+from pyoverkiz.enums import OverkizCommand
 from pyoverkiz.exceptions import BaseOverkizError
 from pyoverkiz.models import Action, Command, Device, StateDefinition
 from pyoverkiz.types import StateType as OverkizStateType
@@ -12,16 +12,6 @@ from pyoverkiz.types import StateType as OverkizStateType
 from homeassistant.exceptions import HomeAssistantError
 
 from .coordinator import OverkizDataUpdateCoordinator
-
-# Commands that don't support setting
-# the delay to another value
-COMMANDS_WITHOUT_DELAY = [
-    OverkizCommand.IDENTIFY,
-    OverkizCommand.OFF,
-    OverkizCommand.ON,
-    OverkizCommand.ON_WITH_TIMER,
-    OverkizCommand.TEST,
-]
 
 
 class OverkizExecutor:
@@ -104,13 +94,6 @@ class OverkizExecutor:
 
         :param refresh_afterwards: Whether to refresh the device state after the commands are executed.
         """
-        # Set the execution duration to 0 seconds for RTS devices on supported commands
-        # Default execution duration is 30 seconds and will block consecutive commands
-        if self.device.identifier.protocol == Protocol.RTS:
-            for command in commands:
-                if command.name not in COMMANDS_WITHOUT_DELAY:
-                    command.parameters = [*(command.parameters or []), 0]
-
         try:
             exec_id = await self.coordinator.client.execute_action_group(
                 actions=[

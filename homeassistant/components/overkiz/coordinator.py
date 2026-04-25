@@ -64,7 +64,7 @@ class OverkizDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Device]]):
         self.data = {}
         self.client = client
         self.devices: dict[str, Device] = {d.device_url: d for d in devices}
-        self.executions: dict[str, dict[str, str]] = {}
+        self.executions: dict[str, dict[str, str | list[str]]] = {}
         self.areas = self._places_to_area(places) if places else None
         self._default_update_interval = UPDATE_INTERVAL
 

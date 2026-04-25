@@ -10,7 +10,7 @@ from pyoverkiz.auth.credentials import (
     LocalTokenCredentials,
     UsernamePasswordCredentials,
 )
-from pyoverkiz.client import OverkizClient
+from pyoverkiz.client import OverkizClient, OverkizClientSettings
 from pyoverkiz.const import SUPPORTED_SERVERS
 from pyoverkiz.enums import APIType, OverkizState, UIClass, UIWidget
 from pyoverkiz.exceptions import (
@@ -168,7 +168,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: OverkizDataConfigEntry) 
             model_id=str(gateway.type),
             manufacturer=client.server_config.manufacturer,
             name=gateway.type.beautify_name if gateway.type else gateway.id,
-            sw_version=gateway.connectivity.protocol_version,
+            sw_version=gateway.connectivity.protocol_version
+            if gateway.connectivity
+            else None,
             hw_version=f"{gateway.type}:{gateway.sub_type}"
             if gateway.type and gateway.sub_type
             else None,
@@ -260,6 +262,7 @@ def create_local_client(
         credentials=LocalTokenCredentials(token),
         session=session,
         verify_ssl=verify_ssl,
+        settings=OverkizClientSettings(rts_command_duration=0),
     )
 
 
@@ -274,4 +277,5 @@ def create_cloud_client(
         server=server,
         credentials=UsernamePasswordCredentials(username, password),
         session=session,
+        settings=OverkizClientSettings(rts_command_duration=0),
     )
