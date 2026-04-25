@@ -82,28 +82,41 @@ class OverkizExecutor:
         return self.device.identifier.gateway_id
 
     async def async_execute_command(
-        self, command_name: str, *args: Any, refresh_afterwards: bool = True
+        self,
+        command_name: str,
+        args: list[Any] | None = None,
+        *,
+        refresh_afterwards: bool = True,
     ) -> None:
-        """Execute device command in async context.
+        """Execute device command in async context."""
+        await self.async_execute_commands(
+            [Command(name=command_name, parameters=args or [])],
+            refresh_afterwards=refresh_afterwards,
+        )
 
-        :param refresh_afterwards: Whether to refresh the device state after the command is executed.
-        If several commands are executed, it will be refreshed only once.
+    async def async_execute_commands(
+        self,
+        commands: list[Command],
+        *,
+        refresh_afterwards: bool = True,
+    ) -> None:
+        """Execute multiple device commands in a single action group.
+
+        :param refresh_afterwards: Whether to refresh the device state after the commands are executed.
         """
-        parameters = [arg for arg in args if arg is not None]
         # Set the execution duration to 0 seconds for RTS devices on supported commands
         # Default execution duration is 30 seconds and will block consecutive commands
-        if (
-            self.device.identifier.protocol == Protocol.RTS
-            and command_name not in COMMANDS_WITHOUT_DELAY
-        ):
-            parameters.append(0)
+        if self.device.identifier.protocol == Protocol.RTS:
+            for command in commands:
+                if command.name not in COMMANDS_WITHOUT_DELAY:
+                    command.parameters = [*(command.parameters or []), 0]
 
         try:
             exec_id = await self.coordinator.client.execute_action_group(
                 actions=[
                     Action(
                         device_url=self.device.device_url,
-                        commands=[Command(name=command_name, parameters=parameters)],
+                        commands=commands,
                     )
                 ],
                 label="Home Assistant",
@@ -115,7 +128,7 @@ class OverkizExecutor:
         # ExecutionRegisteredEvent doesn't contain the device_url, thus we need to register it here
         self.coordinator.executions[exec_id] = {
             "device_url": self.device.device_url,
-            "command_name": command_name,
+            "command_name": commands[0].name,
         }
         if refresh_afterwards:
             await self.coordinator.async_refresh()

@@ -47,24 +47,28 @@ async def _async_set_native_value_boost_mode_duration(
     """Update the boost duration value."""
 
     if value > 0:
-        await execute_command(OverkizCommand.SET_BOOST_MODE_DURATION, value)
+        await execute_command(OverkizCommand.SET_BOOST_MODE_DURATION, [value])
         await asyncio.sleep(
             BOOST_MODE_DURATION_DELAY
         )  # wait one second to not overload the device
         await execute_command(
             OverkizCommand.SET_CURRENT_OPERATING_MODE,
-            {
-                OverkizCommandParam.RELAUNCH: OverkizCommandParam.ON,
-                OverkizCommandParam.ABSENCE: OverkizCommandParam.OFF,
-            },
+            [
+                {
+                    OverkizCommandParam.RELAUNCH: OverkizCommandParam.ON,
+                    OverkizCommandParam.ABSENCE: OverkizCommandParam.OFF,
+                }
+            ],
         )
     else:
         await execute_command(
             OverkizCommand.SET_CURRENT_OPERATING_MODE,
-            {
-                OverkizCommandParam.RELAUNCH: OverkizCommandParam.OFF,
-                OverkizCommandParam.ABSENCE: OverkizCommandParam.OFF,
-            },
+            [
+                {
+                    OverkizCommandParam.RELAUNCH: OverkizCommandParam.OFF,
+                    OverkizCommandParam.ABSENCE: OverkizCommandParam.OFF,
+                }
+            ],
         )
 
     await asyncio.sleep(
@@ -272,5 +276,5 @@ class OverkizNumber(OverkizDescriptiveEntity, NumberEntity):
             return
 
         await self.executor.async_execute_command(
-            self.entity_description.command, value
+            self.entity_description.command, [value]
         )

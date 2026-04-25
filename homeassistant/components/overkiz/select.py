@@ -54,7 +54,7 @@ def _select_option_memorized_simple_volume(
     option: str, execute_command: Callable[..., Awaitable[None]]
 ) -> Awaitable[None]:
     """Change the selected option for Memorized Simple Volume."""
-    return execute_command(OverkizCommand.SET_MEMORIZED_SIMPLE_VOLUME, option)
+    return execute_command(OverkizCommand.SET_MEMORIZED_SIMPLE_VOLUME, [option])
 
 
 def _select_option_active_zone(
@@ -65,7 +65,7 @@ def _select_option_active_zone(
     if option == "":
         return execute_command(OverkizCommand.ALARM_OFF)
 
-    return execute_command(OverkizCommand.ALARM_ZONE_ON, option)
+    return execute_command(OverkizCommand.ALARM_ZONE_ON, [option])
 
 
 SELECT_DESCRIPTIONS: list[OverkizSelectDescription] = [
@@ -105,7 +105,7 @@ SELECT_DESCRIPTIONS: list[OverkizSelectDescription] = [
         name="Operating mode",
         options=[OverkizCommandParam.HEATING, OverkizCommandParam.COOLING],
         select_option=lambda option, execute_command: execute_command(
-            OverkizCommand.SET_OPERATING_MODE, option
+            OverkizCommand.SET_OPERATING_MODE, [option]
         ),
         entity_category=EntityCategory.CONFIG,
         translation_key="operating_mode",

@@ -153,14 +153,20 @@ class OverkizSwitch(OverkizDescriptiveEntity, SwitchEntity):
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Turn the entity on."""
-        await self.executor.async_execute_command(
-            self.entity_description.turn_on,
-            self.entity_description.turn_on_args,
-        )
+        if (args := self.entity_description.turn_on_args) is not None:
+            await self.executor.async_execute_command(
+                self.entity_description.turn_on,
+                args if isinstance(args, list) else [args],
+            )
+        else:
+            await self.executor.async_execute_command(self.entity_description.turn_on)
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Turn the entity off."""
-        await self.executor.async_execute_command(
-            self.entity_description.turn_off,
-            self.entity_description.turn_off_args,
-        )
+        if (args := self.entity_description.turn_off_args) is not None:
+            await self.executor.async_execute_command(
+                self.entity_description.turn_off,
+                args if isinstance(args, list) else [args],
+            )
+        else:
+            await self.executor.async_execute_command(self.entity_description.turn_off)

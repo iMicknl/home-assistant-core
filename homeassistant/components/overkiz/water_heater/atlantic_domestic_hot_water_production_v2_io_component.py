@@ -91,7 +91,9 @@ class AtlanticDomesticHotWaterProductionV2IOComponent(OverkizEntity, WaterHeater
 
         temperature = kwargs.get(ATTR_TEMPERATURE)
         await self.executor.async_execute_command(
-            OverkizCommand.SET_TARGET_TEMPERATURE, temperature, refresh_afterwards=False
+            OverkizCommand.SET_TARGET_TEMPERATURE,
+            [temperature],
+            refresh_afterwards=False,
         )
         await self.executor.async_execute_command(
             OverkizCommand.REFRESH_TARGET_TEMPERATURE, refresh_afterwards=False
@@ -185,7 +187,7 @@ class AtlanticDomesticHotWaterProductionV2IOComponent(OverkizEntity, WaterHeater
 
             await self.executor.async_execute_command(
                 OverkizCommand.SET_DHW_MODE,
-                OverkizCommandParam.MANUAL_ECO_ACTIVE,
+                [OverkizCommandParam.MANUAL_ECO_ACTIVE],
                 refresh_afterwards=False,
             )
             # ECO changes the target temperature so we have to refresh it
@@ -202,7 +204,7 @@ class AtlanticDomesticHotWaterProductionV2IOComponent(OverkizEntity, WaterHeater
 
             await self.executor.async_execute_command(
                 OverkizCommand.SET_DHW_MODE,
-                OverkizCommandParam.AUTO_MODE,
+                [OverkizCommandParam.AUTO_MODE],
                 refresh_afterwards=False,
             )
 
@@ -222,7 +224,7 @@ class AtlanticDomesticHotWaterProductionV2IOComponent(OverkizEntity, WaterHeater
 
             await self.executor.async_execute_command(
                 OverkizCommand.SET_DHW_MODE,
-                OverkizCommandParam.MANUAL_ECO_INACTIVE,
+                [OverkizCommandParam.MANUAL_ECO_INACTIVE],
                 refresh_afterwards=False,
             )
 
@@ -246,10 +248,12 @@ class AtlanticDomesticHotWaterProductionV2IOComponent(OverkizEntity, WaterHeater
 
         await self.executor.async_execute_command(
             OverkizCommand.SET_CURRENT_OPERATING_MODE,
-            {
-                OverkizCommandParam.RELAUNCH: OverkizCommandParam.OFF,
-                OverkizCommandParam.ABSENCE: OverkizCommandParam.ON,
-            },
+            [
+                {
+                    OverkizCommandParam.RELAUNCH: OverkizCommandParam.OFF,
+                    OverkizCommandParam.ABSENCE: OverkizCommandParam.ON,
+                },
+            ],
             refresh_afterwards=False,
         )
         # Toggling the AWAY mode changes away mode duration so we have to refresh it
@@ -265,10 +269,12 @@ class AtlanticDomesticHotWaterProductionV2IOComponent(OverkizEntity, WaterHeater
 
         await self.executor.async_execute_command(
             OverkizCommand.SET_CURRENT_OPERATING_MODE,
-            {
-                OverkizCommandParam.RELAUNCH: OverkizCommandParam.OFF,
-                OverkizCommandParam.ABSENCE: OverkizCommandParam.OFF,
-            },
+            [
+                {
+                    OverkizCommandParam.RELAUNCH: OverkizCommandParam.OFF,
+                    OverkizCommandParam.ABSENCE: OverkizCommandParam.OFF,
+                },
+            ],
             refresh_afterwards=False,
         )
         # Toggling the AWAY mode changes away mode duration so we have to refresh it
@@ -289,16 +295,18 @@ class AtlanticDomesticHotWaterProductionV2IOComponent(OverkizEntity, WaterHeater
 
         await self.executor.async_execute_command(
             OverkizCommand.SET_BOOST_MODE_DURATION,
-            MAX_BOOST_MODE_DURATION,
+            [MAX_BOOST_MODE_DURATION],
             refresh_afterwards=False,
         )
 
         await self.executor.async_execute_command(
             OverkizCommand.SET_CURRENT_OPERATING_MODE,
-            {
-                OverkizCommandParam.RELAUNCH: OverkizCommandParam.ON,
-                OverkizCommandParam.ABSENCE: OverkizCommandParam.OFF,
-            },
+            [
+                {
+                    OverkizCommandParam.RELAUNCH: OverkizCommandParam.ON,
+                    OverkizCommandParam.ABSENCE: OverkizCommandParam.OFF,
+                },
+            ],
             refresh_afterwards=False,
         )
 
@@ -320,10 +328,12 @@ class AtlanticDomesticHotWaterProductionV2IOComponent(OverkizEntity, WaterHeater
 
         await self.executor.async_execute_command(
             OverkizCommand.SET_CURRENT_OPERATING_MODE,
-            {
-                OverkizCommandParam.RELAUNCH: OverkizCommandParam.OFF,
-                OverkizCommandParam.ABSENCE: OverkizCommandParam.OFF,
-            },
+            [
+                {
+                    OverkizCommandParam.RELAUNCH: OverkizCommandParam.OFF,
+                    OverkizCommandParam.ABSENCE: OverkizCommandParam.OFF,
+                },
+            ],
             refresh_afterwards=False,
         )
         # Toggling the BOOST mode changes boost mode duration so we have to refresh it

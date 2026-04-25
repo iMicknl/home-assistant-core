@@ -466,7 +466,7 @@ class OverkizCover(OverkizDescriptiveEntity, CoverEntity):
             position = 100 - position
 
         if command := self.entity_description.set_position_command:
-            await self.executor.async_execute_command(command, position)
+            await self.executor.async_execute_command(command, [position])
 
     async def async_open_cover(self, **kwargs: Any) -> None:
         """Open the cover."""
@@ -511,20 +511,22 @@ class OverkizCover(OverkizDescriptiveEntity, CoverEntity):
             position = 100 - position
 
         if command := self.entity_description.set_tilt_position_command:
-            await self.executor.async_execute_command(command, position)
+            await self.executor.async_execute_command(command, [position])
 
     async def async_open_cover_tilt(self, **kwargs: Any) -> None:
         """Open the cover tilt."""
         if command := self.entity_description.open_tilt_command:
             await self.executor.async_execute_command(
-                command, *self.entity_description.open_tilt_command_args
+                command,
+                list(self.entity_description.open_tilt_command_args) or None,
             )
 
     async def async_close_cover_tilt(self, **kwargs: Any) -> None:
         """Close the cover tilt."""
         if command := self.entity_description.close_tilt_command:
             await self.executor.async_execute_command(
-                command, *self.entity_description.close_tilt_command_args
+                command,
+                list(self.entity_description.close_tilt_command_args) or None,
             )
 
     async def async_stop_cover_tilt(self, **kwargs: Any) -> None:
@@ -641,6 +643,5 @@ class OverkizLowSpeedCover(OverkizCover):
         """Move the cover to a specific position with a low speed."""
         await self.executor.async_execute_command(
             OverkizCommand.SET_CLOSURE_AND_LINEAR_SPEED,
-            100 - position,
-            OverkizCommandParam.LOWSPEED,
+            [100 - position, OverkizCommandParam.LOWSPEED],
         )
