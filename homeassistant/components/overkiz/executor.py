@@ -128,7 +128,7 @@ class OverkizExecutor:
         # ExecutionRegisteredEvent doesn't contain the device_url, thus we need to register it here
         self.coordinator.executions[exec_id] = {
             "device_url": self.device.device_url,
-            "command_name": commands[0].name,
+            "command_names": [command.name for command in commands],
         }
         if refresh_afterwards:
             await self.coordinator.async_refresh()
@@ -146,7 +146,10 @@ class OverkizExecutor:
                 # Reverse dictionary to cancel the last added execution
                 for exec_id, execution in reversed(self.coordinator.executions.items())
                 if execution.get("device_url") == self.device.device_url
-                and execution.get("command_name") in commands_to_cancel
+                and any(
+                    name in commands_to_cancel
+                    for name in execution.get("command_names", [])
+                )
             ),
             None,
         )

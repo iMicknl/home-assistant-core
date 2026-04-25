@@ -584,7 +584,7 @@ class OverkizCover(OverkizDescriptiveEntity, CoverEntity):
         """Return if the given commands are currently running."""
         return any(
             execution.get("device_url") == self.device.device_url
-            and execution.get("command_name") == command
+            and command in execution.get("command_names", [])
             for execution in self.coordinator.executions.values()
         )
 
