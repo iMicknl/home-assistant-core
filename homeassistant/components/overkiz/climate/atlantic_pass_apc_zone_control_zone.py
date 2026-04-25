@@ -172,7 +172,7 @@ class AtlanticPassAPCZoneControlZone(AtlanticPassAPCHeatingZone):
 
         if self.zone_control_executor is not None and (
             (
-                state := self.zone_control_executor.select_state(
+                state := self.zone_control_executor.device.get_state_value(
                     OverkizState.IO_PASS_APC_OPERATING_MODE
                 )
             )

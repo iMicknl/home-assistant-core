@@ -4,10 +4,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from pyoverkiz.enums import OverkizCommand
 from pyoverkiz.exceptions import BaseOverkizError
-from pyoverkiz.models import Action, Command, Device, StateDefinition
-from pyoverkiz.types import StateType as OverkizStateType
+from pyoverkiz.models import Action, Command, Device
 
 from homeassistant.exceptions import HomeAssistantError
 
@@ -25,11 +23,6 @@ class OverkizExecutor:
         self.coordinator = coordinator
 
     @property
-    def base_device_url(self) -> str:
-        """Return the base device URL without subsystem id."""
-        return self.device.identifier.base_device_url
-
-    @property
     def device(self) -> Device:
         """Return Overkiz device linked to this entity."""
         return self.coordinator.data[self.device_url]
@@ -39,37 +32,6 @@ class OverkizExecutor:
         return self.coordinator.data.get(
             f"{self.device.identifier.base_device_url}#{index}"
         )
-
-    def select_command(self, *commands: str) -> str | None:
-        """Select first existing command in a list of commands."""
-        return self.device.select_first_command(list(commands))
-
-    def has_command(self, *commands: str) -> bool:
-        """Return True if a command exists in a list of commands."""
-        return self.device.supports_any_command(list(commands))
-
-    def select_definition_state(self, *states: str) -> StateDefinition | None:
-        """Select first existing definition state in a list of states."""
-        return self.device.select_first_state_definition(list(states))
-
-    def select_state(self, *states: str) -> OverkizStateType:
-        """Select first existing active state in a list of states."""
-        return self.device.select_first_state_value(list(states))
-
-    def has_state(self, *states: str) -> bool:
-        """Return True if a state exists in self."""
-        return self.device.has_any_state_value(list(states))
-
-    def select_attribute(self, *attributes: str) -> OverkizStateType:
-        """Select first existing active state in a list of states."""
-        return self.device.select_first_attribute_value(list(attributes))
-
-    def get_gateway_id(self) -> str:
-        """Retrieve gateway id from device url.
-
-        device URL (<protocol>://<gatewayId>/<deviceAddress>[#<subsystemId>])
-        """
-        return self.device.identifier.gateway_id
 
     async def async_execute_command(
         self,
@@ -115,53 +77,3 @@ class OverkizExecutor:
         }
         if refresh_afterwards:
             await self.coordinator.async_refresh()
-
-    async def async_cancel_command(
-        self, commands_to_cancel: list[OverkizCommand]
-    ) -> bool:
-        """Cancel running execution by command."""
-
-        # Cancel a running execution
-        # Retrieve executions initiated via Home Assistant from Data Update Coordinator queue
-        exec_id = next(
-            (
-                exec_id
-                # Reverse dictionary to cancel the last added execution
-                for exec_id, execution in reversed(self.coordinator.executions.items())
-                if execution.get("device_url") == self.device.device_url
-                and any(
-                    name in commands_to_cancel
-                    for name in execution.get("command_names", [])
-                )
-            ),
-            None,
-        )
-
-        if exec_id:
-            await self.async_cancel_execution(exec_id)
-            return True
-
-        # Retrieve executions initiated outside Home Assistant via API
-        executions = await self.coordinator.client.get_current_executions()
-        exec_id = next(
-            (
-                execution.id
-                for execution in executions
-                if execution.action_group
-                for action in reversed(execution.action_group.actions)
-                for command in action.commands
-                if action.device_url == self.device.device_url
-                and command.name in commands_to_cancel
-            ),
-            None,
-        )
-
-        if exec_id:
-            await self.async_cancel_execution(exec_id)
-            return True
-
-        return False
-
-    async def async_cancel_execution(self, exec_id: str) -> None:
-        """Cancel running execution via execution id."""
-        await self.coordinator.client.cancel_execution(exec_id)

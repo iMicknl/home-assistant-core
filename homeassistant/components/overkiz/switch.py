@@ -8,6 +8,7 @@ from typing import Any
 
 from pyoverkiz.enums import OverkizCommand, OverkizCommandParam, OverkizState
 from pyoverkiz.enums.ui import UIClass, UIWidget
+from pyoverkiz.models import Device
 from pyoverkiz.types import StateType as OverkizStateType
 
 from homeassistant.components.switch import (
@@ -29,7 +30,7 @@ class OverkizSwitchDescription(SwitchEntityDescription):
 
     turn_on: str
     turn_off: str
-    is_on: Callable[[Callable[[str], OverkizStateType]], bool] | None = None
+    is_on: Callable[[Device], bool] | None = None
     turn_on_args: OverkizStateType | list[OverkizStateType] | None = None
     turn_off_args: OverkizStateType | list[OverkizStateType] | None = None
 
@@ -41,8 +42,9 @@ SWITCH_DESCRIPTIONS: list[OverkizSwitchDescription] = [
         turn_on_args=OverkizCommandParam.ON,
         turn_off=OverkizCommand.SET_FORCE_HEATING,
         turn_off_args=OverkizCommandParam.OFF,
-        is_on=lambda select_state: (
-            select_state(OverkizState.IO_FORCE_HEATING) == OverkizCommandParam.ON
+        is_on=lambda device: (
+            device.get_state_value(OverkizState.IO_FORCE_HEATING)
+            == OverkizCommandParam.ON
         ),
         icon="mdi:water-boiler",
     ),
@@ -50,8 +52,8 @@ SWITCH_DESCRIPTIONS: list[OverkizSwitchDescription] = [
         key=UIClass.ON_OFF,
         turn_on=OverkizCommand.ON,
         turn_off=OverkizCommand.OFF,
-        is_on=lambda select_state: (
-            select_state(OverkizState.CORE_ON_OFF) == OverkizCommandParam.ON
+        is_on=lambda device: (
+            device.get_state_value(OverkizState.CORE_ON_OFF) == OverkizCommandParam.ON
         ),
         device_class=SwitchDeviceClass.OUTLET,
     ),
@@ -59,8 +61,8 @@ SWITCH_DESCRIPTIONS: list[OverkizSwitchDescription] = [
         key=UIClass.SWIMMING_POOL,
         turn_on=OverkizCommand.ON,
         turn_off=OverkizCommand.OFF,
-        is_on=lambda select_state: (
-            select_state(OverkizState.CORE_ON_OFF) == OverkizCommandParam.ON
+        is_on=lambda device: (
+            device.get_state_value(OverkizState.CORE_ON_OFF) == OverkizCommandParam.ON
         ),
         icon="mdi:pool",
     ),
@@ -94,8 +96,8 @@ SWITCH_DESCRIPTIONS: list[OverkizSwitchDescription] = [
         turn_on=OverkizCommand.OPEN,
         turn_off=OverkizCommand.CLOSE,
         icon="mdi:camera-lock",
-        is_on=lambda select_state: (
-            select_state(OverkizState.MYFOX_SHUTTER_STATUS)
+        is_on=lambda device: (
+            device.get_state_value(OverkizState.MYFOX_SHUTTER_STATUS)
             == OverkizCommandParam.OPENED
         ),
         entity_category=EntityCategory.CONFIG,
@@ -105,8 +107,8 @@ SWITCH_DESCRIPTIONS: list[OverkizSwitchDescription] = [
         turn_on=OverkizCommand.ON,
         turn_off=OverkizCommand.OFF,
         icon="mdi:radiator",
-        is_on=lambda select_state: (
-            select_state(OverkizState.CORE_ON_OFF) == OverkizCommandParam.ON
+        is_on=lambda device: (
+            device.get_state_value(OverkizState.CORE_ON_OFF) == OverkizCommandParam.ON
         ),
     ),
 ]
@@ -147,7 +149,7 @@ class OverkizSwitch(OverkizDescriptiveEntity, SwitchEntity):
     def is_on(self) -> bool | None:
         """Return True if entity is on."""
         if self.entity_description.is_on:
-            return self.entity_description.is_on(self.executor.select_state)
+            return self.entity_description.is_on(self.device)
 
         return None
 
