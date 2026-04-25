@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from typing import Any
-from urllib.parse import urlparse
 
 from pyoverkiz.enums import OverkizCommand, Protocol
 from pyoverkiz.exceptions import BaseOverkizError
@@ -34,7 +33,11 @@ class OverkizExecutor:
         """Initialize the executor."""
         self.device_url = device_url
         self.coordinator = coordinator
-        self.base_device_url = self.device_url.split("#")[0]
+
+    @property
+    def base_device_url(self) -> str:
+        """Return the base device URL without subsystem id."""
+        return self.device.identifier.base_device_url
 
     @property
     def device(self) -> Device:
@@ -43,43 +46,40 @@ class OverkizExecutor:
 
     def linked_device(self, index: int) -> Device | None:
         """Return Overkiz device sharing the same base url."""
-        return self.coordinator.data.get(f"{self.base_device_url}#{index}")
+        return self.coordinator.data.get(
+            f"{self.device.identifier.base_device_url}#{index}"
+        )
 
     def select_command(self, *commands: str) -> str | None:
         """Select first existing command in a list of commands."""
-        existing_commands = self.device.definition.commands
-        return next((c for c in commands if c in existing_commands), None)
+        return self.device.select_first_command(list(commands))
 
     def has_command(self, *commands: str) -> bool:
         """Return True if a command exists in a list of commands."""
-        return self.select_command(*commands) is not None
+        return self.device.supports_any_command(list(commands))
 
     def select_definition_state(self, *states: str) -> StateDefinition | None:
         """Select first existing definition state in a list of states."""
-        for existing_state in self.device.definition.states:
-            if existing_state.qualified_name in states:
-                return existing_state
-        return None
+        return self.device.select_first_state_definition(list(states))
 
     def select_state(self, *states: str) -> OverkizStateType:
         """Select first existing active state in a list of states."""
-        for state in states:
-            if current_state := self.device.states.get(state):
-                return current_state.value
-
-        return None
+        return self.device.select_first_state_value(list(states))
 
     def has_state(self, *states: str) -> bool:
         """Return True if a state exists in self."""
-        return self.select_state(*states) is not None
+        return self.device.has_any_state_value(list(states))
 
     def select_attribute(self, *attributes: str) -> OverkizStateType:
         """Select first existing active state in a list of states."""
-        for attribute in attributes:
-            if current_attribute := self.device.attributes.get(attribute):
-                return current_attribute.value
+        return self.device.select_first_attribute_value(list(attributes))
 
-        return None
+    def get_gateway_id(self) -> str:
+        """Retrieve gateway id from device url.
+
+        device URL (<protocol>://<gatewayId>/<deviceAddress>[#<subsystemId>])
+        """
+        return self.device.identifier.gateway_id
 
     async def async_execute_command(
         self, command_name: str, *args: Any, refresh_afterwards: bool = True
@@ -166,11 +166,3 @@ class OverkizExecutor:
     async def async_cancel_execution(self, exec_id: str) -> None:
         """Cancel running execution via execution id."""
         await self.coordinator.client.cancel_execution(exec_id)
-
-    def get_gateway_id(self) -> str:
-        """Retrieve gateway id from device url.
-
-        device URL (<protocol>://<gatewayId>/<deviceAddress>[#<subsystemId>])
-        """
-        url = urlparse(self.device_url)
-        return url.netloc
