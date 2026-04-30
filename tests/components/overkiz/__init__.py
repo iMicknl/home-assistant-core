@@ -1,7 +1,6 @@
 """Tests for the Overkiz component."""
 
-from pyoverkiz._case import decamelize
-from pyoverkiz.converter import converter
+from pyoverkiz.converter import structure_response
 from pyoverkiz.models import Setup
 
 from homeassistant.components.overkiz.const import DOMAIN
@@ -14,4 +13,4 @@ DEFAULT_SETUP_FIXTURE = "setup/cloud_somfy_tahoma_switch_europe.json"
 def load_setup_fixture(fixture: str = DEFAULT_SETUP_FIXTURE) -> Setup:
     """Return setup from fixture."""
     setup_json = load_json_object_fixture(fixture, DOMAIN)
-    return converter.structure(decamelize(setup_json), Setup)
+    return structure_response(setup_json, Setup)
