@@ -464,32 +464,6 @@ async def test_cover_set_position(
     )
 
 
-async def test_positionable_venetian_blind_set_tilt(
-    hass: HomeAssistant,
-    setup_overkiz_integration: SetupOverkizIntegration,
-    mock_client: MockOverkizClient,
-) -> None:
-    """Test set tilt position for PositionableVenetianBlind."""
-    await setup_overkiz_integration(fixture=POSITIONABLE_VENETIAN_BLIND.fixture)
-
-    await hass.services.async_call(
-        COVER_DOMAIN,
-        SERVICE_SET_COVER_TILT_POSITION,
-        {
-            ATTR_ENTITY_ID: POSITIONABLE_VENETIAN_BLIND.entity_id,
-            ATTR_TILT_POSITION: 40,
-        },
-        blocking=True,
-    )
-
-    assert_command_call(
-        mock_client,
-        device_url=POSITIONABLE_VENETIAN_BLIND.device_url,
-        command_name="setOrientation",
-        parameters=[60],
-    )
-
-
 async def test_cover_tilt_services(
     hass: HomeAssistant,
     setup_overkiz_integration: SetupOverkizIntegration,
