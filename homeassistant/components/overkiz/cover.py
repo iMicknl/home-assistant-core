@@ -148,6 +148,21 @@ COVER_DESCRIPTIONS: list[OverkizCoverDescription] = [
         close_tilt_command_args=(15, 1),  # position (1-127), speed (1-15)
         stop_tilt_command=OverkizCommand.STOP,
     ),
+    # Needs override to support position and tilt via setClosure/setOrientation
+    # (zigbee:SomfyVenetianBlindComponent)
+    # uiClass is VenetianBlind
+    OverkizCoverDescription(
+        key=UIWidget.POSITIONABLE_VENETIAN_BLIND,
+        device_class=CoverDeviceClass.BLIND,
+        current_position_state=OverkizState.CORE_CLOSURE,
+        set_position_command=OverkizCommand.SET_CLOSURE,
+        open_command=OverkizCommand.OPEN,
+        close_command=OverkizCommand.CLOSE,
+        stop_command=OverkizCommand.STOP,
+        current_tilt_position_state=OverkizState.CORE_SLATE_ORIENTATION,
+        set_tilt_position_command=OverkizCommand.SET_ORIENTATION,
+        stop_tilt_command=OverkizCommand.STOP,
+    ),
     # Needs override to support very specific tilt commands (rts:SheerBlindRTSComponent)
     # uiClass is VenetianBlind
     OverkizCoverDescription(

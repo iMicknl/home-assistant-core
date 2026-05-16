@@ -134,6 +134,11 @@ DYNAMIC_GATE = FixtureDevice(
     "ogp://1234-1234-6233/10410217",
     "cover.ogp_gate",
 )
+POSITIONABLE_VENETIAN_BLIND = FixtureDevice(
+    "setup/cloud_somfy_tahoma_v2_europe.json",
+    "zigbee://1234-1234-6233/16730099",
+    "cover.living_room_venetian_blind",
+)
 
 SNAPSHOT_FIXTURES = [
     AWNING,
@@ -193,6 +198,13 @@ async def test_cover_entities_snapshot(
         (TILT_ONLY_VENETIAN_BLIND, SERVICE_OPEN_COVER, "open", [0], CoverState.OPENING),
         (UP_DOWN_VENETIAN_BLIND, SERVICE_OPEN_COVER, "open", [0], CoverState.OPENING),
         (UP_DOWN_SHEER_SCREEN, SERVICE_OPEN_COVER, "open", [0], CoverState.OPENING),
+        (
+            POSITIONABLE_VENETIAN_BLIND,
+            SERVICE_OPEN_COVER,
+            "open",
+            None,
+            CoverState.OPENING,
+        ),
         (SHUTTER, SERVICE_CLOSE_COVER, "close", None, CoverState.CLOSING),
         (AWNING, SERVICE_CLOSE_COVER, "undeploy", None, CoverState.CLOSING),
         (GARAGE, SERVICE_CLOSE_COVER, "close", None, CoverState.CLOSING),
@@ -222,6 +234,13 @@ async def test_cover_entities_snapshot(
         ),
         (UP_DOWN_VENETIAN_BLIND, SERVICE_CLOSE_COVER, "close", [0], CoverState.CLOSING),
         (UP_DOWN_SHEER_SCREEN, SERVICE_CLOSE_COVER, "close", [0], CoverState.CLOSING),
+        (
+            POSITIONABLE_VENETIAN_BLIND,
+            SERVICE_CLOSE_COVER,
+            "close",
+            None,
+            CoverState.CLOSING,
+        ),
         (SHUTTER, SERVICE_STOP_COVER, "stop", None, CoverState.CLOSED),
         (AWNING, SERVICE_STOP_COVER, "stop", None, CoverState.CLOSED),
         (GARAGE, SERVICE_STOP_COVER, "stop", None, CoverState.CLOSED),
@@ -260,6 +279,13 @@ async def test_cover_entities_snapshot(
         ),
         (UP_DOWN_VENETIAN_BLIND, SERVICE_STOP_COVER, "stop", [0], STATE_UNKNOWN),
         (UP_DOWN_SHEER_SCREEN, SERVICE_STOP_COVER, "stop", [0], STATE_UNKNOWN),
+        (
+            POSITIONABLE_VENETIAN_BLIND,
+            SERVICE_STOP_COVER,
+            "stop",
+            None,
+            CoverState.CLOSED,
+        ),
         (
             UP_DOWN_VENETIAN_BLIND,
             SERVICE_OPEN_COVER_TILT,
@@ -315,6 +341,7 @@ async def test_cover_entities_snapshot(
         "open-tilt-only-venetian-blind",
         "open-venetian-blind-rts",
         "open-sheer-screen-rts",
+        "open-positionable-venetian-blind",
         "close-roller-shutter",
         "close-awning",
         "close-garage-door",
@@ -326,6 +353,7 @@ async def test_cover_entities_snapshot(
         "close-tilt-only-venetian-blind",
         "close-venetian-blind-rts",
         "close-sheer-screen-rts",
+        "close-positionable-venetian-blind",
         "stop-roller-shutter",
         "stop-awning",
         "stop-garage-door",
@@ -335,6 +363,7 @@ async def test_cover_entities_snapshot(
         "stop-partial-garage-door",
         "stop-up-down-bioclimatic-pergola",
         "stop-tilt-only-venetian-blind",
+        "stop-positionable-venetian-blind",
         "open-tilt-tilt-only-venetian-blind",
         "close-tilt-tilt-only-venetian-blind",
         "stop-tilt-tilt-only-venetian-blind",
@@ -397,8 +426,15 @@ async def test_cover_service_actions(
             [65, OverkizCommandParam.LOWSPEED],
             35,
         ),
+        (
+            POSITIONABLE_VENETIAN_BLIND,
+            POSITIONABLE_VENETIAN_BLIND.entity_id,
+            "setClosure",
+            [75],
+            25,
+        ),
     ],
-    ids=["roller-shutter", "awning", "low-speed"],
+    ids=["roller-shutter", "awning", "low-speed", "positionable-venetian-blind"],
 )
 async def test_cover_set_position(
     hass: HomeAssistant,
@@ -425,6 +461,32 @@ async def test_cover_set_position(
         device_url=device.device_url,
         command_name=command_name,
         parameters=parameters,
+    )
+
+
+async def test_positionable_venetian_blind_set_tilt(
+    hass: HomeAssistant,
+    setup_overkiz_integration: SetupOverkizIntegration,
+    mock_client: MockOverkizClient,
+) -> None:
+    """Test set tilt position for PositionableVenetianBlind."""
+    await setup_overkiz_integration(fixture=POSITIONABLE_VENETIAN_BLIND.fixture)
+
+    await hass.services.async_call(
+        COVER_DOMAIN,
+        SERVICE_SET_COVER_TILT_POSITION,
+        {
+            ATTR_ENTITY_ID: POSITIONABLE_VENETIAN_BLIND.entity_id,
+            ATTR_TILT_POSITION: 40,
+        },
+        blocking=True,
+    )
+
+    assert_command_call(
+        mock_client,
+        device_url=POSITIONABLE_VENETIAN_BLIND.device_url,
+        command_name="setOrientation",
+        parameters=[60],
     )
 
 
