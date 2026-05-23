@@ -56,9 +56,9 @@ class OverkizExecutor:
 
     def select_definition_state(self, *states: str) -> StateDefinition | None:
         """Select first existing definition state in a list of states."""
-        for existing_state in self.device.definition.states:
-            if existing_state.qualified_name in states:
-                return existing_state
+        for state_name in states:
+            if state_name in self.device.definition.states:
+                return self.device.definition.states[state_name]
         return None
 
     def select_state(self, *states: str) -> OverkizStateType:
