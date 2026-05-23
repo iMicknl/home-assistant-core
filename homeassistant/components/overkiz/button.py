@@ -113,15 +113,16 @@ async def async_setup_entry(
         ):
             continue
 
-        entities.extend(
-            OverkizButton(
-                device.device_url,
-                data.coordinator,
-                description,
+        if device.definition:
+            entities.extend(
+                OverkizButton(
+                    device.device_url,
+                    data.coordinator,
+                    description,
+                )
+                for command in device.definition.commands
+                if (description := SUPPORTED_COMMANDS.get(command))
             )
-            for command in device.definition.commands
-            if (description := SUPPORTED_COMMANDS.get(command))
-        )
 
     async_add_entities(entities)
 

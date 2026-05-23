@@ -47,6 +47,8 @@ class OverkizExecutor:
 
     def select_command(self, *commands: str) -> str | None:
         """Select first existing command in a list of commands."""
+        if not self.device.definition:
+            return None
         existing_commands = self.device.definition.commands
         return next((c for c in commands if c in existing_commands), None)
 
@@ -56,6 +58,8 @@ class OverkizExecutor:
 
     def select_definition_state(self, *states: str) -> StateDefinition | None:
         """Select first existing definition state in a list of states."""
+        if not self.device.definition:
+            return None
         for state_name in states:
             if state_name in self.device.definition.states:
                 return self.device.definition.states[state_name]
@@ -105,7 +109,7 @@ class OverkizExecutor:
                 actions=[
                     Action(
                         device_url=self.device.device_url,
-                        commands=[Command(command_name, parameters)],
+                        commands=[Command(name=command_name, parameters=parameters)],
                     )
                 ],
             )

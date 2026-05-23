@@ -232,7 +232,7 @@ COVER_DESCRIPTIONS: list[OverkizCoverDescription] = [
     # (rts:GateOpenerRTS4TComponent)
     # uiClass is Gate
     OverkizCoverDescription(
-        key=UIWidget.OPEN_CLOSE_GATE_4T,
+        key=UIWidget.OPEN_CLOSE_GATE4_T,
         device_class=CoverDeviceClass.GATE,
         open_command=OverkizCommand.CYCLE,
         close_command=OverkizCommand.CYCLE,
@@ -241,7 +241,7 @@ COVER_DESCRIPTIONS: list[OverkizCoverDescription] = [
     # (rts:GarageDoor4TRTSComponent)
     # uiClass is GarageDoor
     OverkizCoverDescription(
-        key=UIWidget.UP_DOWN_GARAGE_DOOR_4T,
+        key=UIWidget.UP_DOWN_GARAGE_DOOR4_T,
         device_class=CoverDeviceClass.GARAGE,
         open_command=OverkizCommand.CYCLE,
         close_command=OverkizCommand.CYCLE,
@@ -249,7 +249,7 @@ COVER_DESCRIPTIONS: list[OverkizCoverDescription] = [
     # Needs override since OpenCloseSlidingGarageDoor4T only supports the cycle command
     # uiClass is GarageDoor
     OverkizCoverDescription(
-        key=UIWidget.OPEN_CLOSE_SLIDING_GARAGE_DOOR_4T,
+        key=UIWidget.OPEN_CLOSE_SLIDING_GARAGE_DOOR4_T,
         device_class=CoverDeviceClass.GARAGE,
         open_command=OverkizCommand.CYCLE,
         close_command=OverkizCommand.CYCLE,
@@ -257,7 +257,7 @@ COVER_DESCRIPTIONS: list[OverkizCoverDescription] = [
     # Needs override since OpenCloseSlidingGate4T only supports the cycle command
     # uiClass is Gate
     OverkizCoverDescription(
-        key=UIWidget.OPEN_CLOSE_SLIDING_GATE_4T,
+        key=UIWidget.OPEN_CLOSE_SLIDING_GATE4_T,
         device_class=CoverDeviceClass.GATE,
         open_command=OverkizCommand.CYCLE,
         close_command=OverkizCommand.CYCLE,
@@ -527,7 +527,7 @@ async def async_setup_entry(
 
             # Cover platform does not support configuring the speed of the cover
             # For covers where the speed can be configured, we create a separate entity
-            if (
+            if device.definition and (
                 OverkizCommand.SET_CLOSURE_AND_LINEAR_SPEED
                 in device.definition.commands
             ):

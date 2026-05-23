@@ -158,15 +158,16 @@ async def async_setup_entry(
         ):
             continue
 
-        entities.extend(
-            OverkizBinarySensor(
-                device.device_url,
-                data.coordinator,
-                description,
+        if device.definition:
+            entities.extend(
+                OverkizBinarySensor(
+                    device.device_url,
+                    data.coordinator,
+                    description,
+                )
+                for state in device.definition.states
+                if (description := SUPPORTED_STATES.get(state))
             )
-            for state in device.definition.states
-            if (description := SUPPORTED_STATES.get(state))
-        )
 
     async_add_entities(entities)
 
