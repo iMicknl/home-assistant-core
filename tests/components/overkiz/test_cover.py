@@ -678,7 +678,7 @@ async def test_cover_tilt_services(
         | CoverEntityFeature.SET_TILT_POSITION
     )
 
-    mock_client.execute_command.reset_mock()
+    mock_client.execute_action_group.reset_mock()
     await hass.services.async_call(
         COVER_DOMAIN,
         SERVICE_OPEN_COVER_TILT,
@@ -708,7 +708,7 @@ async def test_cover_tilt_services(
     )
     assert hass.states.get(PERGOLA.entity_id).state == CoverState.CLOSED
 
-    mock_client.execute_command.reset_mock()
+    mock_client.execute_action_group.reset_mock()
     await hass.services.async_call(
         COVER_DOMAIN,
         SERVICE_CLOSE_COVER_TILT,
@@ -723,7 +723,7 @@ async def test_cover_tilt_services(
         command_name="closeSlats",
     )
 
-    mock_client.execute_command.reset_mock()
+    mock_client.execute_action_group.reset_mock()
     await hass.services.async_call(
         COVER_DOMAIN,
         SERVICE_STOP_COVER_TILT,
@@ -736,7 +736,7 @@ async def test_cover_tilt_services(
         command_name="stop",
     )
 
-    mock_client.execute_command.reset_mock()
+    mock_client.execute_action_group.reset_mock()
     await hass.services.async_call(
         COVER_DOMAIN,
         SERVICE_SET_COVER_TILT_POSITION,
@@ -1047,7 +1047,7 @@ async def test_awning_direct_position_mapping(
 
     assert hass.states.get(AWNING.entity_id).attributes[ATTR_CURRENT_POSITION] == 0
 
-    mock_client.execute_command.reset_mock()
+    mock_client.execute_action_group.reset_mock()
     await hass.services.async_call(
         COVER_DOMAIN,
         SERVICE_SET_COVER_POSITION,
@@ -1215,7 +1215,7 @@ async def test_low_speed_cover_open_close(
         parameters=[0, OverkizCommandParam.LOWSPEED],
     )
 
-    mock_client.execute_command.reset_mock()
+    mock_client.execute_action_group.reset_mock()
     await hass.services.async_call(
         COVER_DOMAIN,
         SERVICE_CLOSE_COVER,
@@ -1344,4 +1344,4 @@ async def test_set_cover_position_and_tilt_unsupported_command_raises(
             blocking=True,
         )
 
-    assert mock_client.execute_command.await_count == 0
+    assert mock_client.execute_action_group.await_count == 0

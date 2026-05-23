@@ -22,12 +22,14 @@ def assert_command_call(
     parameters: list[Any] | None = None,
 ) -> None:
     """Assert the latest command sent through the mocked Overkiz client."""
-    assert mock_client.execute_command.await_count == 1
-    args = mock_client.execute_command.await_args.args
-    assert args[0] == device_url
-    assert args[1].name == command_name
-    assert args[1].parameters == (parameters or [])
-    assert args[2] == "Home Assistant"
+    assert mock_client.execute_action_group.await_count == 1
+    kwargs = mock_client.execute_action_group.await_args.kwargs
+    assert kwargs["label"] == "Home Assistant"
+    actions = kwargs["actions"]
+    assert len(actions) == 1
+    assert actions[0].device_url == device_url
+    assert actions[0].commands[0].name == command_name
+    assert actions[0].commands[0].parameters == (parameters or [])
 
 
 def build_event(
