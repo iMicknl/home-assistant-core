@@ -201,14 +201,6 @@ async def async_unload_entry(
     return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
 
 
-_RENAMED_ENUM_MEMBERS: dict[str, str] = {
-    "TSKALARM_CONTROLLER": "TSK_ALARM_CONTROLLER",
-    "OPEN_CLOSE_GATE_4T": "OPEN_CLOSE_GATE4_T",
-    "UP_DOWN_GARAGE_DOOR_4T": "UP_DOWN_GARAGE_DOOR4_T",
-    "OPEN_CLOSE_SLIDING_GARAGE_DOOR_4T": "OPEN_CLOSE_SLIDING_GARAGE_DOOR4_T",
-    "OPEN_CLOSE_SLIDING_GATE_4T": "OPEN_CLOSE_SLIDING_GATE4_T",
-}
-
 
 async def _async_migrate_entries(
     hass: HomeAssistant, config_entry: OverkizDataConfigEntry
@@ -231,8 +223,6 @@ async def _async_migrate_entries(
             ("OverkizState", "UIWidget", "UIClass")
         ):
             state = key.split(".")[1]
-            # Handle enum members renamed in pyoverkiz v2
-            state = _RENAMED_ENUM_MEMBERS.get(state, state)
             new_key = ""
 
             try:
