@@ -4,7 +4,7 @@ from datetime import timedelta
 from typing import Any
 
 from freezegun.api import FrozenDateTimeFactory
-from pyoverkiz.models import Event, EventState
+from pyoverkiz.models import Event
 
 from homeassistant.components.overkiz.const import UPDATE_INTERVAL
 from homeassistant.core import HomeAssistant
@@ -41,11 +41,10 @@ def build_event(
     new_state: str | None = None,
 ) -> Event:
     """Create a pyoverkiz event object with a test-friendly interface."""
-    structured_states = [EventState(**state) for state in (device_states or [])]
     return Event(
         name=name,
         device_url=device_url,
-        device_states=structured_states,
+        device_states=device_states,
         exec_id=exec_id,
         new_state=new_state,
     )
