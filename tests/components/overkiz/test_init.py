@@ -42,7 +42,7 @@ async def test_unique_id_migration(hass: HomeAssistant) -> None:
             # This entity will be migrated to "internal://1234-5678-1234/alarm/0-TSKAlarmController"
             ENTITY_ALARM_CONTROL_PANEL: RegistryEntryWithDefaults(
                 entity_id=ENTITY_ALARM_CONTROL_PANEL,
-                unique_id="internal://1234-5678-1234/alarm/0-UIWidget.TSKALARM_CONTROLLER",
+                unique_id="internal://1234-5678-1234/alarm/0-UIWidget.TSK_ALARM_CONTROLLER",
                 platform=DOMAIN,
                 config_entry_id=mock_entry.entry_id,
             ),
