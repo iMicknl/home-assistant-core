@@ -3,7 +3,7 @@
 from collections.abc import Generator
 from unittest.mock import AsyncMock, patch
 
-from pyoverkiz.converter import structure_response
+from pyoverkiz.converter import converter
 from pyoverkiz.models import PersistedActionGroup
 import pytest
 from syrupy.assertion import SnapshotAssertion
@@ -27,7 +27,7 @@ SCENARIO_FIXTURES = [
 def load_scenarios_fixture(fixture: str) -> list[PersistedActionGroup]:
     """Load scenario fixture and return PersistedActionGroup objects."""
     data = load_json_array_fixture(fixture, DOMAIN)
-    return [structure_response(s, PersistedActionGroup) for s in data]
+    return [converter.structure(s, PersistedActionGroup) for s in data]
 
 
 @pytest.fixture(autouse=True)
