@@ -19,7 +19,7 @@ async def async_get_config_entry_diagnostics(
     client = entry.runtime_data.coordinator.client
 
     data = {
-        "setup": await client.get_diagnostic_data(),
+        **await client.get_diagnostic_data(),
         "server": entry.data[CONF_HUB],
         "api_type": entry.data.get(CONF_API_TYPE, APIType.CLOUD),
     }
@@ -49,7 +49,7 @@ async def async_get_device_diagnostics(
             "device_url": obfuscate_id(device_url),
             "model": device.model,
         },
-        "setup": await client.get_diagnostic_data(),
+        **await client.get_diagnostic_data(),
         "server": entry.data[CONF_HUB],
         "api_type": entry.data.get(CONF_API_TYPE, APIType.CLOUD),
     }
