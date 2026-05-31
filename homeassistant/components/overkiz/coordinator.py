@@ -5,7 +5,7 @@ from datetime import timedelta
 import logging
 from typing import TYPE_CHECKING, Any
 
-from aiohttp import ClientConnectorError, ServerDisconnectedError
+from aiohttp import ClientConnectorError, ClientError, ServerDisconnectedError
 from pyoverkiz.client import OverkizClient
 from pyoverkiz.enums import EventName, ExecutionState, Protocol
 from pyoverkiz.exceptions import (
@@ -13,6 +13,7 @@ from pyoverkiz.exceptions import (
     InvalidEventListenerIdError,
     MaintenanceError,
     NotAuthenticatedError,
+    ServiceUnavailableError,
     TooManyConcurrentRequestsError,
     TooManyRequestsError,
 )
@@ -85,6 +86,8 @@ class OverkizDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Device]]):
             raise UpdateFailed("Too many requests, try again later.") from exception
         except MaintenanceError as exception:
             raise UpdateFailed("Server is down for maintenance.") from exception
+        except ServiceUnavailableError as exception:
+            raise UpdateFailed("Server is unavailable.") from exception
         except InvalidEventListenerIdError as exception:
             raise UpdateFailed(exception) from exception
         except (TimeoutError, ClientConnectorError) as exception:
@@ -103,6 +106,12 @@ class OverkizDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Device]]):
                 raise UpdateFailed("Too many requests, try again later.") from exception
 
             return self.devices
+        except ClientError as exception:
+            # Transient server errors (e.g. a 502 Bad Gateway returned as HTML)
+            # surface as a generic aiohttp ClientError. Retry instead of
+            # raising an unexpected error.
+            LOGGER.debug("Failed to fetch events", exc_info=True)
+            raise UpdateFailed("Failed to fetch events.") from exception
 
         for event in events:
             LOGGER.debug(event)
