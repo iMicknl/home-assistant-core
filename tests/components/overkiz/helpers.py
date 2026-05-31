@@ -44,7 +44,9 @@ def build_event(
     return Event(
         name=name,
         device_url=device_url,
-        device_states=device_states,
+        # pyoverkiz's Event coerces device_states through a converter that
+        # iterates the value, so it must be a list rather than None.
+        device_states=device_states or [],
         exec_id=exec_id,
         new_state=new_state,
     )
