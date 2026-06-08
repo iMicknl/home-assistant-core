@@ -3,6 +3,7 @@
 from typing import Any, cast
 
 from pyoverkiz.enums import OverkizCommand, OverkizCommandParam, OverkizState
+from pyoverkiz.models import Command
 
 from homeassistant.components.water_heater import (
     STATE_ECO,
@@ -34,7 +35,7 @@ class AtlanticPassAPCDHW(OverkizEntity, WaterHeaterEntity):
         if self.is_boost_mode_on:
             return cast(
                 float,
-                self.executor.select_state(
+                self.device.states.get_value(
                     OverkizState.CORE_COMFORT_TARGET_DWH_TEMPERATURE
                 ),
             )
@@ -42,14 +43,14 @@ class AtlanticPassAPCDHW(OverkizEntity, WaterHeaterEntity):
         if self.is_eco_mode_on:
             return cast(
                 float,
-                self.executor.select_state(
+                self.device.states.get_value(
                     OverkizState.CORE_ECO_TARGET_DWH_TEMPERATURE
                 ),
             )
 
         return cast(
             float,
-            self.executor.select_state(OverkizState.CORE_TARGET_DWH_TEMPERATURE),
+            self.device.states.get_value(OverkizState.CORE_TARGET_DWH_TEMPERATURE),
         )
 
     async def async_set_temperature(self, **kwargs: Any) -> None:
@@ -57,28 +58,29 @@ class AtlanticPassAPCDHW(OverkizEntity, WaterHeaterEntity):
         temperature = kwargs[ATTR_TEMPERATURE]
 
         if self.is_eco_mode_on:
-            await self.executor.async_execute_command(
-                OverkizCommand.SET_ECO_TARGET_DHW_TEMPERATURE, temperature
-            )
-            await self.executor.async_execute_command(
-                OverkizCommand.REFRESH_ECO_TARGET_DWH_TEMPERATURE
-            )
+            commands = [
+                Command(
+                    name=OverkizCommand.SET_ECO_TARGET_DHW_TEMPERATURE,
+                    parameters=[temperature],
+                ),
+                Command(name=OverkizCommand.REFRESH_ECO_TARGET_DWH_TEMPERATURE),
+            ]
         else:
-            await self.executor.async_execute_command(
-                OverkizCommand.SET_COMFORT_TARGET_DHW_TEMPERATURE, temperature
-            )
-            await self.executor.async_execute_command(
-                OverkizCommand.REFRESH_COMFORT_TARGET_DWH_TEMPERATURE
-            )
-        await self.executor.async_execute_command(
-            OverkizCommand.REFRESH_TARGET_DWH_TEMPERATURE
-        )
+            commands = [
+                Command(
+                    name=OverkizCommand.SET_COMFORT_TARGET_DHW_TEMPERATURE,
+                    parameters=[temperature],
+                ),
+                Command(name=OverkizCommand.REFRESH_COMFORT_TARGET_DWH_TEMPERATURE),
+            ]
+        commands.append(Command(name=OverkizCommand.REFRESH_TARGET_DWH_TEMPERATURE))
+        await self.executor.async_execute_commands(commands)
 
     @property
     def is_boost_mode_on(self) -> bool:
         """Return true if boost mode is on."""
         return (
-            self.executor.select_state(OverkizState.CORE_BOOST_ON_OFF)
+            self.device.states.get_value(OverkizState.CORE_BOOST_ON_OFF)
             == OverkizCommandParam.ON
         )
 
@@ -86,7 +88,7 @@ class AtlanticPassAPCDHW(OverkizEntity, WaterHeaterEntity):
     def is_eco_mode_on(self) -> bool:
         """Return true if eco mode is on."""
         return (
-            self.executor.select_state(OverkizState.IO_PASS_APCDWH_MODE)
+            self.device.states.get_value(OverkizState.IO_PASS_APCDWH_MODE)
             == OverkizCommandParam.ECO
         )
 
@@ -94,7 +96,7 @@ class AtlanticPassAPCDHW(OverkizEntity, WaterHeaterEntity):
     def is_away_mode_on(self) -> bool:
         """Return true if away mode is on."""
         return (
-            self.executor.select_state(OverkizState.CORE_DWH_ON_OFF)
+            self.device.states.get_value(OverkizState.CORE_DWH_ON_OFF)
             == OverkizCommandParam.OFF
         )
 
@@ -119,27 +121,45 @@ class AtlanticPassAPCDHW(OverkizEntity, WaterHeaterEntity):
         elif operation_mode == STATE_HEAT_PUMP:
             regular_state = OverkizCommandParam.ON
 
-        await self.executor.async_execute_command(
-            OverkizCommand.SET_BOOST_ON_OFF_STATE, boost_state
-        )
-        await self.executor.async_execute_command(
-            OverkizCommand.SET_DHW_ON_OFF_STATE, regular_state
+        await self.executor.async_execute_commands(
+            [
+                Command(
+                    name=OverkizCommand.SET_BOOST_ON_OFF_STATE,
+                    parameters=[boost_state],
+                ),
+                Command(
+                    name=OverkizCommand.SET_DHW_ON_OFF_STATE,
+                    parameters=[regular_state],
+                ),
+            ]
         )
 
     async def async_turn_away_mode_on(self) -> None:
         """Turn away mode on."""
-        await self.executor.async_execute_command(
-            OverkizCommand.SET_BOOST_ON_OFF_STATE, OverkizCommandParam.OFF
-        )
-        await self.executor.async_execute_command(
-            OverkizCommand.SET_DHW_ON_OFF_STATE, OverkizCommandParam.OFF
+        await self.executor.async_execute_commands(
+            [
+                Command(
+                    name=OverkizCommand.SET_BOOST_ON_OFF_STATE,
+                    parameters=[OverkizCommandParam.OFF],
+                ),
+                Command(
+                    name=OverkizCommand.SET_DHW_ON_OFF_STATE,
+                    parameters=[OverkizCommandParam.OFF],
+                ),
+            ]
         )
 
     async def async_turn_away_mode_off(self) -> None:
         """Turn away mode off."""
-        await self.executor.async_execute_command(
-            OverkizCommand.SET_BOOST_ON_OFF_STATE, OverkizCommandParam.OFF
-        )
-        await self.executor.async_execute_command(
-            OverkizCommand.SET_DHW_ON_OFF_STATE, OverkizCommandParam.ON
+        await self.executor.async_execute_commands(
+            [
+                Command(
+                    name=OverkizCommand.SET_BOOST_ON_OFF_STATE,
+                    parameters=[OverkizCommandParam.OFF],
+                ),
+                Command(
+                    name=OverkizCommand.SET_DHW_ON_OFF_STATE,
+                    parameters=[OverkizCommandParam.ON],
+                ),
+            ]
         )

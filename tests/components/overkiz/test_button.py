@@ -5,6 +5,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from freezegun.api import FrozenDateTimeFactory
+from pyoverkiz.enums import EventName
 import pytest
 from syrupy.assertion import SnapshotAssertion
 
@@ -14,7 +15,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
 
 from .conftest import FixtureDevice, MockOverkizClient, SetupOverkizIntegration
-from .helpers import assert_command_call, async_deliver_events, device_unavailable_event
+from .helpers import assert_command_call, async_deliver_events, build_event
 
 from tests.common import snapshot_platform
 
@@ -135,7 +136,8 @@ async def test_button_unavailability(
         freezer,
         mock_client,
         [
-            device_unavailable_event(
+            build_event(
+                EventName.DEVICE_UNAVAILABLE,
                 device_url=MY_POSITION.device_url,
             )
         ],

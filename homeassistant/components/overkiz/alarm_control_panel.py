@@ -252,7 +252,7 @@ class OverkizAlarmControlPanel(OverkizDescriptiveEntity, AlarmControlPanelEntity
     @property
     def alarm_state(self) -> AlarmControlPanelState:
         """Return the state of the device."""
-        return self.entity_description.fn_state(self.executor.select_state)
+        return self.entity_description.fn_state(self.device.states.get_value)
 
     async def async_alarm_disarm(self, code: str | None = None) -> None:
         """Send disarm command."""
@@ -296,7 +296,6 @@ class OverkizAlarmControlPanel(OverkizDescriptiveEntity, AlarmControlPanelEntity
 
     async def async_execute_command(self, command_name: str, args: Any) -> None:
         """Execute device command in async context."""
-        if args:
-            await self.executor.async_execute_command(command_name, args)
-        else:
-            await self.executor.async_execute_command(command_name)
+        await self.executor.async_execute_command(
+            command_name, [args] if args else None
+        )

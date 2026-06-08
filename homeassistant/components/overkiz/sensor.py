@@ -641,8 +641,10 @@ class OverkizHomeKitSetupCodeSensor(OverkizEntity, SensorEntity):
     @property
     def native_value(self) -> str | None:
         """Return the value of the sensor."""
-        if state := self.device.attributes.get(OverkizAttribute.HOMEKIT_SETUP_CODE):
-            return cast(str, state.value)
+        if value := self.device.attributes.get_value(
+            OverkizAttribute.HOMEKIT_SETUP_CODE
+        ):
+            return cast(str, value)
         return None
 
     @property
@@ -652,5 +654,5 @@ class OverkizHomeKitSetupCodeSensor(OverkizEntity, SensorEntity):
         # but it makes more sense to show this at the gateway device
         # in the entity registry.
         return DeviceInfo(
-            identifiers={(DOMAIN, self.executor.get_gateway_id())},
+            identifiers={(DOMAIN, self.device.identifier.gateway_id)},
         )

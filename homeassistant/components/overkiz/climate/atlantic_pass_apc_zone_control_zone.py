@@ -5,6 +5,7 @@ from typing import Any, cast
 
 from propcache.api import cached_property
 from pyoverkiz.enums import OverkizCommand, OverkizCommandParam, OverkizState
+from pyoverkiz.models import Command
 
 from homeassistant.components.climate import (
     ATTR_TARGET_TEMP_HIGH,
@@ -133,7 +134,9 @@ class AtlanticPassAPCZoneControlZone(AtlanticPassAPCHeatingZone):
             (
                 state_thermal_configuration := cast(
                     OverkizCommandParam | None,
-                    self.executor.select_state(OverkizState.CORE_THERMAL_CONFIGURATION),
+                    self.device.states.get_value(
+                        OverkizState.CORE_THERMAL_CONFIGURATION
+                    ),
                 )
             )
             is not None
@@ -160,7 +163,7 @@ class AtlanticPassAPCZoneControlZone(AtlanticPassAPCHeatingZone):
     def is_using_derogated_temperature_fallback(self) -> bool:
         """Check if the device behave like the Pass APC Heating Zone."""
 
-        return self.executor.has_command(
+        return self.device.supports_command(
             OverkizCommand.SET_DEROGATED_TARGET_TEMPERATURE
         )
 
@@ -170,7 +173,7 @@ class AtlanticPassAPCZoneControlZone(AtlanticPassAPCHeatingZone):
 
         if self.zone_control_executor is not None and (
             (
-                state := self.zone_control_executor.select_state(
+                state := self.zone_control_executor.device.states.get_value(
                     OverkizState.IO_PASS_APC_OPERATING_MODE
                 )
             )
@@ -190,7 +193,7 @@ class AtlanticPassAPCZoneControlZone(AtlanticPassAPCHeatingZone):
             hvac_action := self.zone_control_hvac_action
         ) in HVAC_ACTION_TO_OVERKIZ_PROFILE_STATE and cast(
             str,
-            self.executor.select_state(
+            self.device.states.get_value(
                 HVAC_ACTION_TO_OVERKIZ_PROFILE_STATE[hvac_action]
             ),
         ) == OverkizCommandParam.STOP:
@@ -210,12 +213,12 @@ class AtlanticPassAPCZoneControlZone(AtlanticPassAPCHeatingZone):
 
         cooling_is_off = cast(
             str,
-            self.executor.select_state(OverkizState.CORE_COOLING_ON_OFF),
+            self.device.states.get_value(OverkizState.CORE_COOLING_ON_OFF),
         ) in (OverkizCommandParam.OFF, None)
 
         heating_is_off = cast(
             str,
-            self.executor.select_state(OverkizState.CORE_HEATING_ON_OFF),
+            self.device.states.get_value(OverkizState.CORE_HEATING_ON_OFF),
         ) in (OverkizCommandParam.OFF, None)
 
         # Device is Stopped, it means the air flux is flowing
@@ -249,13 +252,17 @@ class AtlanticPassAPCZoneControlZone(AtlanticPassAPCHeatingZone):
             else OverkizCommandParam.ON
         )
 
-        await self.executor.async_execute_command(
-            OverkizCommand.SET_COOLING_ON_OFF,
-            on_off_target_command_param,
-        )
-        await self.executor.async_execute_command(
-            OverkizCommand.SET_HEATING_ON_OFF,
-            on_off_target_command_param,
+        await self.executor.async_execute_commands(
+            [
+                Command(
+                    name=OverkizCommand.SET_COOLING_ON_OFF,
+                    parameters=[on_off_target_command_param],
+                ),
+                Command(
+                    name=OverkizCommand.SET_HEATING_ON_OFF,
+                    parameters=[on_off_target_command_param],
+                ),
+            ]
         )
 
         await self.async_refresh_modes()
@@ -277,7 +284,7 @@ class AtlanticPassAPCZoneControlZone(AtlanticPassAPCHeatingZone):
             and (
                 (
                     mode := OVERKIZ_MODE_TO_PRESET_MODES[
-                        cast(str, self.executor.select_state(mode_state))
+                        cast(str, self.device.states.get_value(mode_state))
                     ]
                 )
                 is not None
@@ -297,11 +304,15 @@ class AtlanticPassAPCZoneControlZone(AtlanticPassAPCHeatingZone):
         mode = PRESET_MODES_TO_OVERKIZ[preset_mode]
 
         # For consistency, it is better both are synced like on the Thermostat.
-        await self.executor.async_execute_command(
-            OverkizCommand.SET_PASS_APC_HEATING_MODE, mode
-        )
-        await self.executor.async_execute_command(
-            OverkizCommand.SET_PASS_APC_COOLING_MODE, mode
+        await self.executor.async_execute_commands(
+            [
+                Command(
+                    name=OverkizCommand.SET_PASS_APC_HEATING_MODE, parameters=[mode]
+                ),
+                Command(
+                    name=OverkizCommand.SET_PASS_APC_COOLING_MODE, parameters=[mode]
+                ),
+            ]
         )
 
         await self.async_refresh_modes()
@@ -321,7 +332,7 @@ class AtlanticPassAPCZoneControlZone(AtlanticPassAPCHeatingZone):
         if device_hvac_mode == HVACMode.COOL:
             return cast(
                 float,
-                self.executor.select_state(
+                self.device.states.get_value(
                     OverkizState.CORE_COOLING_TARGET_TEMPERATURE
                 ),
             )
@@ -329,13 +340,13 @@ class AtlanticPassAPCZoneControlZone(AtlanticPassAPCHeatingZone):
         if device_hvac_mode == HVACMode.HEAT:
             return cast(
                 float,
-                self.executor.select_state(
+                self.device.states.get_value(
                     OverkizState.CORE_HEATING_TARGET_TEMPERATURE
                 ),
             )
 
         return cast(
-            float, self.executor.select_state(OverkizState.CORE_TARGET_TEMPERATURE)
+            float, self.device.states.get_value(OverkizState.CORE_TARGET_TEMPERATURE)
         )
 
     @property
@@ -347,7 +358,7 @@ class AtlanticPassAPCZoneControlZone(AtlanticPassAPCHeatingZone):
 
         return cast(
             float,
-            self.executor.select_state(OverkizState.CORE_COOLING_TARGET_TEMPERATURE),
+            self.device.states.get_value(OverkizState.CORE_COOLING_TARGET_TEMPERATURE),
         )
 
     @property
@@ -359,7 +370,7 @@ class AtlanticPassAPCZoneControlZone(AtlanticPassAPCHeatingZone):
 
         return cast(
             float,
-            self.executor.select_state(OverkizState.CORE_HEATING_TARGET_TEMPERATURE),
+            self.device.states.get_value(OverkizState.CORE_HEATING_TARGET_TEMPERATURE),
         )
 
     async def async_set_temperature(self, **kwargs: Any) -> None:
@@ -374,36 +385,50 @@ class AtlanticPassAPCZoneControlZone(AtlanticPassAPCHeatingZone):
         target_temp_high = kwargs.get(ATTR_TARGET_TEMP_HIGH)
         hvac_mode = self.hvac_mode
 
+        commands: list[Command] = []
+
         if hvac_mode == HVACMode.HEAT_COOL:
             if target_temp_low is not None:
-                await self.executor.async_execute_command(
-                    OverkizCommand.SET_HEATING_TARGET_TEMPERATURE,
-                    target_temp_low,
+                commands.append(
+                    Command(
+                        name=OverkizCommand.SET_HEATING_TARGET_TEMPERATURE,
+                        parameters=[target_temp_low],
+                    )
                 )
 
             if target_temp_high is not None:
-                await self.executor.async_execute_command(
-                    OverkizCommand.SET_COOLING_TARGET_TEMPERATURE,
-                    target_temp_high,
+                commands.append(
+                    Command(
+                        name=OverkizCommand.SET_COOLING_TARGET_TEMPERATURE,
+                        parameters=[target_temp_high],
+                    )
                 )
 
         elif target_temperature is not None:
             if hvac_mode == HVACMode.HEAT:
-                await self.executor.async_execute_command(
-                    OverkizCommand.SET_HEATING_TARGET_TEMPERATURE,
-                    target_temperature,
+                commands.append(
+                    Command(
+                        name=OverkizCommand.SET_HEATING_TARGET_TEMPERATURE,
+                        parameters=[target_temperature],
+                    )
                 )
 
             elif hvac_mode == HVACMode.COOL:
-                await self.executor.async_execute_command(
-                    OverkizCommand.SET_COOLING_TARGET_TEMPERATURE,
-                    target_temperature,
+                commands.append(
+                    Command(
+                        name=OverkizCommand.SET_COOLING_TARGET_TEMPERATURE,
+                        parameters=[target_temperature],
+                    )
                 )
 
-        await self.executor.async_execute_command(
-            OverkizCommand.SET_DEROGATION_ON_OFF_STATE,
-            OverkizCommandParam.ON,
+        commands.append(
+            Command(
+                name=OverkizCommand.SET_DEROGATION_ON_OFF_STATE,
+                parameters=[OverkizCommandParam.ON],
+            )
         )
+
+        await self.executor.async_execute_commands(commands)
 
         await self.async_refresh_modes()
 
@@ -413,24 +438,14 @@ class AtlanticPassAPCZoneControlZone(AtlanticPassAPCHeatingZone):
         # The device needs a bit of time to update everything before a refresh.
         await sleep(2)
 
-        await self.executor.async_execute_command(
-            OverkizCommand.REFRESH_PASS_APC_HEATING_MODE
-        )
-
-        await self.executor.async_execute_command(
-            OverkizCommand.REFRESH_PASS_APC_HEATING_PROFILE
-        )
-
-        await self.executor.async_execute_command(
-            OverkizCommand.REFRESH_PASS_APC_COOLING_MODE
-        )
-
-        await self.executor.async_execute_command(
-            OverkizCommand.REFRESH_PASS_APC_COOLING_PROFILE
-        )
-
-        await self.executor.async_execute_command(
-            OverkizCommand.REFRESH_TARGET_TEMPERATURE
+        await self.executor.async_execute_commands(
+            [
+                Command(name=OverkizCommand.REFRESH_PASS_APC_HEATING_MODE),
+                Command(name=OverkizCommand.REFRESH_PASS_APC_HEATING_PROFILE),
+                Command(name=OverkizCommand.REFRESH_PASS_APC_COOLING_MODE),
+                Command(name=OverkizCommand.REFRESH_PASS_APC_COOLING_PROFILE),
+                Command(name=OverkizCommand.REFRESH_TARGET_TEMPERATURE),
+            ]
         )
 
     @property
@@ -442,7 +457,7 @@ class AtlanticPassAPCZoneControlZone(AtlanticPassAPCHeatingZone):
         if device_hvac_mode in (HVACMode.HEAT, HVACMode.HEAT_COOL):
             return cast(
                 float,
-                self.executor.select_state(
+                self.device.states.get_value(
                     OverkizState.CORE_MINIMUM_HEATING_TARGET_TEMPERATURE
                 ),
             )
@@ -450,7 +465,7 @@ class AtlanticPassAPCZoneControlZone(AtlanticPassAPCHeatingZone):
         if device_hvac_mode == HVACMode.COOL:
             return cast(
                 float,
-                self.executor.select_state(
+                self.device.states.get_value(
                     OverkizState.CORE_MINIMUM_COOLING_TARGET_TEMPERATURE
                 ),
             )
@@ -466,7 +481,7 @@ class AtlanticPassAPCZoneControlZone(AtlanticPassAPCHeatingZone):
         if device_hvac_mode == HVACMode.HEAT:
             return cast(
                 float,
-                self.executor.select_state(
+                self.device.states.get_value(
                     OverkizState.CORE_MAXIMUM_HEATING_TARGET_TEMPERATURE
                 ),
             )
@@ -474,7 +489,7 @@ class AtlanticPassAPCZoneControlZone(AtlanticPassAPCHeatingZone):
         if device_hvac_mode in (HVACMode.COOL, HVACMode.HEAT_COOL):
             return cast(
                 float,
-                self.executor.select_state(
+                self.device.states.get_value(
                     OverkizState.CORE_MAXIMUM_COOLING_TARGET_TEMPERATURE
                 ),
             )

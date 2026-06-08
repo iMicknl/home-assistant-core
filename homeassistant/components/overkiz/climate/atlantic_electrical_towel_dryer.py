@@ -3,6 +3,7 @@
 from typing import Any, cast
 
 from pyoverkiz.enums import OverkizCommand, OverkizCommandParam, OverkizState
+from pyoverkiz.models import Command
 
 from homeassistant.components.climate import (
     PRESET_BOOST,
@@ -64,7 +65,7 @@ class AtlanticElectricalTowelDryer(OverkizEntity, ClimateEntity):
 
         # Not all AtlanticElectricalTowelDryer models support temporary presets,
         # thus we check if the command is available and then extend the presets
-        if self.executor.has_command(OverkizCommand.SET_TOWEL_DRYER_TEMPORARY_STATE):
+        if self.device.supports_command(OverkizCommand.SET_TOWEL_DRYER_TEMPORARY_STATE):
             # Extend preset modes with supported temporary presets, avoiding duplicates
             self._attr_preset_modes += [
                 mode
@@ -77,7 +78,9 @@ class AtlanticElectricalTowelDryer(OverkizEntity, ClimateEntity):
         """Return hvac operation ie. heat, cool mode."""
         if OverkizState.CORE_OPERATING_MODE in self.device.states:
             return OVERKIZ_TO_HVAC_MODE[
-                cast(str, self.executor.select_state(OverkizState.CORE_OPERATING_MODE))
+                cast(
+                    str, self.device.states.get_value(OverkizState.CORE_OPERATING_MODE)
+                )
             ]
 
         return HVACMode.OFF
@@ -86,7 +89,7 @@ class AtlanticElectricalTowelDryer(OverkizEntity, ClimateEntity):
         """Set new target hvac mode."""
         await self.executor.async_execute_command(
             OverkizCommand.SET_TOWEL_DRYER_OPERATING_MODE,
-            HVAC_MODE_TO_OVERKIZ[hvac_mode],
+            [HVAC_MODE_TO_OVERKIZ[hvac_mode]],
         )
 
     @property
@@ -98,7 +101,8 @@ class AtlanticElectricalTowelDryer(OverkizEntity, ClimateEntity):
             else OverkizState.CORE_TARGET_TEMPERATURE
         )
 
-        return cast(float, self.executor.select_state(state))
+        state_obj = self.device.states.get(state)
+        return state_obj.value_as_float if state_obj else None
 
     @property
     def current_temperature(self) -> float | None:
@@ -108,7 +112,7 @@ class AtlanticElectricalTowelDryer(OverkizEntity, ClimateEntity):
                 OverkizState.CORE_TEMPERATURE
             )
         ):
-            return cast(float, temperature.value)
+            return temperature.value_as_float
 
         return None
 
@@ -118,11 +122,11 @@ class AtlanticElectricalTowelDryer(OverkizEntity, ClimateEntity):
 
         if self.hvac_mode == HVACMode.AUTO:
             await self.executor.async_execute_command(
-                OverkizCommand.SET_DEROGATED_TARGET_TEMPERATURE, temperature
+                OverkizCommand.SET_DEROGATED_TARGET_TEMPERATURE, [temperature]
             )
         else:
             await self.executor.async_execute_command(
-                OverkizCommand.SET_TARGET_TEMPERATURE, temperature
+                OverkizCommand.SET_TARGET_TEMPERATURE, [temperature]
             )
 
     @property
@@ -130,7 +134,9 @@ class AtlanticElectricalTowelDryer(OverkizEntity, ClimateEntity):
         """Return the current preset mode, e.g., home, away, temp."""
         if (
             OverkizState.CORE_OPERATING_MODE in self.device.states
-            and cast(str, self.executor.select_state(OverkizState.CORE_OPERATING_MODE))
+            and cast(
+                str, self.device.states.get_value(OverkizState.CORE_OPERATING_MODE)
+            )
             == OverkizCommandParam.INTERNAL
         ):
             return PRESET_PROG
@@ -139,7 +145,7 @@ class AtlanticElectricalTowelDryer(OverkizEntity, ClimateEntity):
             return OVERKIZ_TO_PRESET_MODE[
                 cast(
                     str,
-                    self.executor.select_state(
+                    self.device.states.get_value(
                         OverkizState.IO_TOWEL_DRYER_TEMPORARY_STATE
                     ),
                 )
@@ -152,18 +158,24 @@ class AtlanticElectricalTowelDryer(OverkizEntity, ClimateEntity):
         # If the preset mode is set to prog, we need to set
         # the operating mode to internal
         if preset_mode == PRESET_PROG:
+            commands: list[Command] = []
             # If currently in a temporary preset (drying or
             # boost), turn it off before turn on prog
             if self.preset_mode in (PRESET_DRYING, PRESET_BOOST):
-                await self.executor.async_execute_command(
-                    OverkizCommand.SET_TOWEL_DRYER_TEMPORARY_STATE,
-                    OverkizCommandParam.PERMANENT_HEATING,
+                commands.append(
+                    Command(
+                        name=OverkizCommand.SET_TOWEL_DRYER_TEMPORARY_STATE,
+                        parameters=[OverkizCommandParam.PERMANENT_HEATING],
+                    )
                 )
 
-            await self.executor.async_execute_command(
-                OverkizCommand.SET_TOWEL_DRYER_OPERATING_MODE,
-                OverkizCommandParam.INTERNAL,
+            commands.append(
+                Command(
+                    name=OverkizCommand.SET_TOWEL_DRYER_OPERATING_MODE,
+                    parameters=[OverkizCommandParam.INTERNAL],
+                )
             )
+            await self.executor.async_execute_commands(commands)
 
         # If the preset mode is set from prog to none, we need
         # to set the operating mode to external
@@ -171,7 +183,7 @@ class AtlanticElectricalTowelDryer(OverkizEntity, ClimateEntity):
         elif preset_mode == PRESET_NONE and self.preset_mode == PRESET_PROG:
             await self.executor.async_execute_command(
                 OverkizCommand.SET_TOWEL_DRYER_OPERATING_MODE,
-                OverkizCommandParam.AUTO,
+                [OverkizCommandParam.AUTO],
             )
 
         # Normal behavior of setting a preset mode
@@ -179,5 +191,5 @@ class AtlanticElectricalTowelDryer(OverkizEntity, ClimateEntity):
         elif PRESET_DRYING in self._attr_preset_modes:
             await self.executor.async_execute_command(
                 OverkizCommand.SET_TOWEL_DRYER_TEMPORARY_STATE,
-                PRESET_MODE_TO_OVERKIZ[preset_mode],
+                [PRESET_MODE_TO_OVERKIZ[preset_mode]],
             )

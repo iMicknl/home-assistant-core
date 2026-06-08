@@ -45,7 +45,7 @@ class OverkizSiren(OverkizEntity, SirenEntity):
     def is_on(self) -> bool:
         """Get whether the siren is in on state."""
         return (
-            self.executor.select_state(OverkizState.CORE_ON_OFF)
+            self.device.states.get_value(OverkizState.CORE_ON_OFF)
             == OverkizCommandParam.ON
         )
 
@@ -61,10 +61,12 @@ class OverkizSiren(OverkizEntity, SirenEntity):
         await self.executor.async_execute_command(
             # https://www.tahomalink.com/enduser-mobile-web/steer-html5-client/vendor/somfy/io/siren/const.js
             OverkizCommand.RING_WITH_SINGLE_SIMPLE_SEQUENCE,
-            duration_in_ms,  # duration
-            75,  # 90 seconds bip, 30 seconds silence
-            2,  # repeat 3 times
-            OverkizCommandParam.MEMORIZED_VOLUME,
+            [
+                duration_in_ms,  # duration
+                75,  # 90 seconds bip, 30 seconds silence
+                2,  # repeat 3 times
+                OverkizCommandParam.MEMORIZED_VOLUME,
+            ],
         )
 
     async def async_turn_off(self, **kwargs: Any) -> None:

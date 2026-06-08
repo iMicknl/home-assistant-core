@@ -1,11 +1,11 @@
 """Support for Overkiz (virtual) numbers."""
 
-import asyncio
-from collections.abc import Awaitable, Callable
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import cast
 
 from pyoverkiz.enums import OverkizCommand, OverkizCommandParam, OverkizState
+from pyoverkiz.models import Command
 
 from homeassistant.components.number import (
     NumberDeviceClass,
@@ -21,9 +21,6 @@ from .const import IGNORED_OVERKIZ_DEVICES
 from .coordinator import OverkizDataUpdateCoordinator
 from .entity import OverkizDescriptiveEntity
 
-BOOST_MODE_DURATION_DELAY = 1
-OPERATING_MODE_DELAY = 3
-
 
 @dataclass(frozen=True, kw_only=True)
 class OverkizNumberDescription(NumberEntityDescription):
@@ -34,41 +31,35 @@ class OverkizNumberDescription(NumberEntityDescription):
     min_value_state_name: str | None = None
     max_value_state_name: str | None = None
     inverted: bool = False
-    set_native_value: (
-        Callable[[float, Callable[..., Awaitable[None]]], Awaitable[None]] | None
-    ) = None
+    set_native_value: Callable[[float], list[Command]] | None = None
 
 
-async def _async_set_native_value_boost_mode_duration(
-    value: float, execute_command: Callable[..., Awaitable[None]]
-) -> None:
-    """Update the boost duration value."""
-
+def _boost_mode_duration_commands(value: float) -> list[Command]:
+    """Build the boost-duration command sequence."""
     if value > 0:
-        await execute_command(OverkizCommand.SET_BOOST_MODE_DURATION, value)
-        await asyncio.sleep(
-            BOOST_MODE_DURATION_DELAY
-        )  # wait one second to not overload the device
-        await execute_command(
-            OverkizCommand.SET_CURRENT_OPERATING_MODE,
-            {
-                OverkizCommandParam.RELAUNCH: OverkizCommandParam.ON,
-                OverkizCommandParam.ABSENCE: OverkizCommandParam.OFF,
-            },
-        )
+        relaunch = OverkizCommandParam.ON
+        commands = [
+            Command(name=OverkizCommand.SET_BOOST_MODE_DURATION, parameters=[value])
+        ]
     else:
-        await execute_command(
-            OverkizCommand.SET_CURRENT_OPERATING_MODE,
-            {
-                OverkizCommandParam.RELAUNCH: OverkizCommandParam.OFF,
-                OverkizCommandParam.ABSENCE: OverkizCommandParam.OFF,
-            },
-        )
+        relaunch = OverkizCommandParam.OFF
+        commands = []
 
-    await asyncio.sleep(
-        OPERATING_MODE_DELAY
-    )  # wait 3 seconds to have the new duration in
-    await execute_command(OverkizCommand.REFRESH_BOOST_MODE_DURATION)
+    commands.append(
+        Command(
+            name=OverkizCommand.SET_CURRENT_OPERATING_MODE,
+            parameters=[
+                {
+                    OverkizCommandParam.RELAUNCH: relaunch,
+                    OverkizCommandParam.ABSENCE: OverkizCommandParam.OFF,
+                }
+            ],
+        )
+    )
+    # One action group is a single poll, so the new duration is read back
+    # without the per-execution settle delays the old flow needed.
+    commands.append(Command(name=OverkizCommand.REFRESH_BOOST_MODE_DURATION))
+    return commands
 
 
 NUMBER_DESCRIPTIONS: list[OverkizNumberDescription] = [
@@ -168,7 +159,7 @@ NUMBER_DESCRIPTIONS: list[OverkizNumberDescription] = [
         command=OverkizCommand.SET_BOOST_MODE_DURATION,
         native_min_value=0,
         native_max_value=7,
-        set_native_value=_async_set_native_value_boost_mode_duration,
+        set_native_value=_boost_mode_duration_commands,
         entity_category=EntityCategory.CONFIG,
         device_class=NumberDeviceClass.DURATION,
         native_unit_of_measurement=UnitOfTime.DAYS,
@@ -233,28 +224,38 @@ class OverkizNumber(OverkizDescriptiveEntity, NumberEntity):
         """Initialize a device."""
         super().__init__(device_url, coordinator, description)
 
-        if self.entity_description.min_value_state_name and (
-            state := self.device.states.get(
-                self.entity_description.min_value_state_name
+        if (
+            self.entity_description.min_value_state_name
+            and (
+                value := self.device.states.get_value(
+                    self.entity_description.min_value_state_name
+                )
             )
+            is not None
         ):
-            self._attr_native_min_value = cast(float, state.value)
+            self._attr_native_min_value = cast(float, value)
 
-        if self.entity_description.max_value_state_name and (
-            state := self.device.states.get(
-                self.entity_description.max_value_state_name
+        if (
+            self.entity_description.max_value_state_name
+            and (
+                value := self.device.states.get_value(
+                    self.entity_description.max_value_state_name
+                )
             )
+            is not None
         ):
-            self._attr_native_max_value = cast(float, state.value)
+            self._attr_native_max_value = cast(float, value)
 
     @property
     def native_value(self) -> float | None:
         """Return the entity value to represent the entity state."""
-        if state := self.device.states.get(self.entity_description.key):
+        if (
+            value := self.device.states.get_value(self.entity_description.key)
+        ) is not None:
             if self.entity_description.inverted:
-                return self.native_max_value - cast(float, state.value)
+                return self.native_max_value - cast(float, value)
 
-            return cast(float, state.value)
+            return cast(float, value)
 
         return None
 
@@ -264,11 +265,11 @@ class OverkizNumber(OverkizDescriptiveEntity, NumberEntity):
             value = self.native_max_value - value
 
         if self.entity_description.set_native_value:
-            await self.entity_description.set_native_value(
-                value, self.executor.async_execute_command
+            await self.executor.async_execute_commands(
+                self.entity_description.set_native_value(value)
             )
             return
 
         await self.executor.async_execute_command(
-            self.entity_description.command, value
+            self.entity_description.command, [value]
         )

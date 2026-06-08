@@ -67,7 +67,7 @@ class EvoHomeController(OverkizEntity, ClimateEntity):
     async def async_set_hvac_mode(self, hvac_mode: HVACMode) -> None:
         """Set new target hvac mode."""
         await self.executor.async_execute_command(
-            OverkizCommand.SET_OPERATING_MODE, HVAC_MODES_TO_OVERKIZ[hvac_mode]
+            OverkizCommand.SET_OPERATING_MODE, [HVAC_MODES_TO_OVERKIZ[hvac_mode]]
         )
 
     @property
@@ -96,6 +96,8 @@ class EvoHomeController(OverkizEntity, ClimateEntity):
 
         await self.executor.async_execute_command(
             OverkizCommand.SET_OPERATING_MODE,
-            PRESET_MODES_TO_OVERKIZ[preset_mode],
-            time_interval.strftime("%Y/%m/%d %H:%M"),
+            [
+                PRESET_MODES_TO_OVERKIZ[preset_mode],
+                time_interval.strftime("%Y/%m/%d %H:%M"),
+            ],
         )

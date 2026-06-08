@@ -4,7 +4,7 @@ from collections.abc import Generator
 from unittest.mock import patch
 
 from freezegun.api import FrozenDateTimeFactory
-from pyoverkiz.enums import OverkizState
+from pyoverkiz.enums import EventName, OverkizState
 from pyoverkiz.models import Event
 import pytest
 
@@ -13,13 +13,7 @@ from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 
 from .conftest import FixtureDevice, MockOverkizClient, SetupOverkizIntegration
-from .helpers import (
-    async_deliver_events,
-    device_available_event,
-    device_removed_event,
-    device_state_changed_event,
-    device_unavailable_event,
-)
+from .helpers import async_deliver_events, build_event
 
 VALVE = FixtureDevice(
     "setup/cloud_nexity_rail_din_europe.json",
@@ -54,7 +48,8 @@ async def test_valve_hvac_action_none_state(
         freezer,
         mock_client,
         [
-            device_state_changed_event(
+            build_event(
+                EventName.DEVICE_STATE_CHANGED,
                 device_url=VALVE.device_url,
                 device_states=[
                     {
@@ -79,16 +74,26 @@ UNKNOWN_DEVICE_URL = "zigbee://1234-5678-1698/65535"
 @pytest.mark.parametrize(
     "event",
     [
-        pytest.param(device_available_event(UNKNOWN_DEVICE_URL), id="available"),
-        pytest.param(device_unavailable_event(UNKNOWN_DEVICE_URL), id="unavailable"),
         pytest.param(
-            device_state_changed_event(
-                UNKNOWN_DEVICE_URL,
-                [{"name": "core:OnOffState", "type": 3, "value": "on"}],
+            build_event(EventName.DEVICE_AVAILABLE, device_url=UNKNOWN_DEVICE_URL),
+            id="available",
+        ),
+        pytest.param(
+            build_event(EventName.DEVICE_UNAVAILABLE, device_url=UNKNOWN_DEVICE_URL),
+            id="unavailable",
+        ),
+        pytest.param(
+            build_event(
+                EventName.DEVICE_STATE_CHANGED,
+                device_url=UNKNOWN_DEVICE_URL,
+                device_states=[{"name": "core:OnOffState", "type": 3, "value": "on"}],
             ),
             id="state_changed",
         ),
-        pytest.param(device_removed_event(UNKNOWN_DEVICE_URL), id="removed"),
+        pytest.param(
+            build_event(EventName.DEVICE_REMOVED, device_url=UNKNOWN_DEVICE_URL),
+            id="removed",
+        ),
     ],
 )
 async def test_events_for_unknown_device_url(

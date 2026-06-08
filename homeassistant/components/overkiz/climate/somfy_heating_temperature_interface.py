@@ -116,11 +116,11 @@ class SomfyHeatingTemperatureInterface(OverkizEntity, ClimateEntity):
         """Set new target hvac mode."""
         if hvac_mode is HVACMode.OFF:
             await self.executor.async_execute_command(
-                OverkizCommand.SET_ON_OFF, OverkizCommandParam.OFF
+                OverkizCommand.SET_ON_OFF, [OverkizCommandParam.OFF]
             )
         else:
             await self.executor.async_execute_command(
-                OverkizCommand.SET_ACTIVE_MODE, HVAC_MODES_TO_OVERKIZ[hvac_mode]
+                OverkizCommand.SET_ACTIVE_MODE, [HVAC_MODES_TO_OVERKIZ[hvac_mode]]
             )
 
     @property
@@ -138,7 +138,7 @@ class SomfyHeatingTemperatureInterface(OverkizEntity, ClimateEntity):
         """Set new preset mode."""
         await self.executor.async_execute_command(
             OverkizCommand.SET_MANU_AND_SET_POINT_MODES,
-            PRESET_MODES_TO_OVERKIZ[preset_mode],
+            [PRESET_MODES_TO_OVERKIZ[preset_mode]],
         )
 
     @property
@@ -192,6 +192,6 @@ class SomfyHeatingTemperatureInterface(OverkizEntity, ClimateEntity):
             )
         ) and mode.value_as_str:
             await self.executor.async_execute_command(
-                SETPOINT_MODE_TO_OVERKIZ_COMMAND[mode.value_as_str], temperature
+                SETPOINT_MODE_TO_OVERKIZ_COMMAND[mode.value_as_str], [temperature]
             )
             return

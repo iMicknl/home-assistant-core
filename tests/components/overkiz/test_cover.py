@@ -6,7 +6,7 @@ from typing import Any
 from unittest.mock import patch
 
 from freezegun.api import FrozenDateTimeFactory
-from pyoverkiz.enums import ExecutionState, OverkizCommandParam, OverkizState
+from pyoverkiz.enums import EventName, ExecutionState, OverkizCommandParam, OverkizState
 import pytest
 from syrupy.assertion import SnapshotAssertion
 
@@ -39,13 +39,7 @@ from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers import entity_registry as er
 
 from .conftest import FixtureDevice, MockOverkizClient, SetupOverkizIntegration
-from .helpers import (
-    assert_command_call,
-    async_deliver_events,
-    device_state_changed_event,
-    device_unavailable_event,
-    execution_state_changed_event,
-)
+from .helpers import assert_command_call, async_deliver_events, build_event
 
 from tests.common import snapshot_platform
 
@@ -245,8 +239,8 @@ async def test_cover_entities_snapshot(
         (DYNAMIC_GARAGE_DOOR, SERVICE_OPEN_COVER, "open", None, CoverState.OPENING),
         (DYNAMIC_GARAGE_DOOR_OGP, SERVICE_OPEN_COVER, "open", None, CoverState.OPENING),
         (DYNAMIC_GATE, SERVICE_OPEN_COVER, "open", None, CoverState.OPENING),
-        (RTS_GATE_4T, SERVICE_OPEN_COVER, "cycle", [0], CoverState.OPENING),
-        (RTS_GARAGE_DOOR_4T, SERVICE_OPEN_COVER, "cycle", [0], CoverState.OPENING),
+        (RTS_GATE_4T, SERVICE_OPEN_COVER, "cycle", None, CoverState.OPENING),
+        (RTS_GARAGE_DOOR_4T, SERVICE_OPEN_COVER, "cycle", None, CoverState.OPENING),
         (CYCLIC_GARAGE_DOOR, SERVICE_OPEN_COVER, "cycle", None, CoverState.OPENING),
         (CYCLIC_SWINGING_GATE, SERVICE_OPEN_COVER, "cycle", None, CoverState.OPENING),
         (SLIDING_DISCRETE_GATE, SERVICE_OPEN_COVER, "open", None, CoverState.OPENING),
@@ -263,12 +257,18 @@ async def test_cover_entities_snapshot(
             UP_DOWN_BIOCLIMATIC_PERGOLA,
             SERVICE_OPEN_COVER,
             "open",
-            [0],
+            None,
             CoverState.OPENING,
         ),
-        (TILT_ONLY_VENETIAN_BLIND, SERVICE_OPEN_COVER, "open", [0], CoverState.OPENING),
-        (UP_DOWN_VENETIAN_BLIND, SERVICE_OPEN_COVER, "open", [0], CoverState.OPENING),
-        (UP_DOWN_SHEER_SCREEN, SERVICE_OPEN_COVER, "open", [0], CoverState.OPENING),
+        (
+            TILT_ONLY_VENETIAN_BLIND,
+            SERVICE_OPEN_COVER,
+            "open",
+            None,
+            CoverState.OPENING,
+        ),
+        (UP_DOWN_VENETIAN_BLIND, SERVICE_OPEN_COVER, "open", None, CoverState.OPENING),
+        (UP_DOWN_SHEER_SCREEN, SERVICE_OPEN_COVER, "open", None, CoverState.OPENING),
         (
             DYNAMIC_VENETIAN_BLIND,
             SERVICE_OPEN_COVER,
@@ -291,8 +291,8 @@ async def test_cover_entities_snapshot(
         (DYNAMIC_GATE, SERVICE_CLOSE_COVER, "close", None, CoverState.CLOSING),
         # Cycle command is used for both open and close; device reports OPENING
         # since the RTS protocol has no directional feedback.
-        (RTS_GATE_4T, SERVICE_CLOSE_COVER, "cycle", [0], CoverState.OPENING),
-        (RTS_GARAGE_DOOR_4T, SERVICE_CLOSE_COVER, "cycle", [0], CoverState.OPENING),
+        (RTS_GATE_4T, SERVICE_CLOSE_COVER, "cycle", None, CoverState.OPENING),
+        (RTS_GARAGE_DOOR_4T, SERVICE_CLOSE_COVER, "cycle", None, CoverState.OPENING),
         (CYCLIC_GARAGE_DOOR, SERVICE_CLOSE_COVER, "cycle", None, CoverState.OPENING),
         (CYCLIC_SWINGING_GATE, SERVICE_CLOSE_COVER, "cycle", None, CoverState.OPENING),
         (SLIDING_DISCRETE_GATE, SERVICE_CLOSE_COVER, "close", None, CoverState.CLOSING),
@@ -309,18 +309,24 @@ async def test_cover_entities_snapshot(
             UP_DOWN_BIOCLIMATIC_PERGOLA,
             SERVICE_CLOSE_COVER,
             "close",
-            [0],
+            None,
             CoverState.CLOSING,
         ),
         (
             TILT_ONLY_VENETIAN_BLIND,
             SERVICE_CLOSE_COVER,
             "close",
-            [0],
+            None,
             CoverState.CLOSING,
         ),
-        (UP_DOWN_VENETIAN_BLIND, SERVICE_CLOSE_COVER, "close", [0], CoverState.CLOSING),
-        (UP_DOWN_SHEER_SCREEN, SERVICE_CLOSE_COVER, "close", [0], CoverState.CLOSING),
+        (
+            UP_DOWN_VENETIAN_BLIND,
+            SERVICE_CLOSE_COVER,
+            "close",
+            None,
+            CoverState.CLOSING,
+        ),
+        (UP_DOWN_SHEER_SCREEN, SERVICE_CLOSE_COVER, "close", None, CoverState.CLOSING),
         (
             DYNAMIC_VENETIAN_BLIND,
             SERVICE_CLOSE_COVER,
@@ -349,10 +355,10 @@ async def test_cover_entities_snapshot(
             UP_DOWN_BIOCLIMATIC_PERGOLA,
             SERVICE_STOP_COVER,
             "stop",
-            [0],
+            None,
             STATE_UNKNOWN,
         ),
-        (TILT_ONLY_VENETIAN_BLIND, SERVICE_STOP_COVER, "stop", [0], STATE_UNKNOWN),
+        (TILT_ONLY_VENETIAN_BLIND, SERVICE_STOP_COVER, "stop", None, STATE_UNKNOWN),
         (
             DYNAMIC_VENETIAN_BLIND,
             SERVICE_STOP_COVER,
@@ -378,11 +384,11 @@ async def test_cover_entities_snapshot(
             TILT_ONLY_VENETIAN_BLIND,
             SERVICE_STOP_COVER_TILT,
             "stop",
-            [0],
+            None,
             STATE_UNKNOWN,
         ),
-        (UP_DOWN_VENETIAN_BLIND, SERVICE_STOP_COVER, "stop", [0], STATE_UNKNOWN),
-        (UP_DOWN_SHEER_SCREEN, SERVICE_STOP_COVER, "stop", [0], STATE_UNKNOWN),
+        (UP_DOWN_VENETIAN_BLIND, SERVICE_STOP_COVER, "stop", None, STATE_UNKNOWN),
+        (UP_DOWN_SHEER_SCREEN, SERVICE_STOP_COVER, "stop", None, STATE_UNKNOWN),
         (
             UP_DOWN_VENETIAN_BLIND,
             SERVICE_OPEN_COVER_TILT,
@@ -401,7 +407,7 @@ async def test_cover_entities_snapshot(
             UP_DOWN_VENETIAN_BLIND,
             SERVICE_STOP_COVER_TILT,
             "stop",
-            [0],
+            None,
             STATE_UNKNOWN,
         ),
         (
@@ -422,7 +428,7 @@ async def test_cover_entities_snapshot(
             UP_DOWN_SHEER_SCREEN,
             SERVICE_STOP_COVER_TILT,
             "stop",
-            [0],
+            None,
             STATE_UNKNOWN,
         ),
     ],
@@ -646,7 +652,8 @@ async def test_is_closed_falls_back_to_position(
         freezer,
         mock_client,
         [
-            device_state_changed_event(
+            build_event(
+                EventName.DEVICE_STATE_CHANGED,
                 device_url=POSITIONABLE_VENETIAN_BLIND.device_url,
                 device_states=[
                     {
@@ -704,10 +711,11 @@ async def test_cover_tilt_services(
         freezer,
         mock_client,
         [
-            execution_state_changed_event(
+            build_event(
+                EventName.EXECUTION_STATE_CHANGED,
+                device_url=PERGOLA.device_url,
                 exec_id="exec-1",
-                new_state=ExecutionState.COMPLETED,
-                old_state=ExecutionState.IN_PROGRESS,
+                new_state=ExecutionState.COMPLETED.value,
             )
         ],
     )
@@ -773,7 +781,8 @@ async def test_cover_state_updates(
         freezer,
         mock_client,
         [
-            device_state_changed_event(
+            build_event(
+                EventName.DEVICE_STATE_CHANGED,
                 device_url=SHUTTER.device_url,
                 device_states=[
                     {
@@ -811,7 +820,8 @@ async def test_cover_state_updates(
         freezer,
         mock_client,
         [
-            device_state_changed_event(
+            build_event(
+                EventName.DEVICE_STATE_CHANGED,
                 device_url=SHUTTER.device_url,
                 device_states=[
                     {
@@ -858,7 +868,8 @@ async def test_cover_state_updates(
         freezer,
         mock_client,
         [
-            device_state_changed_event(
+            build_event(
+                EventName.DEVICE_STATE_CHANGED,
                 device_url=SHUTTER.device_url,
                 device_states=[
                     {
@@ -892,10 +903,11 @@ async def test_cover_state_updates(
         freezer,
         mock_client,
         [
-            execution_state_changed_event(
+            build_event(
+                EventName.EXECUTION_STATE_CHANGED,
+                device_url=SHUTTER.device_url,
                 exec_id="exec-1",
-                new_state=ExecutionState.COMPLETED,
-                old_state=ExecutionState.IN_PROGRESS,
+                new_state=ExecutionState.COMPLETED.value,
             )
         ],
     )
@@ -906,7 +918,7 @@ async def test_cover_state_updates(
         hass,
         freezer,
         mock_client,
-        [device_unavailable_event(device_url=SHUTTER.device_url)],
+        [build_event(EventName.DEVICE_UNAVAILABLE, device_url=SHUTTER.device_url)],
     )
     assert hass.states.get(SHUTTER.entity_id).state == STATE_UNAVAILABLE
 
@@ -957,7 +969,8 @@ async def test_vertical_cover_moving_direction(
         freezer,
         mock_client,
         [
-            device_state_changed_event(
+            build_event(
+                EventName.DEVICE_STATE_CHANGED,
                 device_url=SHUTTER.device_url,
                 device_states=device_states,
             )
@@ -1021,7 +1034,8 @@ async def test_awning_moving_direction(
         freezer,
         mock_client,
         [
-            device_state_changed_event(
+            build_event(
+                EventName.DEVICE_STATE_CHANGED,
                 device_url=AWNING.device_url,
                 device_states=device_states,
             )
@@ -1061,7 +1075,8 @@ async def test_awning_direct_position_mapping(
         freezer,
         mock_client,
         [
-            device_state_changed_event(
+            build_event(
+                EventName.DEVICE_STATE_CHANGED,
                 device_url=AWNING.device_url,
                 device_states=[
                     {
@@ -1090,7 +1105,8 @@ async def test_moving_offset_missing_closure_states(
         freezer,
         mock_client,
         [
-            device_state_changed_event(
+            build_event(
+                EventName.DEVICE_STATE_CHANGED,
                 device_url=PERGOLA.device_url,
                 device_states=[
                     {
@@ -1121,7 +1137,8 @@ async def test_moving_offset_none_values(
         freezer,
         mock_client,
         [
-            device_state_changed_event(
+            build_event(
+                EventName.DEVICE_STATE_CHANGED,
                 device_url=SHUTTER.device_url,
                 device_states=[
                     {
@@ -1167,7 +1184,8 @@ async def test_tilt_position_none_value(
         freezer,
         mock_client,
         [
-            device_state_changed_event(
+            build_event(
+                EventName.DEVICE_STATE_CHANGED,
                 device_url=PERGOLA.device_url,
                 device_states=[
                     {
@@ -1219,6 +1237,37 @@ async def test_low_speed_cover_open_close(
         command_name="setClosureAndLinearSpeed",
         parameters=[100, OverkizCommandParam.LOWSPEED],
     )
+
+
+async def test_shared_exec_id_tracks_all_devices(
+    hass: HomeAssistant,
+    setup_overkiz_integration: SetupOverkizIntegration,
+    mock_client: MockOverkizClient,
+) -> None:
+    """Two covers sharing one exec_id must both report as moving.
+
+    The pyoverkiz action queue merges concurrent action groups into a single
+    execution and returns the same exec_id to every caller. The coordinator
+    must accumulate a record per device for that exec_id instead of letting the
+    second command overwrite the first.
+    """
+    # SHUTTER and GARAGE both live in cloud_somfy_tahoma_v2_europe.json.
+    await setup_overkiz_integration(fixture=SHUTTER.fixture)
+
+    mock_client.execute_action_group.side_effect = None
+    mock_client.execute_action_group.return_value = "exec-shared"
+
+    for entity_id in (SHUTTER.entity_id, GARAGE.entity_id):
+        await hass.services.async_call(
+            COVER_DOMAIN,
+            SERVICE_OPEN_COVER,
+            {ATTR_ENTITY_ID: entity_id},
+            blocking=True,
+        )
+    await hass.async_block_till_done()
+
+    assert hass.states.get(SHUTTER.entity_id).state == CoverState.OPENING
+    assert hass.states.get(GARAGE.entity_id).state == CoverState.OPENING
 
 
 async def test_set_cover_position_and_tilt_service_is_registered(
@@ -1319,7 +1368,7 @@ async def test_set_cover_position_and_tilt_unsupported_command_raises(
 
     with (
         patch(
-            "homeassistant.components.overkiz.executor.OverkizExecutor.has_command",
+            "pyoverkiz.models.Device.supports_command",
             return_value=False,
         ),
         pytest.raises(ServiceValidationError),

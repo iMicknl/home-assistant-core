@@ -527,10 +527,7 @@ async def async_setup_entry(
 
             # Cover platform does not support configuring the speed of the cover
             # For covers where the speed can be configured, we create a separate entity
-            if (
-                OverkizCommand.SET_CLOSURE_AND_LINEAR_SPEED
-                in device.definition.commands
-            ):
+            if device.supports_command(OverkizCommand.SET_CLOSURE_AND_LINEAR_SPEED):
                 entities.append(
                     OverkizLowSpeedCover(
                         device.device_url, data.coordinator, description
@@ -561,46 +558,52 @@ class OverkizCover(OverkizDescriptiveEntity, CoverEntity):
         # and HA sets by default open/close as supported feature which conflicts
         supported_features = CoverEntityFeature(0)
 
-        if self.entity_description.open_command and self.executor.has_command(
+        if self.entity_description.open_command and self.device.supports_command(
             self.entity_description.open_command
         ):
             supported_features |= CoverEntityFeature.OPEN
 
-            if self.entity_description.stop_command and self.executor.has_command(
+            if self.entity_description.stop_command and self.device.supports_command(
                 self.entity_description.stop_command
             ):
                 supported_features |= CoverEntityFeature.STOP
 
-        if self.entity_description.close_command and self.executor.has_command(
+        if self.entity_description.close_command and self.device.supports_command(
             self.entity_description.close_command
         ):
             supported_features |= CoverEntityFeature.CLOSE
 
-        if self.entity_description.open_tilt_command and self.executor.has_command(
+        if self.entity_description.open_tilt_command and self.device.supports_command(
             self.entity_description.open_tilt_command
         ):
             supported_features |= CoverEntityFeature.OPEN_TILT
 
-            if self.entity_description.stop_tilt_command and self.executor.has_command(
+            if (
                 self.entity_description.stop_tilt_command
+                and self.device.supports_command(
+                    self.entity_description.stop_tilt_command
+                )
             ):
                 supported_features |= CoverEntityFeature.STOP_TILT
 
-        if self.entity_description.close_tilt_command and self.executor.has_command(
+        if self.entity_description.close_tilt_command and self.device.supports_command(
             self.entity_description.close_tilt_command
         ):
             supported_features |= CoverEntityFeature.CLOSE_TILT
 
         if (
             self.entity_description.set_tilt_position_command
-            and self.executor.has_command(
+            and self.device.supports_command(
                 self.entity_description.set_tilt_position_command
             )
         ):
             supported_features |= CoverEntityFeature.SET_TILT_POSITION
 
-        if self.entity_description.set_position_command and self.executor.has_command(
+        if (
             self.entity_description.set_position_command
+            and self.device.supports_command(
+                self.entity_description.set_position_command
+            )
         ):
             supported_features |= CoverEntityFeature.SET_POSITION
 
@@ -610,10 +613,10 @@ class OverkizCover(OverkizDescriptiveEntity, CoverEntity):
     def is_closed(self) -> bool | None:
         """Return if the cover is closed."""
         if is_closed_state := self.entity_description.is_closed_state:
-            if state := self.device.states.get(is_closed_state):
-                if state.value == OverkizCommandParam.UNKNOWN:
+            if value := self.device.states.get_value(is_closed_state):
+                if value == OverkizCommandParam.UNKNOWN:
                     return None
-                return state.value == OverkizCommandParam.CLOSED
+                return value == OverkizCommandParam.CLOSED
 
         if (position := self.current_cover_position) is not None:
             return position == 0
@@ -645,10 +648,12 @@ class OverkizCover(OverkizDescriptiveEntity, CoverEntity):
                 state_name,
             )
 
-            if fallback_state := self.device.states.get(
-                OverkizState.CORE_MEMORIZED_1_POSITION
-            ):
-                position = fallback_state.value_as_int
+            if (
+                fallback := self.device.states.get(
+                    OverkizState.CORE_MEMORIZED_1_POSITION
+                )
+            ) is not None:
+                position = fallback.value_as_int
             else:
                 return None
 
@@ -661,10 +666,10 @@ class OverkizCover(OverkizDescriptiveEntity, CoverEntity):
                 state_name,
             )
 
-            if fallback_state := self.device.states.get(
-                OverkizState.CORE_TARGET_CLOSURE
-            ):
-                position = fallback_state.value_as_int
+            if (
+                fallback := self.device.states.get(OverkizState.CORE_TARGET_CLOSURE)
+            ) is not None:
+                position = fallback.value_as_int
             else:
                 return None
 
@@ -684,7 +689,7 @@ class OverkizCover(OverkizDescriptiveEntity, CoverEntity):
             position = 100 - position
 
         if command := self.entity_description.set_position_command:
-            await self.executor.async_execute_command(command, position)
+            await self.executor.async_execute_command(command, [position])
 
     async def async_open_cover(self, **kwargs: Any) -> None:
         """Open the cover."""
@@ -709,17 +714,17 @@ class OverkizCover(OverkizDescriptiveEntity, CoverEntity):
         """
         state_name = self.entity_description.current_tilt_position_state
 
-        if state_name and (state := self.device.states.get(state_name)):
-            position = state.value_as_int
-            if position is None:
-                return None
+        if not state_name or not (state := self.device.states.get(state_name)):
+            return None
 
-            if self.entity_description.invert_tilt_position:
-                position = 100 - position
+        position = state.value_as_int
+        if position is None:
+            return None
 
-            return position
+        if self.entity_description.invert_tilt_position:
+            position = 100 - position
 
-        return None
+        return position
 
     async def async_set_cover_tilt_position(self, **kwargs: Any) -> None:
         """Move the cover tilt to a specific position."""
@@ -729,7 +734,7 @@ class OverkizCover(OverkizDescriptiveEntity, CoverEntity):
             position = 100 - position
 
         if command := self.entity_description.set_tilt_position_command:
-            await self.executor.async_execute_command(command, position)
+            await self.executor.async_execute_command(command, [position])
 
     async def async_set_cover_position_and_tilt(self, **kwargs: Any) -> None:
         """Move cover and tilt to a specific position.
@@ -742,7 +747,7 @@ class OverkizCover(OverkizDescriptiveEntity, CoverEntity):
         motor to stop between commands on some devices (e.g.
         Somfy DynamicExteriorVenetianBlind).
         """
-        if not self.executor.has_command(OverkizCommand.SET_CLOSURE_AND_ORIENTATION):
+        if not self.device.supports_command(OverkizCommand.SET_CLOSURE_AND_ORIENTATION):
             raise ServiceValidationError(
                 translation_domain=DOMAIN,
                 translation_key="unsupported_set_position_and_tilt",
@@ -758,22 +763,21 @@ class OverkizCover(OverkizDescriptiveEntity, CoverEntity):
 
         await self.executor.async_execute_command(
             OverkizCommand.SET_CLOSURE_AND_ORIENTATION,
-            position,
-            tilt_position,
+            [position, tilt_position],
         )
 
     async def async_open_cover_tilt(self, **kwargs: Any) -> None:
         """Open the cover tilt."""
         if command := self.entity_description.open_tilt_command:
             await self.executor.async_execute_command(
-                command, *self.entity_description.open_tilt_command_args
+                command, list(self.entity_description.open_tilt_command_args)
             )
 
     async def async_close_cover_tilt(self, **kwargs: Any) -> None:
         """Close the cover tilt."""
         if command := self.entity_description.close_tilt_command:
             await self.executor.async_execute_command(
-                command, *self.entity_description.close_tilt_command_args
+                command, list(self.entity_description.close_tilt_command_args)
             )
 
     async def async_stop_cover_tilt(self, **kwargs: Any) -> None:
@@ -830,9 +834,10 @@ class OverkizCover(OverkizDescriptiveEntity, CoverEntity):
     def is_running(self, command: OverkizCommand) -> bool:
         """Return if the given commands are currently running."""
         return any(
-            execution.get("device_url") == self.device.device_url
-            and execution.get("command_name") == command
-            for execution in self.coordinator.executions.values()
+            execution["device_url"] == self.device.device_url
+            and execution["command_name"] == command
+            for executions in self.coordinator.executions.values()
+            for execution in executions
         )
 
     @property
@@ -842,9 +847,10 @@ class OverkizCover(OverkizDescriptiveEntity, CoverEntity):
         if moving_state is None or moving_state.value_as_bool is not True:
             return None
 
-        current_closure = self.device.states.get(
+        position_state_name = (
             self.entity_description.current_position_state or OverkizState.CORE_CLOSURE
         )
+        current_closure = self.device.states.get(position_state_name)
         target_closure = self.device.states.get(OverkizState.CORE_TARGET_CLOSURE)
 
         if not current_closure or not target_closure:
@@ -893,6 +899,5 @@ class OverkizLowSpeedCover(OverkizCover):
         """Move the cover to a specific position with a low speed."""
         await self.executor.async_execute_command(
             OverkizCommand.SET_CLOSURE_AND_LINEAR_SPEED,
-            100 - position,
-            OverkizCommandParam.LOWSPEED,
+            [100 - position, OverkizCommandParam.LOWSPEED],
         )

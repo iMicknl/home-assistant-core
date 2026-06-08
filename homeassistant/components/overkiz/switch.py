@@ -145,7 +145,7 @@ class OverkizSwitch(OverkizDescriptiveEntity, SwitchEntity):
     def is_on(self) -> bool | None:
         """Return True if entity is on."""
         if self.entity_description.is_on:
-            return self.entity_description.is_on(self.executor.select_state)
+            return self.entity_description.is_on(self.device.states.get_value)
 
         return None
 
@@ -153,12 +153,16 @@ class OverkizSwitch(OverkizDescriptiveEntity, SwitchEntity):
         """Turn the entity on."""
         await self.executor.async_execute_command(
             self.entity_description.turn_on,
-            self.entity_description.turn_on_args,
+            [self.entity_description.turn_on_args]
+            if self.entity_description.turn_on_args is not None
+            else None,
         )
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Turn the entity off."""
         await self.executor.async_execute_command(
             self.entity_description.turn_off,
-            self.entity_description.turn_off_args,
+            [self.entity_description.turn_off_args]
+            if self.entity_description.turn_off_args is not None
+            else None,
         )

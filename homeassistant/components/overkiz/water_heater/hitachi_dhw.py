@@ -3,6 +3,7 @@
 from typing import Any
 
 from pyoverkiz.enums import OverkizCommand, OverkizCommandParam, OverkizState
+from pyoverkiz.models import Command
 
 from homeassistant.components.water_heater import (
     STATE_HIGH_DEMAND,
@@ -68,7 +69,7 @@ class HitachiDHW(OverkizEntity, WaterHeaterEntity):
         """Set new target temperature."""
         await self.executor.async_execute_command(
             OverkizCommand.SET_CONTROL_DHW_SETTING_TEMPERATURE,
-            int(kwargs[ATTR_TEMPERATURE]),
+            [int(kwargs[ATTR_TEMPERATURE])],
         )
 
     @property
@@ -89,17 +90,27 @@ class HitachiDHW(OverkizEntity, WaterHeaterEntity):
         # Turn water heater off
         if operation_mode == OverkizCommandParam.OFF:
             await self.executor.async_execute_command(
-                OverkizCommand.SET_CONTROL_DHW, OverkizCommandParam.STOP
+                OverkizCommand.SET_CONTROL_DHW, [OverkizCommandParam.STOP]
             )
             return
 
+        commands: list[Command] = []
+
         # Turn water heater on, when off
         if self.current_operation == OverkizCommandParam.OFF:
-            await self.executor.async_execute_command(
-                OverkizCommand.SET_CONTROL_DHW, OverkizCommandParam.ON
+            commands.append(
+                Command(
+                    name=OverkizCommand.SET_CONTROL_DHW,
+                    parameters=[OverkizCommandParam.ON],
+                )
             )
 
         # Change operation mode
-        await self.executor.async_execute_command(
-            OverkizCommand.SET_DHW_MODE, OPERATION_MODE_TO_OVERKIZ[operation_mode]
+        commands.append(
+            Command(
+                name=OverkizCommand.SET_DHW_MODE,
+                parameters=[OPERATION_MODE_TO_OVERKIZ[operation_mode]],
+            )
         )
+
+        await self.executor.async_execute_commands(commands)

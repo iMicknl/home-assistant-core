@@ -1,13 +1,12 @@
 """Helpers to help coordinate updates."""
 
-from collections.abc import Callable, Coroutine
 from datetime import timedelta
 import logging
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from aiohttp import ClientConnectorError, ServerDisconnectedError
 from pyoverkiz.client import OverkizClient
-from pyoverkiz.enums import EventName, ExecutionState, Protocol
+from pyoverkiz.enums import ExecutionState, Protocol
 from pyoverkiz.exceptions import (
     BadCredentialsError,
     InvalidEventListenerIdError,
@@ -19,9 +18,14 @@ from pyoverkiz.exceptions import (
 )
 from pyoverkiz.models import (
     Device,
-    DeviceEvent,
+    DeviceAvailableEvent,
+    DeviceCreatedEvent,
+    DeviceDisabledEvent,
     DeviceRemovedEvent,
     DeviceStateChangedEvent,
+    DeviceUnavailableEvent,
+    DeviceUpdatedEvent,
+    Event,
     ExecutionRegisteredEvent,
     ExecutionStateChangedEvent,
     Place,
@@ -31,17 +35,11 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
-from homeassistant.util.decorator import Registry
 
 if TYPE_CHECKING:
     from . import OverkizDataConfigEntry
 
 from .const import DOMAIN, IGNORED_OVERKIZ_DEVICES, LOGGER, UPDATE_INTERVAL
-
-# Events are a discriminated union; each handler narrows to its own subtype.
-EVENT_HANDLERS: Registry[
-    str, Callable[[OverkizDataUpdateCoordinator, Any], Coroutine[Any, Any, None]]
-] = Registry()
 
 
 class OverkizDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Device]]):
@@ -72,7 +70,7 @@ class OverkizDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Device]]):
         self.data = {}
         self.client = client
         self.devices: dict[str, Device] = {d.device_url: d for d in devices}
-        self.executions: dict[str, dict[str, str]] = {}
+        self.executions: dict[str, list[dict[str, str]]] = {}
         self.areas = self._places_to_area(places) if places else None
         self._default_update_interval = UPDATE_INTERVAL
 
@@ -118,15 +116,63 @@ class OverkizDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Device]]):
 
         for event in events:
             LOGGER.debug(event)
-
-            if event_handler := EVENT_HANDLERS.get(event.name):
-                await event_handler(self, event)
+            self._handle_event(event)
 
         # Restore the default update interval if no executions are pending
         if not self.executions:
             self.update_interval = self._default_update_interval
 
         return self.devices
+
+    def _handle_event(self, event: Event) -> None:
+        """Apply a single event to the cached device state.
+
+        As of pyoverkiz 2.0 events are a discriminated union keyed on their
+        name, so each branch receives a precisely-typed event and the fields it
+        accesses are guaranteed to be present.
+        """
+        match event:
+            case DeviceAvailableEvent():
+                if device := self.devices.get(event.device_url):
+                    device.available = True
+            case DeviceUnavailableEvent() | DeviceDisabledEvent():
+                if device := self.devices.get(event.device_url):
+                    device.available = False
+            case DeviceCreatedEvent() | DeviceUpdatedEvent():
+                self.hass.async_create_task(
+                    self.hass.config_entries.async_reload(self.config_entry.entry_id)
+                )
+            case DeviceStateChangedEvent():
+                if device := self.devices.get(event.device_url):
+                    for state in event.device_states:
+                        device.states[state.name] = state
+            case DeviceRemovedEvent():
+                self._remove_device(event)
+            case ExecutionRegisteredEvent():
+                if event.exec_id not in self.executions:
+                    self.executions[event.exec_id] = []
+                if not self.is_stateless:
+                    self.update_interval = timedelta(seconds=1)
+            case ExecutionStateChangedEvent():
+                if event.exec_id in self.executions and event.new_state in (
+                    ExecutionState.COMPLETED,
+                    ExecutionState.FAILED,
+                ):
+                    del self.executions[event.exec_id]
+
+    def _remove_device(self, event: DeviceRemovedEvent) -> None:
+        """Remove a device from the registry and the cached device state."""
+        device = self.devices.get(event.device_url)
+        if device is None:
+            return
+
+        registry = dr.async_get(self.hass)
+        if registered_device := registry.async_get_device(
+            identifiers={(DOMAIN, device.identifier.base_device_url)}
+        ):
+            registry.async_remove_device(registered_device.id)
+
+        del self.devices[event.device_url]
 
     async def _get_devices(self) -> dict[str, Device]:
         """Fetch devices."""
@@ -149,87 +195,3 @@ class OverkizDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Device]]):
         """Set the update interval and store this value."""
         self.update_interval = update_interval
         self._default_update_interval = update_interval
-
-
-@EVENT_HANDLERS.register(EventName.DEVICE_AVAILABLE)
-async def on_device_available(
-    coordinator: OverkizDataUpdateCoordinator, event: DeviceEvent
-) -> None:
-    """Handle device available event."""
-    if event.device_url in coordinator.devices:
-        coordinator.devices[event.device_url].available = True
-
-
-@EVENT_HANDLERS.register(EventName.DEVICE_UNAVAILABLE)
-@EVENT_HANDLERS.register(EventName.DEVICE_DISABLED)
-async def on_device_unavailable_disabled(
-    coordinator: OverkizDataUpdateCoordinator, event: DeviceEvent
-) -> None:
-    """Handle device unavailable / disabled event."""
-    if event.device_url in coordinator.devices:
-        coordinator.devices[event.device_url].available = False
-
-
-@EVENT_HANDLERS.register(EventName.DEVICE_CREATED)
-@EVENT_HANDLERS.register(EventName.DEVICE_UPDATED)
-async def on_device_created_updated(
-    coordinator: OverkizDataUpdateCoordinator, event: DeviceEvent
-) -> None:
-    """Handle device unavailable / disabled event."""
-    coordinator.hass.async_create_task(
-        coordinator.hass.config_entries.async_reload(coordinator.config_entry.entry_id)
-    )
-
-
-@EVENT_HANDLERS.register(EventName.DEVICE_STATE_CHANGED)
-async def on_device_state_changed(
-    coordinator: OverkizDataUpdateCoordinator, event: DeviceStateChangedEvent
-) -> None:
-    """Handle device state changed event."""
-    if event.device_url not in coordinator.devices:
-        return
-
-    for state in event.device_states:
-        device = coordinator.devices[event.device_url]
-        device.states[state.name] = state
-
-
-@EVENT_HANDLERS.register(EventName.DEVICE_REMOVED)
-async def on_device_removed(
-    coordinator: OverkizDataUpdateCoordinator, event: DeviceRemovedEvent
-) -> None:
-    """Handle device removed event."""
-    base_device_url = event.device_url.split("#")[0]
-    registry = dr.async_get(coordinator.hass)
-
-    if registered_device := registry.async_get_device(
-        identifiers={(DOMAIN, base_device_url)}
-    ):
-        registry.async_remove_device(registered_device.id)
-
-    if event.device_url in coordinator.devices:
-        del coordinator.devices[event.device_url]
-
-
-@EVENT_HANDLERS.register(EventName.EXECUTION_REGISTERED)
-async def on_execution_registered(
-    coordinator: OverkizDataUpdateCoordinator, event: ExecutionRegisteredEvent
-) -> None:
-    """Handle execution registered event."""
-    if event.exec_id not in coordinator.executions:
-        coordinator.executions[event.exec_id] = {}
-
-    if not coordinator.is_stateless:
-        coordinator.update_interval = timedelta(seconds=1)
-
-
-@EVENT_HANDLERS.register(EventName.EXECUTION_STATE_CHANGED)
-async def on_execution_state_changed(
-    coordinator: OverkizDataUpdateCoordinator, event: ExecutionStateChangedEvent
-) -> None:
-    """Handle execution changed event."""
-    if event.exec_id in coordinator.executions and event.new_state in [
-        ExecutionState.COMPLETED,
-        ExecutionState.FAILED,
-    ]:
-        del coordinator.executions[event.exec_id]

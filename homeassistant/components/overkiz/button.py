@@ -135,7 +135,7 @@ class OverkizButton(OverkizDescriptiveEntity, ButtonEntity):
         """Handle the button press."""
         if self.entity_description.press_args:
             await self.executor.async_execute_command(
-                self.entity_description.key, self.entity_description.press_args
+                self.entity_description.key, [self.entity_description.press_args]
             )
             return
 

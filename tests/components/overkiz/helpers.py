@@ -4,16 +4,9 @@ from datetime import timedelta
 from typing import Any
 
 from freezegun.api import FrozenDateTimeFactory
-from pyoverkiz.enums import DataType, EventName, ExecutionState
-from pyoverkiz.models import (
-    DeviceAvailableEvent,
-    DeviceRemovedEvent,
-    DeviceStateChangedEvent,
-    DeviceUnavailableEvent,
-    Event,
-    EventState,
-    ExecutionStateChangedEvent,
-)
+from pyoverkiz.converter import converter
+from pyoverkiz.enums import EventName
+from pyoverkiz.models import Event
 
 from homeassistant.components.overkiz.const import UPDATE_INTERVAL
 from homeassistant.core import HomeAssistant
@@ -38,52 +31,41 @@ def assert_command_call(
     assert len(actions) == 1
     assert actions[0].device_url == device_url
     assert actions[0].commands[0].name == command_name
-    assert actions[0].commands[0].parameters == (parameters or [])
+    assert (actions[0].commands[0].parameters or []) == (parameters or [])
 
 
-def device_state_changed_event(
-    device_url: str, device_states: list[dict[str, Any]]
-) -> DeviceStateChangedEvent:
-    """Build a DEVICE_STATE_CHANGED event with the given device states."""
-    return DeviceStateChangedEvent(
-        name=EventName.DEVICE_STATE_CHANGED,
-        device_url=device_url,
-        device_states=[
-            EventState(
-                name=state["name"], type=DataType(state["type"]), value=state["value"]
-            )
-            for state in device_states
-        ],
-    )
+def build_event(
+    name: EventName | str,
+    *,
+    device_url: str,
+    device_states: list[dict[str, Any]] | None = None,
+    exec_id: str | None = None,
+    new_state: str | None = None,
+) -> Event:
+    """Create a pyOverkiz event object with a test-friendly interface.
 
+    The raw payload is structured through pyoverkiz's own converter, so the
+    result is the same discriminated Event subtype that ``fetch_events`` yields.
+    """
+    name = EventName(name)
+    if name is EventName.DEVICE_STATE_CHANGED and not device_states:
+        raise ValueError("DeviceStateChangedEvent requires device_states")
 
-def device_available_event(device_url: str) -> DeviceAvailableEvent:
-    """Build a DEVICE_AVAILABLE event for the given device."""
-    return DeviceAvailableEvent(name=EventName.DEVICE_AVAILABLE, device_url=device_url)
+    raw: dict[str, Any] = {"name": name.value, "deviceURL": device_url}
 
+    if device_states is not None:
+        raw["deviceStates"] = device_states
 
-def device_unavailable_event(device_url: str) -> DeviceUnavailableEvent:
-    """Build a DEVICE_UNAVAILABLE event for the given device."""
-    return DeviceUnavailableEvent(
-        name=EventName.DEVICE_UNAVAILABLE, device_url=device_url
-    )
+    if exec_id is not None:
+        raw["execId"] = exec_id
 
+    if new_state is not None:
+        # ExecutionStateChangedEvent requires both new_state and old_state; tests
+        # only assert on new_state, so default old_state to the same value.
+        raw["newState"] = new_state
+        raw["oldState"] = new_state
 
-def device_removed_event(device_url: str) -> DeviceRemovedEvent:
-    """Build a DEVICE_REMOVED event for the given device."""
-    return DeviceRemovedEvent(name=EventName.DEVICE_REMOVED, device_url=device_url)
-
-
-def execution_state_changed_event(
-    exec_id: str, new_state: ExecutionState, old_state: ExecutionState
-) -> ExecutionStateChangedEvent:
-    """Build an EXECUTION_STATE_CHANGED event."""
-    return ExecutionStateChangedEvent(
-        name=EventName.EXECUTION_STATE_CHANGED,
-        exec_id=exec_id,
-        new_state=new_state,
-        old_state=old_state,
-    )
+    return converter.structure(raw, Event)
 
 
 async def async_deliver_events(
