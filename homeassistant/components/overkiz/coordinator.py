@@ -24,6 +24,8 @@ from pyoverkiz.models import (
     DeviceStateChangedEvent,
     ExecutionRegisteredEvent,
     ExecutionStateChangedEvent,
+    Gateway,
+    GatewayEvent,
     Place,
 )
 
@@ -58,6 +60,7 @@ class OverkizDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Device]]):
         *,
         client: OverkizClient,
         devices: list[Device],
+        gateways: list[Gateway],
         places: Place | None,
     ) -> None:
         """Initialize global data updater."""
@@ -72,6 +75,7 @@ class OverkizDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Device]]):
         self.data = {}
         self.client = client
         self.devices: dict[str, Device] = {d.device_url: d for d in devices}
+        self.gateways: dict[str, Gateway] = {g.id: g for g in gateways}
         self.executions: dict[str, dict[str, str]] = {}
         self.areas = self._places_to_area(places) if places else None
         self._default_update_interval = UPDATE_INTERVAL
@@ -221,6 +225,24 @@ async def on_execution_registered(
 
     if not coordinator.is_stateless:
         coordinator.update_interval = timedelta(seconds=1)
+
+
+@EVENT_HANDLERS.register(EventName.GATEWAY_ALIVE)
+async def on_gateway_alive(
+    coordinator: OverkizDataUpdateCoordinator, event: GatewayEvent
+) -> None:
+    """Handle gateway alive event."""
+    if gateway := coordinator.gateways.get(event.gateway_id):
+        gateway.alive = True
+
+
+@EVENT_HANDLERS.register(EventName.GATEWAY_DOWN)
+async def on_gateway_down(
+    coordinator: OverkizDataUpdateCoordinator, event: GatewayEvent
+) -> None:
+    """Handle gateway down event."""
+    if gateway := coordinator.gateways.get(event.gateway_id):
+        gateway.alive = False
 
 
 @EVENT_HANDLERS.register(EventName.EXECUTION_STATE_CHANGED)

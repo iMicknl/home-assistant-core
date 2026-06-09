@@ -4,7 +4,8 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import cast
 
-from pyoverkiz.enums import OverkizCommandParam, OverkizState
+from pyoverkiz.enums import OverkizCommandParam, OverkizState, UpdateBoxStatus
+from pyoverkiz.models import Gateway
 from pyoverkiz.types import StateType as OverkizStateType
 
 from homeassistant.components.binary_sensor import (
@@ -12,11 +13,15 @@ from homeassistant.components.binary_sensor import (
     BinarySensorEntity,
     BinarySensorEntityDescription,
 )
+from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import OverkizDataConfigEntry
-from .const import IGNORED_OVERKIZ_DEVICES
+from .const import DOMAIN, IGNORED_OVERKIZ_DEVICES
+from .coordinator import OverkizDataUpdateCoordinator
 from .entity import OverkizDescriptiveEntity
 
 
@@ -142,6 +147,52 @@ SUPPORTED_STATES = {
 }
 
 
+# Update box statuses that indicate a firmware update is available to install.
+UPDATE_AVAILABLE_STATUSES = (
+    UpdateBoxStatus.READY_TO_UPDATE,
+    UpdateBoxStatus.READY_TO_BE_UPDATED_BY_SERVER,
+    UpdateBoxStatus.READY_TO_UPDATE_LOCALLY,
+)
+
+
+def _update_available(gateway: Gateway) -> bool | None:
+    """Return whether a firmware update is available, or None if unknown."""
+    if (
+        gateway.update_status is None
+        or gateway.update_status == UpdateBoxStatus.UNKNOWN
+    ):
+        return None
+    return gateway.update_status in UPDATE_AVAILABLE_STATUSES
+
+
+@dataclass(frozen=True, kw_only=True)
+class OverkizGatewayBinarySensorDescription(BinarySensorEntityDescription):
+    """Class to describe an Overkiz gateway binary sensor."""
+
+    value_fn: Callable[[Gateway], bool | None]
+    # Only create the entity when the gateway actually exposes the field.
+    # The local API, for example, does not report alive or update status.
+    exists_fn: Callable[[Gateway], bool]
+
+
+GATEWAY_BINARY_SENSOR_DESCRIPTIONS: list[OverkizGatewayBinarySensorDescription] = [
+    OverkizGatewayBinarySensorDescription(
+        key="connectivity",
+        device_class=BinarySensorDeviceClass.CONNECTIVITY,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda gateway: gateway.alive,
+        exists_fn=lambda gateway: gateway.alive is not None,
+    ),
+    OverkizGatewayBinarySensorDescription(
+        key="update",
+        device_class=BinarySensorDeviceClass.UPDATE,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=_update_available,
+        exists_fn=lambda gateway: gateway.update_status is not None,
+    ),
+]
+
+
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: OverkizDataConfigEntry,
@@ -149,7 +200,7 @@ async def async_setup_entry(
 ) -> None:
     """Set up the Overkiz binary sensors from a config entry."""
     data = entry.runtime_data
-    entities: list[OverkizBinarySensor] = []
+    entities: list[BinarySensorEntity] = []
 
     for device in data.coordinator.data.values():
         if (
@@ -168,6 +219,13 @@ async def async_setup_entry(
             if (description := SUPPORTED_STATES.get(state))
         )
 
+    entities.extend(
+        OverkizGatewayBinarySensor(gateway.id, data.coordinator, description)
+        for gateway in data.coordinator.gateways.values()
+        for description in GATEWAY_BINARY_SENSOR_DESCRIPTIONS
+        if description.exists_fn(gateway)
+    )
+
     async_add_entities(entities)
 
 
@@ -183,3 +241,34 @@ class OverkizBinarySensor(OverkizDescriptiveEntity, BinarySensorEntity):
             return self.entity_description.value_fn(state.value)
 
         return None
+
+
+class OverkizGatewayBinarySensor(
+    CoordinatorEntity[OverkizDataUpdateCoordinator], BinarySensorEntity
+):
+    """Representation of an Overkiz gateway binary sensor."""
+
+    entity_description: OverkizGatewayBinarySensorDescription
+    _attr_has_entity_name = True
+
+    def __init__(
+        self,
+        gateway_id: str,
+        coordinator: OverkizDataUpdateCoordinator,
+        description: OverkizGatewayBinarySensorDescription,
+    ) -> None:
+        """Initialize the gateway binary sensor."""
+        super().__init__(coordinator)
+        self.gateway_id = gateway_id
+        self.entity_description = description
+        self._attr_unique_id = f"{gateway_id}-{description.key}"
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, gateway_id)},
+        )
+
+    @property
+    def is_on(self) -> bool | None:
+        """Return the state of the sensor."""
+        return self.entity_description.value_fn(
+            self.coordinator.gateways[self.gateway_id]
+        )
