@@ -1,5 +1,6 @@
 """Class for helpers and communication with the OverKiz API."""
 
+import asyncio
 from typing import Any
 
 from pyoverkiz.enums import OverkizCommand, Protocol
@@ -9,6 +10,7 @@ from pyoverkiz.types import StateType as OverkizStateType
 
 from homeassistant.exceptions import HomeAssistantError
 
+from .const import EXECUTION_RESULT_TIMEOUT, STATELESS_PROTOCOLS
 from .coordinator import OverkizDataUpdateCoordinator
 
 # Commands that don't support setting
@@ -119,8 +121,30 @@ class OverkizExecutor:
             "device_url": self.device.device_url,
             "command_name": command_name,
         }
+
+        # Wait for the gateway to report the command's result so we can raise on
+        # rejection, mirroring how Home Assistant surfaces command failures.
+        # Stateless protocols (RTS, INTERNAL) are one-way and never report back,
+        # and batched calls (refresh_afterwards=False) have no refresh to deliver
+        # the event, so both stay fire-and-forget.
+        execution_result: asyncio.Future[None] | None = None
+        if (
+            refresh_afterwards
+            and self.device.identifier.protocol not in STATELESS_PROTOCOLS
+        ):
+            execution_result = self.coordinator.register_execution_result(exec_id)
+
         if refresh_afterwards:
             await self.coordinator.async_refresh()
+
+        if execution_result is not None:
+            try:
+                async with asyncio.timeout(EXECUTION_RESULT_TIMEOUT):
+                    await execution_result
+            except TimeoutError:
+                # No result in time: assume success, so a dropped event or slow
+                # gateway doesn't fail a command that likely worked.
+                self.coordinator.execution_results.pop(exec_id, None)
 
     async def async_cancel_command(
         self, commands_to_cancel: list[OverkizCommand]

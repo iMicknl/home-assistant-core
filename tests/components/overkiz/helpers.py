@@ -75,14 +75,22 @@ def device_removed_event(device_url: str) -> DeviceRemovedEvent:
 
 
 def execution_state_changed_event(
-    exec_id: str, new_state: ExecutionState, old_state: ExecutionState
+    exec_id: str,
+    new_state: ExecutionState,
+    old_state: ExecutionState,
+    failure_type: str | None = None,
 ) -> ExecutionStateChangedEvent:
-    """Build an EXECUTION_STATE_CHANGED event."""
+    """Build an EXECUTION_STATE_CHANGED event.
+
+    A real FAILED event carries its failure reason in ``failure_type`` and
+    leaves the top-level ``device_url`` unset, so this mirrors that shape.
+    """
     return ExecutionStateChangedEvent(
         name=EventName.EXECUTION_STATE_CHANGED,
         exec_id=exec_id,
         new_state=new_state,
         old_state=old_state,
+        failure_type=failure_type,
     )
 
 

@@ -7,6 +7,7 @@ from typing import Final
 from pyoverkiz.enums import (
     MeasuredValueType,
     OverkizCommandParam,
+    Protocol,
     Server,
     UIClass,
     UIWidget,
@@ -44,6 +45,16 @@ DEFAULT_HOST: Final = "gateway-xxxx-xxxx-xxxx.local:8443"
 UPDATE_INTERVAL: Final = timedelta(seconds=30)
 UPDATE_INTERVAL_LOCAL: Final = timedelta(seconds=5)
 UPDATE_INTERVAL_ALL_ASSUMED_STATE: Final = timedelta(minutes=60)
+
+# Maximum time to wait for a command's result (IN_PROGRESS or a terminal state)
+# before optimistically assuming success. Failures are reported within ~1-2
+# seconds, while a COMPLETED confirmation can take as long as the physical
+# movement lasts, so we wait for acceptance, not completion.
+EXECUTION_RESULT_TIMEOUT: Final = 10
+
+# One-way protocols that never report execution feedback, so commands to them
+# stay fire-and-forget.
+STATELESS_PROTOCOLS: Final = (Protocol.RTS, Protocol.INTERNAL)
 
 PLATFORMS: list[Platform] = [
     Platform.ALARM_CONTROL_PANEL,

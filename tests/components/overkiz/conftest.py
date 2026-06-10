@@ -6,8 +6,8 @@ from typing import NamedTuple
 from unittest.mock import AsyncMock, patch
 
 from pyoverkiz.client import OverkizClient
-from pyoverkiz.enums import APIType
-from pyoverkiz.models import Event, ServerConfig, Setup
+from pyoverkiz.enums import APIType, EventName, ExecutionState
+from pyoverkiz.models import Event, ExecutionStateChangedEvent, ServerConfig, Setup
 import pytest
 
 from homeassistant.components.overkiz.const import DOMAIN
@@ -45,6 +45,12 @@ class MockOverkizClient(OverkizClient):
             api_type=APIType.CLOUD,
         )
     )
+
+    # State the mock gateway reports each command's result with. Defaults to
+    # IN_PROGRESS (accepted); set to FAILED to simulate a rejected command, or
+    # to None to simulate a gateway that never reports back (result timeout).
+    execution_result_state: ExecutionState | None = ExecutionState.IN_PROGRESS
+    execution_result_failure_type: str | None = None
 
     def __post_init__(self) -> None:
         """Initialize async client methods."""
@@ -96,9 +102,27 @@ class MockOverkizClient(OverkizClient):
         return []
 
     async def _async_execute_action_group(self, *args, **kwargs) -> str:
-        """Return a unique execution id for each action group."""
+        """Return a unique execution id for each action group.
+
+        Like the real gateway, immediately report the command's result by
+        queueing an IN_PROGRESS event so the next refresh resolves the command's
+        pending result. Tests can still deliver their own terminal events.
+        """
         self._execution_id += 1
-        return f"exec-{self._execution_id}"
+        exec_id = f"exec-{self._execution_id}"
+        if self.execution_result_state is not None:
+            self.event_batches.append(
+                [
+                    ExecutionStateChangedEvent(
+                        name=EventName.EXECUTION_STATE_CHANGED,
+                        exec_id=exec_id,
+                        new_state=self.execution_result_state,
+                        old_state=ExecutionState.TRANSMITTED,
+                        failure_type=self.execution_result_failure_type,
+                    )
+                ]
+            )
+        return exec_id
 
 
 @pytest.fixture

@@ -1,5 +1,6 @@
 """Helpers to help coordinate updates."""
 
+import asyncio
 from collections.abc import Callable, Coroutine
 from datetime import timedelta
 import logging
@@ -7,7 +8,7 @@ from typing import TYPE_CHECKING, Any
 
 from aiohttp import ClientConnectorError, ServerDisconnectedError
 from pyoverkiz.client import OverkizClient
-from pyoverkiz.enums import EventName, ExecutionState, Protocol
+from pyoverkiz.enums import EventName, ExecutionState
 from pyoverkiz.exceptions import (
     BadCredentialsError,
     InvalidEventListenerIdError,
@@ -28,7 +29,7 @@ from pyoverkiz.models import (
 )
 
 from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import ConfigEntryAuthFailed
+from homeassistant.exceptions import ConfigEntryAuthFailed, HomeAssistantError
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.util.decorator import Registry
@@ -36,7 +37,13 @@ from homeassistant.util.decorator import Registry
 if TYPE_CHECKING:
     from . import OverkizDataConfigEntry
 
-from .const import DOMAIN, IGNORED_OVERKIZ_DEVICES, LOGGER, UPDATE_INTERVAL
+from .const import (
+    DOMAIN,
+    IGNORED_OVERKIZ_DEVICES,
+    LOGGER,
+    STATELESS_PROTOCOLS,
+    UPDATE_INTERVAL,
+)
 
 # Events are a discriminated union; each handler narrows to its own subtype.
 EVENT_HANDLERS: Registry[
@@ -73,11 +80,14 @@ class OverkizDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Device]]):
         self.client = client
         self.devices: dict[str, Device] = {d.device_url: d for d in devices}
         self.executions: dict[str, dict[str, str]] = {}
+        # Futures resolved once a command's result arrives (IN_PROGRESS or a
+        # terminal state). Keyed by execution id.
+        self.execution_results: dict[str, asyncio.Future[None]] = {}
         self.areas = self._places_to_area(places) if places else None
         self._default_update_interval = UPDATE_INTERVAL
 
         self.is_stateless = all(
-            device.identifier.protocol in (Protocol.RTS, Protocol.INTERNAL)
+            device.identifier.protocol in STATELESS_PROTOCOLS
             for device in devices
             if device.widget not in IGNORED_OVERKIZ_DEVICES
             and device.ui_class not in IGNORED_OVERKIZ_DEVICES
@@ -104,6 +114,7 @@ class OverkizDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Device]]):
             raise UpdateFailed("Failed to connect.") from exception
         except ServerDisconnectedError:
             self.executions = {}
+            self._resolve_pending_results()
 
             # During the relogin, similar exceptions can be thrown.
             try:
@@ -149,6 +160,23 @@ class OverkizDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Device]]):
         """Set the update interval and store this value."""
         self.update_interval = update_interval
         self._default_update_interval = update_interval
+
+    def register_execution_result(self, exec_id: str) -> asyncio.Future[None]:
+        """Register a future that resolves when an execution result arrives."""
+        future = self.hass.loop.create_future()
+        self.execution_results[exec_id] = future
+        return future
+
+    def _resolve_pending_results(self) -> None:
+        """Resolve all pending execution results, e.g. after a reconnect.
+
+        Without a connection we can no longer correlate execution events, so we
+        resolve callers optimistically instead of leaving them to time out.
+        """
+        for future in self.execution_results.values():
+            if not future.done():
+                future.set_result(None)
+        self.execution_results.clear()
 
 
 @EVENT_HANDLERS.register(EventName.DEVICE_AVAILABLE)
@@ -227,9 +255,49 @@ async def on_execution_registered(
 async def on_execution_state_changed(
     coordinator: OverkizDataUpdateCoordinator, event: ExecutionStateChangedEvent
 ) -> None:
-    """Handle execution changed event."""
-    if event.exec_id in coordinator.executions and event.new_state in [
-        ExecutionState.COMPLETED,
-        ExecutionState.FAILED,
-    ]:
+    """Handle execution changed event.
+
+    The gateway reports a command's result by reaching IN_PROGRESS or, on
+    rejection, FAILED. We resolve the caller's future at that point so the
+    service call returns quickly, instead of waiting for the COMPLETED event
+    which only fires once the physical movement has finished.
+    """
+    if event.exec_id not in coordinator.executions:
+        return
+
+    # IN_PROGRESS (or COMPLETED) means accepted; an early FAILED is a rejection
+    # we surface to the caller. Any other state isn't a result yet, so keep
+    # waiting for one.
+    result = coordinator.execution_results.pop(event.exec_id, None)
+    if result is not None and not result.done():
+        if event.new_state is ExecutionState.FAILED:
+            result.set_exception(
+                HomeAssistantError(
+                    translation_domain=DOMAIN,
+                    translation_key="command_failed",
+                    translation_placeholders={
+                        "failure_type": event.failure_type or "unknown"
+                    },
+                )
+            )
+        elif event.new_state in (
+            ExecutionState.IN_PROGRESS,
+            ExecutionState.COMPLETED,
+        ):
+            result.set_result(None)
+        else:
+            coordinator.execution_results[event.exec_id] = result
+
+    if event.new_state is ExecutionState.FAILED:
+        execution = coordinator.executions[event.exec_id]
+        LOGGER.warning(
+            "Command %s failed for %s: %s",
+            execution.get("command_name"),
+            execution.get("device_url"),
+            event.failure_type,
+        )
+
+    # Keep the execution tracked while it runs so cover entities can derive
+    # their opening/closing state; drop it only once it terminates.
+    if event.new_state in (ExecutionState.COMPLETED, ExecutionState.FAILED):
         del coordinator.executions[event.exec_id]

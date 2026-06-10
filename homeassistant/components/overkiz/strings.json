@@ -181,6 +181,9 @@
     }
   },
   "exceptions": {
+    "command_failed": {
+      "message": "The command failed to execute: {failure_type}."
+    },
     "unsupported_set_position_and_tilt": {
       "message": "This device does not support setting position and tilt simultaneously."
     }
