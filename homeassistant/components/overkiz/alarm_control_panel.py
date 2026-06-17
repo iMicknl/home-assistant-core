@@ -297,6 +297,6 @@ class OverkizAlarmControlPanel(OverkizDescriptiveEntity, AlarmControlPanelEntity
     async def async_execute_command(self, command_name: str, args: Any) -> None:
         """Execute device command in async context."""
         if args:
-            await self.executor.async_execute_command(command_name, args)
+            await self.executor.async_execute_command(command_name, [args])
         else:
             await self.executor.async_execute_command(command_name)
