@@ -88,9 +88,11 @@ class AtlanticDomesticHotWaterProductionV2IOComponent(OverkizEntity, WaterHeater
     async def async_set_temperature(self, **kwargs: Any) -> None:
         """Set new temperature."""
 
-        temperature = kwargs.get(ATTR_TEMPERATURE)
+        temperature = kwargs[ATTR_TEMPERATURE]
         await self.executor.async_execute_command(
-            OverkizCommand.SET_TARGET_TEMPERATURE, [temperature], refresh_afterwards=False
+            OverkizCommand.SET_TARGET_TEMPERATURE,
+            [temperature],
+            refresh_afterwards=False,
         )
         await self.executor.async_execute_command(
             OverkizCommand.REFRESH_TARGET_TEMPERATURE, refresh_afterwards=False

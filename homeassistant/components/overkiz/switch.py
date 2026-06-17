@@ -6,7 +6,7 @@ from typing import Any
 
 from pyoverkiz.enums import OverkizCommand, OverkizCommandParam, OverkizState
 from pyoverkiz.enums.ui import UIClass, UIWidget
-from pyoverkiz.types import StateType as OverkizStateType
+from pyoverkiz.types import CommandParameterValue, StateType as OverkizStateType
 
 from homeassistant.components.switch import (
     SwitchDeviceClass,
@@ -28,17 +28,17 @@ class OverkizSwitchDescription(SwitchEntityDescription):
     turn_on: str
     turn_off: str
     is_on: Callable[[Callable[[str], OverkizStateType]], bool] | None = None
-    turn_on_args: OverkizStateType | list[OverkizStateType] | None = None
-    turn_off_args: OverkizStateType | list[OverkizStateType] | None = None
+    turn_on_args: list[CommandParameterValue] | None = None
+    turn_off_args: list[CommandParameterValue] | None = None
 
 
 SWITCH_DESCRIPTIONS: list[OverkizSwitchDescription] = [
     OverkizSwitchDescription(
         key=UIWidget.DOMESTIC_HOT_WATER_TANK,
         turn_on=OverkizCommand.SET_FORCE_HEATING,
-        turn_on_args=OverkizCommandParam.ON,
+        turn_on_args=[OverkizCommandParam.ON],
         turn_off=OverkizCommand.SET_FORCE_HEATING,
-        turn_off_args=OverkizCommandParam.OFF,
+        turn_off_args=[OverkizCommandParam.OFF],
         is_on=lambda select_state: (
             select_state(OverkizState.IO_FORCE_HEATING) == OverkizCommandParam.ON
         ),
@@ -153,12 +153,12 @@ class OverkizSwitch(OverkizDescriptiveEntity, SwitchEntity):
         """Turn the entity on."""
         await self.executor.async_execute_command(
             self.entity_description.turn_on,
-            [self.entity_description.turn_on_args],
+            self.entity_description.turn_on_args,
         )
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Turn the entity off."""
         await self.executor.async_execute_command(
             self.entity_description.turn_off,
-            [self.entity_description.turn_off_args],
+            self.entity_description.turn_off_args,
         )
