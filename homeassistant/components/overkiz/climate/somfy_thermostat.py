@@ -156,12 +156,20 @@ class SomfyThermostat(OverkizEntity, ClimateEntity):
                 ],
             )
         elif preset_mode == PRESET_NONE:
+            # Overkiz rejects commands with an undefined parameter, so fall back
+            # to the current temperature (and the minimum as a last resort) when
+            # no target temperature is known.
+            temperature = (
+                self.target_temperature
+                or self.current_temperature
+                or self._attr_min_temp
+            )
             await self.executor.async_execute_command(
                 OverkizCommand.SET_DEROGATION,
-                [self.target_temperature, OverkizCommandParam.FURTHER_NOTICE],
+                [temperature, OverkizCommandParam.FURTHER_NOTICE],
             )
             await self.executor.async_execute_command(
                 OverkizCommand.SET_MODE_TEMPERATURE,
-                [OverkizCommandParam.MANUAL_MODE, self.target_temperature],
+                [OverkizCommandParam.MANUAL_MODE, temperature],
             )
         await self.executor.async_execute_command(OverkizCommand.REFRESH_STATE)
