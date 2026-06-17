@@ -3,6 +3,7 @@
 from typing import Any, cast
 
 from pyoverkiz.enums import OverkizCommand, OverkizCommandParam, OverkizState
+from pyoverkiz.types import CommandParameterValue
 
 from homeassistant.components.climate import (
     FAN_AUTO,
@@ -247,7 +248,15 @@ class HitachiAirToAirHeatPumpHLRRWIFI(OverkizEntity, ClimateEntity):
         main_operation = self._control_backfill(
             main_operation, MAIN_OPERATION_STATE, OverkizCommandParam.ON
         )
-        target_temperature = target_temperature or self.target_temperature
+        # Overkiz rejects commands with an undefined parameter, so fall back to
+        # the current temperature (and the minimum as a last resort) when no
+        # target temperature is known.
+        target_temperature = (
+            target_temperature
+            or self.target_temperature
+            or self.current_temperature
+            or int(self.min_temp)
+        )
 
         fan_mode = self._control_backfill(
             fan_mode,
@@ -282,7 +291,7 @@ class HitachiAirToAirHeatPumpHLRRWIFI(OverkizEntity, ClimateEntity):
             OverkizCommandParam.OFF,
         )
 
-        command_data = [
+        command_data: list[CommandParameterValue] = [
             main_operation,  # Main Operation
             target_temperature,  # Target Temperature
             fan_mode,  # Fan Mode

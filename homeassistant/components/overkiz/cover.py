@@ -10,7 +10,7 @@ from pyoverkiz.enums import (
     UIClass,
     UIWidget,
 )
-from pyoverkiz.types import StateType as OverkizStateType
+from pyoverkiz.types import CommandParameterValue, StateType as OverkizStateType
 
 from homeassistant.components.cover import (
     ATTR_POSITION,
@@ -50,9 +50,9 @@ class OverkizCoverDescription(CoverEntityDescription):
     invert_tilt_position: bool = True
     set_tilt_position_command: OverkizCommand | None = None
     open_tilt_command: OverkizCommand | None = None
-    open_tilt_command_args: tuple[OverkizStateType, ...] = ()
+    open_tilt_command_args: tuple[CommandParameterValue, ...] = ()
     close_tilt_command: OverkizCommand | None = None
-    close_tilt_command_args: tuple[OverkizStateType, ...] = ()
+    close_tilt_command_args: tuple[CommandParameterValue, ...] = ()
     stop_tilt_command: OverkizCommand | None = None
 
 
