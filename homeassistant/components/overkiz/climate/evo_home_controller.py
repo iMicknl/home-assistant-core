@@ -96,6 +96,8 @@ class EvoHomeController(OverkizEntity, ClimateEntity):
 
         await self.executor.async_execute_command(
             OverkizCommand.SET_OPERATING_MODE,
-            PRESET_MODES_TO_OVERKIZ[preset_mode],
-            time_interval.strftime("%Y/%m/%d %H:%M"),
+            [
+                PRESET_MODES_TO_OVERKIZ[preset_mode],
+                time_interval.strftime("%Y/%m/%d %H:%M"),
+            ],
         )

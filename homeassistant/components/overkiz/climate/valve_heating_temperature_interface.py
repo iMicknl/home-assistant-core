@@ -105,8 +105,7 @@ class ValveHeatingTemperatureInterface(OverkizEntity, ClimateEntity):
 
         await self.executor.async_execute_command(
             OverkizCommand.SET_DEROGATION,
-            float(temperature),
-            OverkizCommandParam.FURTHER_NOTICE,
+            [float(temperature), OverkizCommandParam.FURTHER_NOTICE],
         )
 
     async def async_set_hvac_mode(self, hvac_mode: HVACMode) -> None:
@@ -132,12 +131,13 @@ class ValveHeatingTemperatureInterface(OverkizEntity, ClimateEntity):
             if current_temperature := self.current_temperature:
                 await self.executor.async_execute_command(
                     OverkizCommand.SET_DEROGATION,
-                    current_temperature,
-                    OverkizCommandParam.FURTHER_NOTICE,
+                    [current_temperature, OverkizCommandParam.FURTHER_NOTICE],
                 )
         else:
             await self.executor.async_execute_command(
                 OverkizCommand.SET_DEROGATION,
-                PRESET_MODE_TO_OVERKIZ[preset_mode],
-                OverkizCommandParam.FURTHER_NOTICE,
+                [
+                    PRESET_MODE_TO_OVERKIZ[preset_mode],
+                    OverkizCommandParam.FURTHER_NOTICE,
+                ],
             )

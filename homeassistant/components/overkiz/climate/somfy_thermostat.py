@@ -129,13 +129,11 @@ class SomfyThermostat(OverkizEntity, ClimateEntity):
 
         await self.executor.async_execute_command(
             OverkizCommand.SET_DEROGATION,
-            temperature,
-            OverkizCommandParam.FURTHER_NOTICE,
+            [temperature, OverkizCommandParam.FURTHER_NOTICE],
         )
         await self.executor.async_execute_command(
             OverkizCommand.SET_MODE_TEMPERATURE,
-            OverkizCommandParam.MANUAL_MODE,
-            temperature,
+            [OverkizCommandParam.MANUAL_MODE, temperature],
         )
         await self.executor.async_execute_command(OverkizCommand.REFRESH_STATE)
 
@@ -152,18 +150,18 @@ class SomfyThermostat(OverkizEntity, ClimateEntity):
         if preset_mode in [PRESET_FREEZE, PRESET_NIGHT, PRESET_AWAY, PRESET_HOME]:
             await self.executor.async_execute_command(
                 OverkizCommand.SET_DEROGATION,
-                PRESET_MODES_TO_OVERKIZ[preset_mode],
-                OverkizCommandParam.FURTHER_NOTICE,
+                [
+                    PRESET_MODES_TO_OVERKIZ[preset_mode],
+                    OverkizCommandParam.FURTHER_NOTICE,
+                ],
             )
         elif preset_mode == PRESET_NONE:
             await self.executor.async_execute_command(
                 OverkizCommand.SET_DEROGATION,
-                self.target_temperature,
-                OverkizCommandParam.FURTHER_NOTICE,
+                [self.target_temperature, OverkizCommandParam.FURTHER_NOTICE],
             )
             await self.executor.async_execute_command(
                 OverkizCommand.SET_MODE_TEMPERATURE,
-                OverkizCommandParam.MANUAL_MODE,
-                self.target_temperature,
+                [OverkizCommandParam.MANUAL_MODE, self.target_temperature],
             )
         await self.executor.async_execute_command(OverkizCommand.REFRESH_STATE)

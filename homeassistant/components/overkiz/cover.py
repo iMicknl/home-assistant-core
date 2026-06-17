@@ -10,7 +10,7 @@ from pyoverkiz.enums import (
     UIClass,
     UIWidget,
 )
-from pyoverkiz.types import CommandParameterValue, StateType as OverkizStateType
+from pyoverkiz.types import CommandParameterValue
 
 from homeassistant.components.cover import (
     ATTR_POSITION,
@@ -764,8 +764,7 @@ class OverkizCover(OverkizDescriptiveEntity, CoverEntity):
 
         await self.executor.async_execute_command(
             OverkizCommand.SET_CLOSURE_AND_ORIENTATION,
-            position,
-            tilt_position,
+            [position, tilt_position],
         )
 
     async def async_open_cover_tilt(self, **kwargs: Any) -> None:
@@ -899,6 +898,5 @@ class OverkizLowSpeedCover(OverkizCover):
         """Move the cover to a specific position with a low speed."""
         await self.executor.async_execute_command(
             OverkizCommand.SET_CLOSURE_AND_LINEAR_SPEED,
-            100 - position,
-            OverkizCommandParam.LOWSPEED,
+            [100 - position, OverkizCommandParam.LOWSPEED],
         )
