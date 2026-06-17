@@ -3,9 +3,10 @@
 import asyncio
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
-from typing import cast
+from typing import Protocol, cast
 
 from pyoverkiz.enums import OverkizCommand, OverkizCommandParam, OverkizState
+from pyoverkiz.types import CommandParameterValue
 
 from homeassistant.components.number import (
     NumberDeviceClass,
@@ -25,6 +26,17 @@ BOOST_MODE_DURATION_DELAY = 1
 OPERATING_MODE_DELAY = 3
 
 
+class ExecuteCommand(Protocol):
+    """Protocol for the executor's async_execute_command, used as a callback."""
+
+    async def __call__(
+        self,
+        command_name: str,
+        parameters: list[CommandParameterValue] | None = None,
+    ) -> None:
+        """Execute the command with the given parameters."""
+
+
 @dataclass(frozen=True, kw_only=True)
 class OverkizNumberDescription(NumberEntityDescription):
     """Class to describe an Overkiz number."""
@@ -34,35 +46,37 @@ class OverkizNumberDescription(NumberEntityDescription):
     min_value_state_name: str | None = None
     max_value_state_name: str | None = None
     inverted: bool = False
-    set_native_value: (
-        Callable[[float, Callable[..., Awaitable[None]]], Awaitable[None]] | None
-    ) = None
+    set_native_value: Callable[[float, ExecuteCommand], Awaitable[None]] | None = None
 
 
 async def _async_set_native_value_boost_mode_duration(
-    value: float, execute_command: Callable[..., Awaitable[None]]
+    value: float, execute_command: ExecuteCommand
 ) -> None:
     """Update the boost duration value."""
 
     if value > 0:
-        await execute_command(OverkizCommand.SET_BOOST_MODE_DURATION, value)
+        await execute_command(OverkizCommand.SET_BOOST_MODE_DURATION, [value])
         await asyncio.sleep(
             BOOST_MODE_DURATION_DELAY
         )  # wait one second to not overload the device
         await execute_command(
             OverkizCommand.SET_CURRENT_OPERATING_MODE,
-            {
-                OverkizCommandParam.RELAUNCH: OverkizCommandParam.ON,
-                OverkizCommandParam.ABSENCE: OverkizCommandParam.OFF,
-            },
+            [
+                {
+                    OverkizCommandParam.RELAUNCH: OverkizCommandParam.ON,
+                    OverkizCommandParam.ABSENCE: OverkizCommandParam.OFF,
+                }
+            ],
         )
     else:
         await execute_command(
             OverkizCommand.SET_CURRENT_OPERATING_MODE,
-            {
-                OverkizCommandParam.RELAUNCH: OverkizCommandParam.OFF,
-                OverkizCommandParam.ABSENCE: OverkizCommandParam.OFF,
-            },
+            [
+                {
+                    OverkizCommandParam.RELAUNCH: OverkizCommandParam.OFF,
+                    OverkizCommandParam.ABSENCE: OverkizCommandParam.OFF,
+                }
+            ],
         )
 
     await asyncio.sleep(
@@ -270,5 +284,5 @@ class OverkizNumber(OverkizDescriptiveEntity, NumberEntity):
             return
 
         await self.executor.async_execute_command(
-            self.entity_description.command, value
+            self.entity_description.command, [value]
         )
