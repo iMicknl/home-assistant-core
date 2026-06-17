@@ -365,5 +365,5 @@ class HitachiAirToAirHeatPumpOVP(OverkizEntity, ClimateEntity):
         ]
 
         await self.executor.async_execute_command(
-            OverkizCommand.GLOBAL_CONTROL, *command_data
+            OverkizCommand.GLOBAL_CONTROL, command_data
         )

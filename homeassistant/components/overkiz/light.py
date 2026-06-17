@@ -89,7 +89,7 @@ class OverkizLight(OverkizEntity, LightEntity):
         if rgb_color is not None:
             await self.executor.async_execute_command(
                 OverkizCommand.SET_RGB,
-                *[round(float(c)) for c in kwargs[ATTR_RGB_COLOR]],
+                [round(float(c)) for c in kwargs[ATTR_RGB_COLOR]],
             )
             return
 

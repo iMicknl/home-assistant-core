@@ -772,14 +772,14 @@ class OverkizCover(OverkizDescriptiveEntity, CoverEntity):
         """Open the cover tilt."""
         if command := self.entity_description.open_tilt_command:
             await self.executor.async_execute_command(
-                command, *self.entity_description.open_tilt_command_args
+                command, list(self.entity_description.open_tilt_command_args)
             )
 
     async def async_close_cover_tilt(self, **kwargs: Any) -> None:
         """Close the cover tilt."""
         if command := self.entity_description.close_tilt_command:
             await self.executor.async_execute_command(
-                command, *self.entity_description.close_tilt_command_args
+                command, list(self.entity_description.close_tilt_command_args)
             )
 
     async def async_stop_cover_tilt(self, **kwargs: Any) -> None:
