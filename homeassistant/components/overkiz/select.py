@@ -2,8 +2,10 @@
 
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
+from typing import Protocol
 
 from pyoverkiz.enums import OverkizCommand, OverkizCommandParam, OverkizState
+from pyoverkiz.types import CommandParameterValue
 
 from homeassistant.components.select import SelectEntity, SelectEntityDescription
 from homeassistant.const import EntityCategory
@@ -15,15 +17,26 @@ from .const import IGNORED_OVERKIZ_DEVICES
 from .entity import OverkizDescriptiveEntity
 
 
+class ExecuteCommand(Protocol):
+    """Protocol for the executor's async_execute_command, used as a callback."""
+
+    async def __call__(
+        self,
+        command_name: str,
+        parameters: list[CommandParameterValue] | None = None,
+    ) -> None:
+        """Execute the command with the given parameters."""
+
+
 @dataclass(frozen=True, kw_only=True)
 class OverkizSelectDescription(SelectEntityDescription):
     """Class to describe an Overkiz select entity."""
 
-    select_option: Callable[[str, Callable[..., Awaitable[None]]], Awaitable[None]]
+    select_option: Callable[[str, ExecuteCommand], Awaitable[None]]
 
 
 def _select_option_open_closed_pedestrian(
-    option: str, execute_command: Callable[..., Awaitable[None]]
+    option: str, execute_command: ExecuteCommand
 ) -> Awaitable[None]:
     """Change the selected option for Open/Closed/Pedestrian."""
     return execute_command(
@@ -36,7 +49,7 @@ def _select_option_open_closed_pedestrian(
 
 
 def _select_option_open_closed_partial(
-    option: str, execute_command: Callable[..., Awaitable[None]]
+    option: str, execute_command: ExecuteCommand
 ) -> Awaitable[None]:
     """Change the selected option for Open/Closed/Partial."""
     return execute_command(
@@ -49,21 +62,21 @@ def _select_option_open_closed_partial(
 
 
 def _select_option_memorized_simple_volume(
-    option: str, execute_command: Callable[..., Awaitable[None]]
+    option: str, execute_command: ExecuteCommand
 ) -> Awaitable[None]:
     """Change the selected option for Memorized Simple Volume."""
-    return execute_command(OverkizCommand.SET_MEMORIZED_SIMPLE_VOLUME, option)
+    return execute_command(OverkizCommand.SET_MEMORIZED_SIMPLE_VOLUME, [option])
 
 
 def _select_option_active_zone(
-    option: str, execute_command: Callable[..., Awaitable[None]]
+    option: str, execute_command: ExecuteCommand
 ) -> Awaitable[None]:
     """Change the selected option for Active Zone(s)."""
     # Turn alarm off when empty zone is selected
     if option == "":
         return execute_command(OverkizCommand.ALARM_OFF)
 
-    return execute_command(OverkizCommand.ALARM_ZONE_ON, option)
+    return execute_command(OverkizCommand.ALARM_ZONE_ON, [option])
 
 
 SELECT_DESCRIPTIONS: list[OverkizSelectDescription] = [
@@ -103,7 +116,7 @@ SELECT_DESCRIPTIONS: list[OverkizSelectDescription] = [
         name="Operating mode",
         options=[OverkizCommandParam.HEATING, OverkizCommandParam.COOLING],
         select_option=lambda option, execute_command: execute_command(
-            OverkizCommand.SET_OPERATING_MODE, option
+            OverkizCommand.SET_OPERATING_MODE, [option]
         ),
         entity_category=EntityCategory.CONFIG,
         translation_key="operating_mode",
