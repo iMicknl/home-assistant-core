@@ -215,12 +215,12 @@ class HitachiAirToAirHeatPumpOVP(OverkizEntity, ClimateEntity):
         if preset_mode == PRESET_HOLIDAY_MODE:
             await self.executor.async_execute_command(
                 OverkizCommand.SET_HOLIDAYS,
-                OverkizCommandParam.ON,
+                [OverkizCommandParam.ON],
             )
         if preset_mode == PRESET_NONE:
             await self.executor.async_execute_command(
                 OverkizCommand.SET_HOLIDAYS,
-                OverkizCommandParam.OFF,
+                [OverkizCommandParam.OFF],
             )
 
     # OVP has this property to control the unit's timer mode

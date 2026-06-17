@@ -66,7 +66,7 @@ class AtlanticElectricalHeater(OverkizEntity, ClimateEntity):
     async def async_set_hvac_mode(self, hvac_mode: HVACMode) -> None:
         """Set new target hvac mode."""
         await self.executor.async_execute_command(
-            OverkizCommand.SET_HEATING_LEVEL, HVAC_MODES_TO_OVERKIZ[hvac_mode]
+            OverkizCommand.SET_HEATING_LEVEL, [HVAC_MODES_TO_OVERKIZ[hvac_mode]]
         )
 
     @property
@@ -79,5 +79,5 @@ class AtlanticElectricalHeater(OverkizEntity, ClimateEntity):
     async def async_set_preset_mode(self, preset_mode: str) -> None:
         """Set new preset mode."""
         await self.executor.async_execute_command(
-            OverkizCommand.SET_HEATING_LEVEL, PRESET_MODES_TO_OVERKIZ[preset_mode]
+            OverkizCommand.SET_HEATING_LEVEL, [PRESET_MODES_TO_OVERKIZ[preset_mode]]
         )

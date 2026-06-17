@@ -106,21 +106,21 @@ class AtlanticHeatRecoveryVentilation(OverkizEntity, ClimateEntity):
         if preset_mode == PRESET_AUTO:
             await self.executor.async_execute_command(
                 OverkizCommand.SET_VENTILATION_CONFIGURATION_MODE,
-                OverkizCommandParam.COMFORT,
+                [OverkizCommandParam.COMFORT],
             )
             await self._set_ventilation_mode(prog=OverkizCommandParam.OFF)
 
         if preset_mode == PRESET_PROG:
             await self.executor.async_execute_command(
                 OverkizCommand.SET_VENTILATION_CONFIGURATION_MODE,
-                OverkizCommandParam.STANDARD,
+                [OverkizCommandParam.STANDARD],
             )
             await self._set_ventilation_mode(prog=OverkizCommandParam.ON)
 
         if preset_mode == PRESET_MANUAL:
             await self.executor.async_execute_command(
                 OverkizCommand.SET_VENTILATION_CONFIGURATION_MODE,
-                OverkizCommandParam.STANDARD,
+                [OverkizCommandParam.STANDARD],
             )
             await self._set_ventilation_mode(prog=OverkizCommandParam.OFF)
 
@@ -150,13 +150,13 @@ class AtlanticHeatRecoveryVentilation(OverkizEntity, ClimateEntity):
         """Set new target fan mode."""
         if fan_mode == FAN_BYPASS:
             await self.executor.async_execute_command(
-                OverkizCommand.SET_AIR_DEMAND_MODE, OverkizCommandParam.AUTO
+                OverkizCommand.SET_AIR_DEMAND_MODE, [OverkizCommandParam.AUTO]
             )
             await self._set_ventilation_mode(cooling=OverkizCommandParam.ON)
         else:
             await self._set_ventilation_mode(cooling=OverkizCommandParam.OFF)
             await self.executor.async_execute_command(
-                OverkizCommand.SET_AIR_DEMAND_MODE, FAN_MODES_TO_OVERKIZ[fan_mode]
+                OverkizCommand.SET_AIR_DEMAND_MODE, [FAN_MODES_TO_OVERKIZ[fan_mode]]
             )
 
         await self.executor.async_execute_command(
@@ -180,5 +180,5 @@ class AtlanticHeatRecoveryVentilation(OverkizEntity, ClimateEntity):
             ventilation_mode[OverkizCommandParam.PROG] = prog
 
         await self.executor.async_execute_command(
-            OverkizCommand.SET_VENTILATION_MODE, ventilation_mode
+            OverkizCommand.SET_VENTILATION_MODE, [ventilation_mode]
         )

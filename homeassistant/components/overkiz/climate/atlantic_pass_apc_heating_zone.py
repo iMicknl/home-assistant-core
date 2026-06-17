@@ -134,13 +134,13 @@ class AtlanticPassAPCHeatingZone(OverkizEntity, ClimateEntity):
     async def async_set_heating_mode(self, mode: str) -> None:
         """Set new heating mode and refresh states."""
         await self.executor.async_execute_command(
-            OverkizCommand.SET_PASS_APC_HEATING_MODE, mode
+            OverkizCommand.SET_PASS_APC_HEATING_MODE, [mode]
         )
 
         if self.current_heating_profile == OverkizCommandParam.DEROGATION:
             # If current mode is in derogation, disable it
             await self.executor.async_execute_command(
-                OverkizCommand.SET_DEROGATION_ON_OFF_STATE, OverkizCommandParam.OFF
+                OverkizCommand.SET_DEROGATION_ON_OFF_STATE, [OverkizCommandParam.OFF]
             )
 
         # We also needs to execute these 2 commands to make it work correctly
@@ -201,7 +201,7 @@ class AtlanticPassAPCHeatingZone(OverkizEntity, ClimateEntity):
         if self.hvac_mode == HVACMode.AUTO:
             await self.executor.async_execute_command(
                 OverkizCommand.SET_COMFORT_HEATING_TARGET_TEMPERATURE,
-                temperature,
+                [temperature],
             )
             await self.executor.async_execute_command(
                 OverkizCommand.REFRESH_COMFORT_HEATING_TARGET_TEMPERATURE
@@ -212,11 +212,11 @@ class AtlanticPassAPCHeatingZone(OverkizEntity, ClimateEntity):
         else:
             await self.executor.async_execute_command(
                 OverkizCommand.SET_DEROGATED_TARGET_TEMPERATURE,
-                temperature,
+                [temperature],
             )
             await self.executor.async_execute_command(
                 OverkizCommand.SET_DEROGATION_ON_OFF_STATE,
-                OverkizCommandParam.ON,
+                [OverkizCommandParam.ON],
             )
             await self.executor.async_execute_command(
                 OverkizCommand.REFRESH_TARGET_TEMPERATURE

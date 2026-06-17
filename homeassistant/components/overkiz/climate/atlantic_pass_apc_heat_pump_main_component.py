@@ -58,7 +58,7 @@ class AtlanticPassAPCHeatPumpMainComponent(OverkizEntity, ClimateEntity):
         # However, we can turn off or put the heat pump in cooling/ heating mode.
         await self.executor.async_execute_command(
             OverkizCommand.SET_PASS_APC_OPERATING_MODE,
-            HVAC_MODES_TO_OVERKIZ[hvac_mode],
+            [HVAC_MODES_TO_OVERKIZ[hvac_mode]],
         )
 
         # Wait for 2 seconds to ensure the HVAC mode change is

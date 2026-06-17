@@ -86,7 +86,7 @@ class AtlanticElectricalTowelDryer(OverkizEntity, ClimateEntity):
         """Set new target hvac mode."""
         await self.executor.async_execute_command(
             OverkizCommand.SET_TOWEL_DRYER_OPERATING_MODE,
-            HVAC_MODE_TO_OVERKIZ[hvac_mode],
+            [HVAC_MODE_TO_OVERKIZ[hvac_mode]],
         )
 
     @property
@@ -118,11 +118,11 @@ class AtlanticElectricalTowelDryer(OverkizEntity, ClimateEntity):
 
         if self.hvac_mode == HVACMode.AUTO:
             await self.executor.async_execute_command(
-                OverkizCommand.SET_DEROGATED_TARGET_TEMPERATURE, temperature
+                OverkizCommand.SET_DEROGATED_TARGET_TEMPERATURE, [temperature]
             )
         else:
             await self.executor.async_execute_command(
-                OverkizCommand.SET_TARGET_TEMPERATURE, temperature
+                OverkizCommand.SET_TARGET_TEMPERATURE, [temperature]
             )
 
     @property
@@ -157,12 +157,12 @@ class AtlanticElectricalTowelDryer(OverkizEntity, ClimateEntity):
             if self.preset_mode in (PRESET_DRYING, PRESET_BOOST):
                 await self.executor.async_execute_command(
                     OverkizCommand.SET_TOWEL_DRYER_TEMPORARY_STATE,
-                    OverkizCommandParam.PERMANENT_HEATING,
+                    [OverkizCommandParam.PERMANENT_HEATING],
                 )
 
             await self.executor.async_execute_command(
                 OverkizCommand.SET_TOWEL_DRYER_OPERATING_MODE,
-                OverkizCommandParam.INTERNAL,
+                [OverkizCommandParam.INTERNAL],
             )
 
         # If the preset mode is set from prog to none, we need
@@ -171,7 +171,7 @@ class AtlanticElectricalTowelDryer(OverkizEntity, ClimateEntity):
         elif preset_mode == PRESET_NONE and self.preset_mode == PRESET_PROG:
             await self.executor.async_execute_command(
                 OverkizCommand.SET_TOWEL_DRYER_OPERATING_MODE,
-                OverkizCommandParam.AUTO,
+                [OverkizCommandParam.AUTO],
             )
 
         # Normal behavior of setting a preset mode
@@ -179,5 +179,5 @@ class AtlanticElectricalTowelDryer(OverkizEntity, ClimateEntity):
         elif PRESET_DRYING in self._attr_preset_modes:
             await self.executor.async_execute_command(
                 OverkizCommand.SET_TOWEL_DRYER_TEMPORARY_STATE,
-                PRESET_MODE_TO_OVERKIZ[preset_mode],
+                [PRESET_MODE_TO_OVERKIZ[preset_mode]],
             )
