@@ -76,7 +76,7 @@ class AtlanticDomesticHotWaterProductionMBLComponent(OverkizEntity, WaterHeaterE
         """Set new temperature."""
         temperature = kwargs[ATTR_TEMPERATURE]
         await self.executor.async_execute_command(
-            OverkizCommand.SET_TARGET_DHW_TEMPERATURE, temperature
+            OverkizCommand.SET_TARGET_DHW_TEMPERATURE, [temperature]
         )
 
     @property
@@ -138,7 +138,7 @@ class AtlanticDomesticHotWaterProductionMBLComponent(OverkizEntity, WaterHeaterE
             if self.is_boost_mode_on:
                 await self.async_turn_boost_mode_off()
             await self.executor.async_execute_command(
-                OverkizCommand.SET_DHW_MODE, OverkizCommandParam.AUTO_MODE
+                OverkizCommand.SET_DHW_MODE, [OverkizCommandParam.AUTO_MODE]
             )
         elif operation_mode == STATE_ELECTRIC:
             if self.is_away_mode_on:
@@ -146,7 +146,7 @@ class AtlanticDomesticHotWaterProductionMBLComponent(OverkizEntity, WaterHeaterE
             if self.is_boost_mode_on:
                 await self.async_turn_boost_mode_off()
             await self.executor.async_execute_command(
-                OverkizCommand.SET_DHW_MODE, OverkizCommandParam.MANUAL_ECO_INACTIVE
+                OverkizCommand.SET_DHW_MODE, [OverkizCommandParam.MANUAL_ECO_INACTIVE]
             )
         elif operation_mode == STATE_OFF:
             await self.async_turn_away_mode_on()
@@ -194,19 +194,19 @@ class AtlanticDomesticHotWaterProductionMBLComponent(OverkizEntity, WaterHeaterE
         }
         await self.executor.async_execute_command(
             OverkizCommand.SET_DATE_TIME,
-            now_date,
+            [now_date],
             refresh_afterwards=False,
         )
         await self.executor.async_execute_command(
-            OverkizCommand.SET_ABSENCE_START_DATE, now_date, refresh_afterwards=False
+            OverkizCommand.SET_ABSENCE_START_DATE, [now_date], refresh_afterwards=False
         )
         now_date["year"] = now_date["year"] + 1
         await self.executor.async_execute_command(
-            OverkizCommand.SET_ABSENCE_END_DATE, now_date, refresh_afterwards=False
+            OverkizCommand.SET_ABSENCE_END_DATE, [now_date], refresh_afterwards=False
         )
         await self.executor.async_execute_command(
             OverkizCommand.SET_ABSENCE_MODE,
-            OverkizCommandParam.PROG,
+            [OverkizCommandParam.PROG],
             refresh_afterwards=False,
         )
         await self.coordinator.async_refresh()
@@ -214,17 +214,17 @@ class AtlanticDomesticHotWaterProductionMBLComponent(OverkizEntity, WaterHeaterE
     async def async_turn_away_mode_off(self) -> None:
         """Turn away mode off."""
         await self.executor.async_execute_command(
-            OverkizCommand.SET_ABSENCE_MODE, OverkizCommandParam.OFF
+            OverkizCommand.SET_ABSENCE_MODE, [OverkizCommandParam.OFF]
         )
 
     async def async_turn_boost_mode_on(self) -> None:
         """Turn boost mode on."""
         await self.executor.async_execute_command(
-            OverkizCommand.SET_BOOST_MODE, OverkizCommandParam.ON
+            OverkizCommand.SET_BOOST_MODE, [OverkizCommandParam.ON]
         )
 
     async def async_turn_boost_mode_off(self) -> None:
         """Turn boost mode off."""
         await self.executor.async_execute_command(
-            OverkizCommand.SET_BOOST_MODE, OverkizCommandParam.OFF
+            OverkizCommand.SET_BOOST_MODE, [OverkizCommandParam.OFF]
         )

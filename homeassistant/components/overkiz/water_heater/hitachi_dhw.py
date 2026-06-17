@@ -68,7 +68,7 @@ class HitachiDHW(OverkizEntity, WaterHeaterEntity):
         """Set new target temperature."""
         await self.executor.async_execute_command(
             OverkizCommand.SET_CONTROL_DHW_SETTING_TEMPERATURE,
-            int(kwargs[ATTR_TEMPERATURE]),
+            [int(kwargs[ATTR_TEMPERATURE])],
         )
 
     @property
@@ -89,17 +89,17 @@ class HitachiDHW(OverkizEntity, WaterHeaterEntity):
         # Turn water heater off
         if operation_mode == OverkizCommandParam.OFF:
             await self.executor.async_execute_command(
-                OverkizCommand.SET_CONTROL_DHW, OverkizCommandParam.STOP
+                OverkizCommand.SET_CONTROL_DHW, [OverkizCommandParam.STOP]
             )
             return
 
         # Turn water heater on, when off
         if self.current_operation == OverkizCommandParam.OFF:
             await self.executor.async_execute_command(
-                OverkizCommand.SET_CONTROL_DHW, OverkizCommandParam.ON
+                OverkizCommand.SET_CONTROL_DHW, [OverkizCommandParam.ON]
             )
 
         # Change operation mode
         await self.executor.async_execute_command(
-            OverkizCommand.SET_DHW_MODE, OPERATION_MODE_TO_OVERKIZ[operation_mode]
+            OverkizCommand.SET_DHW_MODE, [OPERATION_MODE_TO_OVERKIZ[operation_mode]]
         )

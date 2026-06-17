@@ -58,14 +58,14 @@ class AtlanticPassAPCDHW(OverkizEntity, WaterHeaterEntity):
 
         if self.is_eco_mode_on:
             await self.executor.async_execute_command(
-                OverkizCommand.SET_ECO_TARGET_DHW_TEMPERATURE, temperature
+                OverkizCommand.SET_ECO_TARGET_DHW_TEMPERATURE, [temperature]
             )
             await self.executor.async_execute_command(
                 OverkizCommand.REFRESH_ECO_TARGET_DWH_TEMPERATURE
             )
         else:
             await self.executor.async_execute_command(
-                OverkizCommand.SET_COMFORT_TARGET_DHW_TEMPERATURE, temperature
+                OverkizCommand.SET_COMFORT_TARGET_DHW_TEMPERATURE, [temperature]
             )
             await self.executor.async_execute_command(
                 OverkizCommand.REFRESH_COMFORT_TARGET_DWH_TEMPERATURE
@@ -120,26 +120,26 @@ class AtlanticPassAPCDHW(OverkizEntity, WaterHeaterEntity):
             regular_state = OverkizCommandParam.ON
 
         await self.executor.async_execute_command(
-            OverkizCommand.SET_BOOST_ON_OFF_STATE, boost_state
+            OverkizCommand.SET_BOOST_ON_OFF_STATE, [boost_state]
         )
         await self.executor.async_execute_command(
-            OverkizCommand.SET_DHW_ON_OFF_STATE, regular_state
+            OverkizCommand.SET_DHW_ON_OFF_STATE, [regular_state]
         )
 
     async def async_turn_away_mode_on(self) -> None:
         """Turn away mode on."""
         await self.executor.async_execute_command(
-            OverkizCommand.SET_BOOST_ON_OFF_STATE, OverkizCommandParam.OFF
+            OverkizCommand.SET_BOOST_ON_OFF_STATE, [OverkizCommandParam.OFF]
         )
         await self.executor.async_execute_command(
-            OverkizCommand.SET_DHW_ON_OFF_STATE, OverkizCommandParam.OFF
+            OverkizCommand.SET_DHW_ON_OFF_STATE, [OverkizCommandParam.OFF]
         )
 
     async def async_turn_away_mode_off(self) -> None:
         """Turn away mode off."""
         await self.executor.async_execute_command(
-            OverkizCommand.SET_BOOST_ON_OFF_STATE, OverkizCommandParam.OFF
+            OverkizCommand.SET_BOOST_ON_OFF_STATE, [OverkizCommandParam.OFF]
         )
         await self.executor.async_execute_command(
-            OverkizCommand.SET_DHW_ON_OFF_STATE, OverkizCommandParam.ON
+            OverkizCommand.SET_DHW_ON_OFF_STATE, [OverkizCommandParam.ON]
         )

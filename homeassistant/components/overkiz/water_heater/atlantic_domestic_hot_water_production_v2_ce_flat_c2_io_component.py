@@ -125,7 +125,7 @@ class AtlanticDomesticHotWaterProductionV2CEFLATC2IOComponent(
         temperature = kwargs[ATTR_TEMPERATURE]
         await self.executor.async_execute_command(
             OverkizCommand.SET_TARGET_TEMPERATURE,
-            temperature,
+            [temperature],
             refresh_afterwards=False,
         )
         await self.executor.async_execute_command(
@@ -186,7 +186,7 @@ class AtlanticDomesticHotWaterProductionV2CEFLATC2IOComponent(
 
         await self.executor.async_execute_command(
             OverkizCommand.SET_DHW_MODE,
-            OPERATION_MODE_TO_OVERKIZ[operation_mode],
+            [OPERATION_MODE_TO_OVERKIZ[operation_mode]],
             refresh_afterwards=False,
         )
 
@@ -231,7 +231,7 @@ class AtlanticDomesticHotWaterProductionV2CEFLATC2IOComponent(
         """Turn away mode off."""
         await self.executor.async_execute_command(
             OverkizCommand.SET_ABSENCE_MODE,
-            OverkizCommandParam.OFF,
+            [OverkizCommandParam.OFF],
             refresh_afterwards=refresh_afterwards,
         )
 
@@ -257,6 +257,6 @@ class AtlanticDomesticHotWaterProductionV2CEFLATC2IOComponent(
         """Turn boost mode off."""
         await self.executor.async_execute_command(
             OverkizCommand.SET_BOOST_MODE,
-            OverkizCommandParam.OFF,
+            [OverkizCommandParam.OFF],
             refresh_afterwards=False,
         )
