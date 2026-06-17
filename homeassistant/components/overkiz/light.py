@@ -95,7 +95,7 @@ class OverkizLight(OverkizEntity, LightEntity):
 
         if brightness is not None:
             await self.executor.async_execute_command(
-                OverkizCommand.SET_INTENSITY, round(float(brightness) / 255 * 100)
+                OverkizCommand.SET_INTENSITY, [round(float(brightness) / 255 * 100)]
             )
             return
 

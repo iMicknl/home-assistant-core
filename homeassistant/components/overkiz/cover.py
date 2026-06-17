@@ -690,7 +690,7 @@ class OverkizCover(OverkizDescriptiveEntity, CoverEntity):
             position = 100 - position
 
         if command := self.entity_description.set_position_command:
-            await self.executor.async_execute_command(command, position)
+            await self.executor.async_execute_command(command, [position])
 
     async def async_open_cover(self, **kwargs: Any) -> None:
         """Open the cover."""
@@ -735,7 +735,7 @@ class OverkizCover(OverkizDescriptiveEntity, CoverEntity):
             position = 100 - position
 
         if command := self.entity_description.set_tilt_position_command:
-            await self.executor.async_execute_command(command, position)
+            await self.executor.async_execute_command(command, [position])
 
     async def async_set_cover_position_and_tilt(self, **kwargs: Any) -> None:
         """Move cover and tilt to a specific position.

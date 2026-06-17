@@ -153,12 +153,12 @@ class OverkizSwitch(OverkizDescriptiveEntity, SwitchEntity):
         """Turn the entity on."""
         await self.executor.async_execute_command(
             self.entity_description.turn_on,
-            self.entity_description.turn_on_args,
+            [self.entity_description.turn_on_args],
         )
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Turn the entity off."""
         await self.executor.async_execute_command(
             self.entity_description.turn_off,
-            self.entity_description.turn_off_args,
+            [self.entity_description.turn_off_args],
         )
