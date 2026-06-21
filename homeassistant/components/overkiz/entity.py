@@ -32,8 +32,11 @@ class OverkizEntity(CoordinatorEntity[OverkizDataUpdateCoordinator]):
         self._attr_unique_id = self.device.device_url
 
         if self.device.identifier.is_sub_device:
-            # In case of sub entity, use the provided label as name
-            self._attr_name = self.device.label
+            # In case of sub entity, use the provided label as name. When the
+            # sub-device shares its label with the base device, the label would
+            # be repeated by has_entity_name, so leave the name empty instead.
+            if self.device.label != self.base_device_label:
+                self._attr_name = self.device.label
 
         self._attr_device_info = self.generate_device_info()
 
@@ -60,6 +63,18 @@ class OverkizEntity(CoordinatorEntity[OverkizDataUpdateCoordinator]):
     def device(self) -> Device:
         """Return Overkiz device linked to this entity."""
         return self.coordinator.data[self.device_url]
+
+    @property
+    def base_device_label(self) -> str | None:
+        """Return the label of the base device shared by sub-devices."""
+        base_device_url = self.device.identifier.base_device_url
+        for device in self.coordinator.data.values():
+            if (
+                device.identifier.base_device_url == base_device_url
+                and not device.identifier.is_sub_device
+            ):
+                return device.label
+        return None
 
     def generate_device_info(self) -> DeviceInfo:
         """Return device registry information for this entity."""
@@ -129,7 +144,11 @@ class OverkizDescriptiveEntity(OverkizEntity):
         self.entity_description = description
         self._attr_unique_id = f"{super().unique_id}-{self.entity_description.key}"
 
-        if self.device.identifier.is_sub_device:
+        if self.device.identifier.is_sub_device and (
+            self.device.label != self.base_device_label
+        ):
+            # Sub-device with a distinct label: prefix it so the entity name
+            # reflects which sub-device it belongs to.
             if isinstance(description.name, str):
                 self._attr_name = f"{self.device.label} {description.name}"
             else:
