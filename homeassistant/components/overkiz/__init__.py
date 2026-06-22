@@ -5,11 +5,7 @@ from dataclasses import dataclass
 from typing import cast
 
 from aiohttp import ClientError
-from pyoverkiz.auth.credentials import (
-    LocalTokenCredentials,
-    RexelTokenCredentials,
-    UsernamePasswordCredentials,
-)
+from pyoverkiz.auth.credentials import RexelTokenCredentials
 from pyoverkiz.client import OverkizClient
 from pyoverkiz.const import REXEL_OAUTH_CLIENT_ID
 from pyoverkiz.enums import APIType, OverkizState, Server, UIClass, UIWidget
@@ -22,7 +18,6 @@ from pyoverkiz.exceptions import (
     TooManyRequestsError,
 )
 from pyoverkiz.models import Device, PersistedActionGroup
-from pyoverkiz.utils import create_local_server_config
 
 from homeassistant.components.application_credentials import (
     ClientCredential,
@@ -53,6 +48,7 @@ from homeassistant.helpers import (
 from homeassistant.helpers.aiohttp_client import async_create_clientsession
 from homeassistant.helpers.typing import ConfigType
 
+from .client import create_cloud_client, create_local_client
 from .const import (
     CONF_API_TYPE,
     CONF_GATEWAY_ID,
@@ -304,35 +300,6 @@ async def _async_migrate_strenum_unique_ids(
         return None
 
     await er.async_migrate_entries(hass, config_entry.entry_id, update_unique_id)
-
-
-def create_local_client(
-    hass: HomeAssistant, host: str, token: str, verify_ssl: bool
-) -> OverkizClient:
-    """Create Overkiz local client."""
-    session = async_create_clientsession(hass, verify_ssl=verify_ssl)
-
-    return OverkizClient(
-        server=create_local_server_config(host=host),
-        credentials=LocalTokenCredentials(token),
-        session=session,
-        verify_ssl=verify_ssl,
-    )
-
-
-def create_cloud_client(
-    hass: HomeAssistant, username: str, password: str, server: Server
-) -> OverkizClient:
-    """Create Overkiz cloud client."""
-    # To allow users with multiple accounts/hubs, we create a
-    # new session so they have separate cookies
-    session = async_create_clientsession(hass)
-
-    return OverkizClient(
-        server=server,
-        credentials=UsernamePasswordCredentials(username, password),
-        session=session,
-    )
 
 
 async def create_rexel_client(

@@ -5,11 +5,7 @@ import logging
 from typing import Any, cast
 
 from aiohttp import ClientConnectorCertificateError, ClientError
-from pyoverkiz.auth.credentials import (
-    LocalTokenCredentials,
-    RexelTokenCredentials,
-    UsernamePasswordCredentials,
-)
+from pyoverkiz.auth.credentials import RexelTokenCredentials
 from pyoverkiz.client import GatewayCandidate, OverkizClient
 from pyoverkiz.const import SERVERS_WITH_LOCAL_API, SUPPORTED_SERVERS
 from pyoverkiz.enums import APIType, Server
@@ -24,7 +20,7 @@ from pyoverkiz.exceptions import (
     UnknownUserError,
 )
 from pyoverkiz.obfuscate import obfuscate_id
-from pyoverkiz.utils import create_local_server_config, is_overkiz_gateway
+from pyoverkiz.utils import is_overkiz_gateway
 import voluptuous as vol
 
 from homeassistant.config_entries import SOURCE_REAUTH, ConfigFlowResult
@@ -40,6 +36,7 @@ from homeassistant.helpers.aiohttp_client import async_create_clientsession
 from homeassistant.helpers.service_info.dhcp import DhcpServiceInfo
 from homeassistant.helpers.service_info.zeroconf import ZeroconfServiceInfo
 
+from .client import create_cloud_client, create_local_client
 from .const import (
     CONF_API_TYPE,
     CONF_GATEWAY_ID,
@@ -86,23 +83,18 @@ class OverkizConfigFlow(
 
         if self._api_type == APIType.LOCAL:
             user_input[CONF_VERIFY_SSL] = self._verify_ssl
-            session = async_create_clientsession(
-                self.hass, verify_ssl=user_input[CONF_VERIFY_SSL]
-            )
-            client = OverkizClient(
-                server=create_local_server_config(host=user_input[CONF_HOST]),
-                credentials=LocalTokenCredentials(user_input[CONF_TOKEN]),
-                session=session,
+            client = create_local_client(
+                self.hass,
+                host=user_input[CONF_HOST],
+                token=user_input[CONF_TOKEN],
                 verify_ssl=user_input[CONF_VERIFY_SSL],
             )
         else:  # APIType.CLOUD
-            session = async_create_clientsession(self.hass)
-            client = OverkizClient(
+            client = create_cloud_client(
+                self.hass,
+                username=user_input[CONF_USERNAME],
+                password=user_input[CONF_PASSWORD],
                 server=user_input[CONF_HUB],
-                credentials=UsernamePasswordCredentials(
-                    user_input[CONF_USERNAME], user_input[CONF_PASSWORD]
-                ),
-                session=session,
             )
 
         await client.login(register_event_listener=False)

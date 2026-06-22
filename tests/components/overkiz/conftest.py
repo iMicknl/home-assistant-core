@@ -3,7 +3,7 @@
 from collections.abc import Awaitable, Callable, Generator
 from dataclasses import dataclass, field
 from typing import NamedTuple
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 from pyoverkiz.client import OverkizClient
 from pyoverkiz.enums import APIType
@@ -35,6 +35,7 @@ class MockOverkizClient(OverkizClient):
 
     setup: Setup = field(default_factory=load_setup_fixture)
     event_batches: list[list[Event]] = field(default_factory=list)
+    gateways: list[Mock] = field(default_factory=lambda: [Mock(id=TEST_GATEWAY_ID)])
     server_config: ServerConfig = field(
         default_factory=lambda: ServerConfig(
             name="Somfy",
@@ -59,6 +60,7 @@ class MockOverkizClient(OverkizClient):
         self.execute_action_group = AsyncMock(
             side_effect=self._async_execute_action_group
         )
+        self.get_gateways = AsyncMock(side_effect=self._async_get_gateways)
 
     def set_setup_fixture(self, fixture: str) -> None:
         """Load a setup fixture for the next integration setup."""
@@ -80,6 +82,7 @@ class MockOverkizClient(OverkizClient):
         self.get_current_executions.reset_mock()
         self.cancel_execution.reset_mock()
         self.execute_action_group.reset_mock()
+        self.get_gateways.reset_mock()
 
     async def _async_get_setup(self) -> Setup:
         """Return the configured setup."""
@@ -99,6 +102,10 @@ class MockOverkizClient(OverkizClient):
         """Return a unique execution id for each action group."""
         self._execution_id += 1
         return f"exec-{self._execution_id}"
+
+    async def _async_get_gateways(self) -> list[Mock]:
+        """Return the configured gateways."""
+        return self.gateways
 
 
 @pytest.fixture
@@ -137,9 +144,34 @@ def mock_rexel_config_entry() -> MockConfigEntry:
 
 
 @pytest.fixture
-def mock_client() -> MockOverkizClient:
-    """Return a configurable mock Overkiz client."""
-    return MockOverkizClient()
+def mock_client() -> Generator[MockOverkizClient]:
+    """Mock the Overkiz client where it is created.
+
+    Both the config flow and the integration setup build their client through
+    the ``create_cloud_client``/``create_local_client`` factories, so patching
+    those seams (re-exported into the config flow module) gives one mock client
+    shared by every test.
+    """
+    client = MockOverkizClient()
+    with (
+        patch(
+            "homeassistant.components.overkiz.create_cloud_client",
+            return_value=client,
+        ),
+        patch(
+            "homeassistant.components.overkiz.create_local_client",
+            return_value=client,
+        ),
+        patch(
+            "homeassistant.components.overkiz.config_flow.create_cloud_client",
+            return_value=client,
+        ),
+        patch(
+            "homeassistant.components.overkiz.config_flow.create_local_client",
+            return_value=client,
+        ),
+    ):
+        yield client
 
 
 @pytest.fixture
@@ -158,18 +190,8 @@ def setup_overkiz_integration(
 
         mock_client.set_setup_fixture(fixture)
 
-        with (
-            patch(
-                "homeassistant.components.overkiz.create_cloud_client",
-                return_value=mock_client,
-            ),
-            patch(
-                "homeassistant.components.overkiz.create_local_client",
-                return_value=mock_client,
-            ),
-        ):
-            await hass.config_entries.async_setup(mock_config_entry.entry_id)
-            await hass.async_block_till_done()
+        await hass.config_entries.async_setup(mock_config_entry.entry_id)
+        await hass.async_block_till_done()
 
         return mock_config_entry
 
