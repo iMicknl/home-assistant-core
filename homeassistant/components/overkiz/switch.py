@@ -20,6 +20,8 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from . import OverkizDataConfigEntry
 from .entity import OverkizDescriptiveEntity
 
+PARALLEL_UPDATES = 0
+
 
 @dataclass(frozen=True, kw_only=True)
 class OverkizSwitchDescription(SwitchEntityDescription):

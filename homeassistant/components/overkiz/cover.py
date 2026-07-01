@@ -30,6 +30,8 @@ from .const import DOMAIN, LOGGER
 from .coordinator import OverkizDataUpdateCoordinator
 from .entity import OverkizDescriptiveEntity
 
+PARALLEL_UPDATES = 0
+
 # Special position values reported by some Overkiz devices
 _POSITION_MY = 108  # "My position" preset
 _POSITION_UNKNOWN = 124  # "Unknown position" preset

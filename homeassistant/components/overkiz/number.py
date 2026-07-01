@@ -21,6 +21,8 @@ from .const import IGNORED_OVERKIZ_DEVICES
 from .coordinator import OverkizDataUpdateCoordinator
 from .entity import OverkizDescriptiveEntity
 
+PARALLEL_UPDATES = 0
+
 BOOST_MODE_DURATION_DELAY = 1
 OPERATING_MODE_DELAY = 3
 

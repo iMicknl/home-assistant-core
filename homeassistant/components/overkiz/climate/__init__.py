@@ -31,6 +31,8 @@ from .somfy_heating_temperature_interface import SomfyHeatingTemperatureInterfac
 from .somfy_thermostat import SomfyThermostat
 from .valve_heating_temperature_interface import ValveHeatingTemperatureInterface
 
+PARALLEL_UPDATES = 0
+
 
 @unique
 class Controllable(StrEnum):

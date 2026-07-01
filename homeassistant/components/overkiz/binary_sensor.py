@@ -19,6 +19,8 @@ from . import OverkizDataConfigEntry
 from .const import IGNORED_OVERKIZ_DEVICES
 from .entity import OverkizDescriptiveEntity
 
+PARALLEL_UPDATES = 0
+
 
 @dataclass(frozen=True, kw_only=True)
 class OverkizBinarySensorDescription(BinarySensorEntityDescription):

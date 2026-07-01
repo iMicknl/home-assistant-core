@@ -23,6 +23,8 @@ from . import OverkizDataConfigEntry
 from .coordinator import OverkizDataUpdateCoordinator
 from .entity import OverkizDescriptiveEntity
 
+PARALLEL_UPDATES = 0
+
 
 @dataclass(frozen=True, kw_only=True)
 class OverkizAlarmDescription(AlarmControlPanelEntityDescription):

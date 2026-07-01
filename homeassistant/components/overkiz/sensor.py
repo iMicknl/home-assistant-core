@@ -42,6 +42,8 @@ from .const import (
 from .coordinator import OverkizDataUpdateCoordinator
 from .entity import OverkizDescriptiveEntity, OverkizEntity
 
+PARALLEL_UPDATES = 0
+
 
 @dataclass(frozen=True)
 class OverkizSensorDescription(SensorEntityDescription):
