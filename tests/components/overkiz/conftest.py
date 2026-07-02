@@ -3,7 +3,7 @@
 from collections.abc import Awaitable, Callable, Generator
 from dataclasses import dataclass, field
 from typing import NamedTuple
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 from pyoverkiz.client import OverkizClient
 from pyoverkiz.enums import APIType
@@ -14,11 +14,17 @@ from homeassistant.components.overkiz.const import DOMAIN
 from homeassistant.core import HomeAssistant
 
 from . import DEFAULT_SETUP_FIXTURE, load_setup_fixture
-from .test_config_flow import TEST_EMAIL, TEST_GATEWAY_ID, TEST_PASSWORD, TEST_SERVER
 
 from tests.common import MockConfigEntry
 
 type SetupOverkizIntegration = Callable[..., Awaitable[MockConfigEntry]]
+
+TEST_EMAIL = "test@testdomain.com"
+TEST_PASSWORD = "test-password"
+TEST_SERVER = "somfy_europe"
+TEST_GATEWAY_ID = "1234-5678-9123"
+TEST_HOST = "gateway-1234-5678-9123.local:8443"
+TEST_TOKEN = "1234123412341234"
 
 
 class FixtureDevice(NamedTuple):
@@ -52,6 +58,8 @@ class MockOverkizClient(OverkizClient):
         self.login = AsyncMock(return_value=True)
         self.get_setup = AsyncMock(side_effect=self._async_get_setup)
         self.get_devices = AsyncMock(side_effect=self._async_get_devices)
+        self.get_gateways = AsyncMock(return_value=[Mock(id=TEST_GATEWAY_ID)])
+        self.discover_gateways = AsyncMock(return_value=[])
         self.get_action_groups = AsyncMock(return_value=[])
         self.fetch_events = AsyncMock(side_effect=self._async_fetch_events)
         self.get_current_executions = AsyncMock(return_value=[])
@@ -75,6 +83,8 @@ class MockOverkizClient(OverkizClient):
         self.login.reset_mock()
         self.get_setup.reset_mock()
         self.get_devices.reset_mock()
+        self.get_gateways.reset_mock()
+        self.discover_gateways.reset_mock()
         self.get_action_groups.reset_mock()
         self.fetch_events.reset_mock()
         self.get_current_executions.reset_mock()
@@ -103,7 +113,7 @@ class MockOverkizClient(OverkizClient):
 
 @pytest.fixture
 def mock_config_entry() -> MockConfigEntry:
-    """Return the default mocked config entry."""
+    """Return a Cloud API config entry (the default used by platform tests)."""
     return MockConfigEntry(
         title="Somfy TaHoma Switch",
         domain=DOMAIN,
@@ -113,12 +123,21 @@ def mock_config_entry() -> MockConfigEntry:
 
 
 @pytest.fixture
-def mock_setup_entry() -> Generator[AsyncMock]:
-    """Mock setting up a config entry."""
-    with patch(
-        "homeassistant.components.overkiz.async_setup_entry", return_value=True
-    ) as mock_setup_entry:
-        yield mock_setup_entry
+def mock_local_config_entry() -> MockConfigEntry:
+    """Return a Local API config entry backed by a token."""
+    return MockConfigEntry(
+        title=TEST_HOST,
+        domain=DOMAIN,
+        unique_id=TEST_GATEWAY_ID,
+        minor_version=2,
+        data={
+            "host": TEST_HOST,
+            "token": TEST_TOKEN,
+            "verify_ssl": True,
+            "hub": TEST_SERVER,
+            "api_type": "local",
+        },
+    )
 
 
 @pytest.fixture
@@ -137,9 +156,33 @@ def mock_rexel_config_entry() -> MockConfigEntry:
 
 
 @pytest.fixture
-def mock_client() -> MockOverkizClient:
-    """Return a configurable mock Overkiz client."""
-    return MockOverkizClient()
+def mock_setup_entry() -> Generator[AsyncMock]:
+    """Mock setting up a config entry."""
+    with patch(
+        "homeassistant.components.overkiz.async_setup_entry", return_value=True
+    ) as mock_setup_entry:
+        yield mock_setup_entry
+
+
+@pytest.fixture
+def mock_client() -> Generator[MockOverkizClient]:
+    """Return a mock Overkiz client, patched in at the library boundary.
+
+    Patching ``OverkizClient`` where the integration constructs it (both the
+    setup path and the config flow) means the same mock backs the config flow
+    tests and the platform tests without touching the integration's own
+    ``create_*_client`` helpers.
+    """
+    client = MockOverkizClient()
+
+    with (
+        patch("homeassistant.components.overkiz.OverkizClient", return_value=client),
+        patch(
+            "homeassistant.components.overkiz.config_flow.OverkizClient",
+            return_value=client,
+        ),
+    ):
+        yield client
 
 
 @pytest.fixture
@@ -153,25 +196,17 @@ def setup_overkiz_integration(
     async def _setup(
         *,
         fixture: str = DEFAULT_SETUP_FIXTURE,
+        config_entry: MockConfigEntry | None = None,
     ) -> MockConfigEntry:
-        mock_config_entry.add_to_hass(hass)
+        entry = config_entry or mock_config_entry
+        entry.add_to_hass(hass)
 
         mock_client.set_setup_fixture(fixture)
 
-        with (
-            patch(
-                "homeassistant.components.overkiz.create_cloud_client",
-                return_value=mock_client,
-            ),
-            patch(
-                "homeassistant.components.overkiz.create_local_client",
-                return_value=mock_client,
-            ),
-        ):
-            await hass.config_entries.async_setup(mock_config_entry.entry_id)
-            await hass.async_block_till_done()
+        await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
 
-        return mock_config_entry
+        return entry
 
     return _setup
 

@@ -21,7 +21,13 @@ from homeassistant.exceptions import (
 from homeassistant.helpers import entity_registry as er
 from homeassistant.setup import async_setup_component
 
-from .test_config_flow import TEST_EMAIL, TEST_GATEWAY_ID, TEST_PASSWORD, TEST_SERVER
+from .conftest import (
+    TEST_EMAIL,
+    TEST_GATEWAY_ID,
+    TEST_PASSWORD,
+    TEST_SERVER,
+    MockOverkizClient,
+)
 
 from tests.common import MockConfigEntry, RegistryEntryWithDefaults, mock_registry
 
@@ -32,6 +38,30 @@ ENTITY_SENSOR_TARGET_CLOSURE_STATE = "sensor.zipscreen_woonkamer_target_closure_
 ENTITY_SENSOR_TARGET_CLOSURE_STATE_2 = (
     "sensor.zipscreen_woonkamer_target_closure_state_2"
 )
+
+
+@pytest.mark.parametrize(
+    "config_entry_fixture",
+    ["mock_config_entry", "mock_local_config_entry", "mock_rexel_config_entry"],
+    ids=["cloud", "local", "rexel"],
+)
+async def test_setup_entry(
+    hass: HomeAssistant,
+    mock_client: MockOverkizClient,
+    config_entry_fixture: str,
+    request: pytest.FixtureRequest,
+) -> None:
+    """Test the integration sets up over each supported transport."""
+    # Rexel authenticates via the shared OAuth2 application credential.
+    assert await async_setup_component(hass, "application_credentials", {})
+
+    config_entry: MockConfigEntry = request.getfixturevalue(config_entry_fixture)
+    config_entry.add_to_hass(hass)
+
+    await hass.config_entries.async_setup(config_entry.entry_id)
+    await hass.async_block_till_done()
+
+    assert config_entry.state is ConfigEntryState.LOADED
 
 
 async def test_unique_id_migration(hass: HomeAssistant) -> None:
@@ -88,7 +118,7 @@ async def test_unique_id_migration(hass: HomeAssistant) -> None:
             ),
         },
     )
-    assert await async_setup_component(hass, DOMAIN, {})
+    await hass.config_entries.async_setup(mock_entry.entry_id)
     await hass.async_block_till_done()
 
     ent_reg = er.async_get(hass)
