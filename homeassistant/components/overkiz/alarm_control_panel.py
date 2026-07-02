@@ -113,9 +113,13 @@ def _state_myfox_alarm_controller(
     """Return the state of the device."""
     alarm_status = cast(str, select_state(OverkizState.MYFOX_ALARM_STATUS))
 
-    # A disarm event only broadcasts myfox:AlarmStatusState; core:IntrusionState
-    # is never reset on the event stream, so it must not keep the panel pinned
-    # to triggered once the alarm reports disarmed.
+    # Somfy's cloud only pushes core:IntrusionState=detected to the event
+    # stream when an intrusion starts; it never pushes the notDetected
+    # reset, so our cached value for that state stays "detected" forever
+    # (a full reload fetches fresh state via the API instead of the event
+    # stream, which is why reloading "fixes" it). Disarming does reliably
+    # broadcast myfox:AlarmStatusState=disarmed, so once that is seen, treat
+    # it as authoritative and stop trusting the stale intrusion flag.
     if (
         alarm_status != OverkizCommandParam.DISARMED
         and cast(str, select_state(OverkizState.CORE_INTRUSION))

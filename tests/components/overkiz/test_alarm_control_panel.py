@@ -35,11 +35,12 @@ async def test_myfox_disarm_clears_stale_intrusion(
     mock_client: MockOverkizClient,
     setup_overkiz_integration: SetupOverkizIntegration,
 ) -> None:
-    """Test the panel leaves triggered when only a disarm event is received.
+    """Test the panel clears triggered when a disarm-only event is received.
 
-    On disarm the Somfy stream broadcasts myfox:AlarmStatusState but never
-    resets core:IntrusionState, which used to keep the panel triggered until
-    a reload.
+    Somfy's event stream never resets core:IntrusionState once it reports
+    "detected"; only myfox:AlarmStatusState=disarmed is broadcast on disarm.
+    Before the fix, that stale intrusion flag kept the panel stuck on
+    triggered until the integration was reloaded.
     """
     await setup_overkiz_integration(fixture=MYFOX_ALARM_FIXTURE)
 
@@ -51,7 +52,11 @@ async def test_myfox_disarm_clears_stale_intrusion(
             device_state_changed_event(
                 device_url=MYFOX_ALARM_DEVICE_URL,
                 device_states=[
-                    {"name": OverkizState.MYFOX_ALARM_STATUS, "type": 3, "value": "armed"},
+                    {
+                        "name": OverkizState.MYFOX_ALARM_STATUS,
+                        "type": 3,
+                        "value": "armed",
+                    },
                     {
                         "name": OverkizState.CORE_INTRUSION,
                         "type": 3,
