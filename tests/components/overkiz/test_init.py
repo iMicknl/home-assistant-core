@@ -26,7 +26,7 @@ from .conftest import (
     TEST_GATEWAY_ID,
     TEST_PASSWORD,
     TEST_SERVER,
-    MockOverkizClient,
+    SetupOverkizIntegration,
 )
 
 from tests.common import MockConfigEntry, RegistryEntryWithDefaults, mock_registry
@@ -47,7 +47,7 @@ ENTITY_SENSOR_TARGET_CLOSURE_STATE_2 = (
 )
 async def test_setup_entry(
     hass: HomeAssistant,
-    mock_client: MockOverkizClient,
+    setup_overkiz_integration: SetupOverkizIntegration,
     config_entry_fixture: str,
     request: pytest.FixtureRequest,
 ) -> None:
@@ -56,10 +56,7 @@ async def test_setup_entry(
     assert await async_setup_component(hass, "application_credentials", {})
 
     config_entry: MockConfigEntry = request.getfixturevalue(config_entry_fixture)
-    config_entry.add_to_hass(hass)
-
-    await hass.config_entries.async_setup(config_entry.entry_id)
-    await hass.async_block_till_done()
+    await setup_overkiz_integration(config_entry=config_entry)
 
     assert config_entry.state is ConfigEntryState.LOADED
 

@@ -10,7 +10,7 @@ from pyoverkiz.enums import APIType
 from pyoverkiz.models import Event, ServerConfig, Setup
 import pytest
 
-from homeassistant.components.overkiz.const import DOMAIN
+from homeassistant.components.overkiz.const import CONF_API_TYPE, DOMAIN
 from homeassistant.core import HomeAssistant
 
 from . import DEFAULT_SETUP_FIXTURE, load_setup_fixture
@@ -202,6 +202,11 @@ def setup_overkiz_integration(
         entry.add_to_hass(hass)
 
         mock_client.set_setup_fixture(fixture)
+        # Match the fake client's transport to the entry being set up, so the
+        # cloud-only default doesn't mask local-specific entity behavior.
+        mock_client.server_config.api_type = APIType(
+            entry.data.get(CONF_API_TYPE, APIType.CLOUD)
+        )
 
         await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
