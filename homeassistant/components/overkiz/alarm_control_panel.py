@@ -111,15 +111,19 @@ def _state_myfox_alarm_controller(
     select_state: Callable[[str], OverkizStateType],
 ) -> AlarmControlPanelState:
     """Return the state of the device."""
+    alarm_status = cast(str, select_state(OverkizState.MYFOX_ALARM_STATUS))
+
+    # A disarm event only broadcasts myfox:AlarmStatusState; core:IntrusionState
+    # is never reset on the event stream, so it must not keep the panel pinned
+    # to triggered once the alarm reports disarmed.
     if (
-        cast(str, select_state(OverkizState.CORE_INTRUSION))
+        alarm_status != OverkizCommandParam.DISARMED
+        and cast(str, select_state(OverkizState.CORE_INTRUSION))
         == OverkizCommandParam.DETECTED
     ):
         return AlarmControlPanelState.TRIGGERED
 
-    return MAP_MYFOX_STATUS_STATE[
-        cast(str, select_state(OverkizState.MYFOX_ALARM_STATUS))
-    ]
+    return MAP_MYFOX_STATUS_STATE[alarm_status]
 
 
 MAP_ARM_TYPE: dict[str, AlarmControlPanelState] = {
