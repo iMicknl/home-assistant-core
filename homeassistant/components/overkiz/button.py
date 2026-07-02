@@ -1,9 +1,10 @@
 """Support for Overkiz (virtual) buttons."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import override
 
-from pyoverkiz.enums import OverkizCommand, OverkizCommandParam
+from pyoverkiz.enums import OverkizAttribute, OverkizCommand, OverkizCommandParam
+from pyoverkiz.models import Device
 from pyoverkiz.types import StateType as OverkizStateType
 
 from homeassistant.components.button import (
@@ -17,7 +18,12 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from . import OverkizDataConfigEntry
 from .const import IGNORED_OVERKIZ_DEVICES
+from .coordinator import OverkizDataUpdateCoordinator
 from .entity import OverkizDescriptiveEntity
+
+# Alias id 1 (favorite1) is the "My position" preset on DynamicScreen (ogp:blind)
+FAVORITE_ALIAS_ID = "1"
+FAVORITE_ALIAS_TYPE = "favorite1"
 
 
 @dataclass(frozen=True)
@@ -25,6 +31,8 @@ class OverkizButtonDescription(ButtonEntityDescription):
     """Class to describe an Overkiz button."""
 
     press_args: OverkizStateType | None = None
+    # Command to execute, when it differs from the (unique) description key
+    command: OverkizCommand | None = None
 
 
 BUTTON_DESCRIPTIONS: list[OverkizButtonDescription] = [
@@ -114,17 +122,84 @@ async def async_setup_entry(
         ):
             continue
 
-        entities.extend(
-            OverkizButton(
-                device.device_url,
-                data.coordinator,
-                description,
+        for command in device.definition.commands:
+            if not (description := SUPPORTED_COMMANDS.get(command)):
+                continue
+
+            if command == OverkizCommand.GO_TO_ALIAS:
+                entities.extend(
+                    _create_go_to_alias_buttons(device, data.coordinator)
+                )
+                continue
+
+            entities.append(
+                OverkizButton(device.device_url, data.coordinator, description)
             )
-            for command in device.definition.commands
-            if (description := SUPPORTED_COMMANDS.get(command))
-        )
 
     async_add_entities(entities)
+
+
+def _create_go_to_alias_buttons(
+    device: Device, coordinator: OverkizDataUpdateCoordinator
+) -> list[OverkizButton]:
+    """Create goToAlias buttons for the aliases the device actually exposes.
+
+    The default press_args of "1" (favorite1) is only valid on DynamicScreen
+    (ogp:blind); other devices expose their own alias ids in
+    core:SupportedAliases (e.g. a Velux ventilation position), so pressing a
+    hardcoded "1" button fails. Create one button per real alias id instead.
+    """
+    aliases: list[dict] = []
+    if attribute := device.attributes.get(OverkizAttribute.CORE_SUPPORTED_ALIASES):
+        aliases = attribute.value
+
+    # Without a SupportedAliases attribute we keep the legacy favorite1 button
+    # for backwards compatibility (e.g. ogp:Pergola exposes goToAlias only).
+    if not aliases:
+        return [
+            OverkizButton(
+                device.device_url,
+                coordinator,
+                SUPPORTED_COMMANDS[OverkizCommand.GO_TO_ALIAS],
+            )
+        ]
+
+    buttons: list[OverkizButton] = []
+
+    # Keep the single "My position" button (unchanged unique_id) only when the
+    # favorite1 preset id 1 is actually present.
+    if any(alias["id"] == FAVORITE_ALIAS_ID for alias in aliases):
+        buttons.append(
+            OverkizButton(
+                device.device_url,
+                coordinator,
+                SUPPORTED_COMMANDS[OverkizCommand.GO_TO_ALIAS],
+            )
+        )
+
+    # Expose the remaining named presets (e.g. a Velux ventilation position).
+    for alias in aliases:
+        if alias["type"] == FAVORITE_ALIAS_TYPE:
+            continue
+
+        alias_id = alias["id"]
+        alias_type = alias["type"]
+        buttons.append(
+            OverkizButton(
+                device.device_url,
+                coordinator,
+                replace(
+                    SUPPORTED_COMMANDS[OverkizCommand.GO_TO_ALIAS],
+                    key=f"{OverkizCommand.GO_TO_ALIAS}-{alias_id}",
+                    command=OverkizCommand.GO_TO_ALIAS,
+                    press_args=alias_id,
+                    name=alias_type.capitalize(),
+                    translation_key=alias_type,
+                ),
+            )
+        )
+
+    return buttons
 
 
 class OverkizButton(OverkizDescriptiveEntity, ButtonEntity):
@@ -135,10 +210,12 @@ class OverkizButton(OverkizDescriptiveEntity, ButtonEntity):
     @override
     async def async_press(self) -> None:
         """Handle the button press."""
+        command = self.entity_description.command or self.entity_description.key
+
         if self.entity_description.press_args:
             await self.executor.async_execute_command(
-                self.entity_description.key, self.entity_description.press_args
+                command, self.entity_description.press_args
             )
             return
 
-        await self.executor.async_execute_command(self.entity_description.key)
+        await self.executor.async_execute_command(command)

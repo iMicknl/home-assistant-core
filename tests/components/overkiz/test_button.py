@@ -31,7 +31,7 @@ IDENTIFY = FixtureDevice(
 GO_TO_ALIAS = FixtureDevice(
     "setup/local_somfy_tahoma_switch_europe_2.json",
     "io://1234-5678-1516/77700",
-    "button.roof_window_my_position",
+    "button.roof_window_ventilation",
 )
 CHECK_EVENT_TRIGGER = FixtureDevice(
     "setup/cloud_nexity_rail_din_europe.json",
@@ -99,8 +99,14 @@ async def test_button_press_with_args(
     setup_overkiz_integration: SetupOverkizIntegration,
     mock_client: MockOverkizClient,
 ) -> None:
-    """Test pressing a button with arguments sends the correct command."""
+    """Test the alias button presses goToAlias with the device's real alias id.
+
+    This Velux window exposes only a ventilation alias (id 55299), so it must
+    not create a favorite1 "My position" button hardcoded to id 1.
+    """
     await setup_overkiz_integration(fixture=GO_TO_ALIAS.fixture)
+
+    assert hass.states.get("button.roof_window_my_position") is None
 
     await hass.services.async_call(
         BUTTON_DOMAIN,
@@ -112,6 +118,32 @@ async def test_button_press_with_args(
     assert_command_call(
         mock_client,
         device_url=GO_TO_ALIAS.device_url,
+        command_name="goToAlias",
+        parameters=["55299"],
+    )
+
+
+async def test_favorite_alias_button_kept(
+    hass: HomeAssistant,
+    setup_overkiz_integration: SetupOverkizIntegration,
+    mock_client: MockOverkizClient,
+) -> None:
+    """Test a device exposing favorite1 id 1 keeps a single My position button."""
+    await setup_overkiz_integration(fixture="setup/cloud_somfy_tahoma_v2_europe.json")
+
+    entity_id = "button.main_bedroom_bedroom_venetian_blind_my_position"
+    assert hass.states.get(entity_id) is not None
+
+    await hass.services.async_call(
+        BUTTON_DOMAIN,
+        SERVICE_PRESS,
+        {ATTR_ENTITY_ID: entity_id},
+        blocking=True,
+    )
+
+    assert_command_call(
+        mock_client,
+        device_url="ogp://1234-1234-6233/16730100",
         command_name="goToAlias",
         parameters=["1"],
     )

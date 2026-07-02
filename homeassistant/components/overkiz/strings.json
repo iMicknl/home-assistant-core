@@ -89,6 +89,11 @@
     }
   },
   "entity": {
+    "button": {
+      "ventilation": {
+        "name": "Ventilation"
+      }
+    },
     "climate": {
       "overkiz": {
         "state_attributes": {
