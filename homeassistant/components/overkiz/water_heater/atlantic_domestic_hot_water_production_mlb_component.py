@@ -1,8 +1,11 @@
 """Support for AtlanticDomesticHotWaterProductionMBLComponent."""
 
+from datetime import datetime, timedelta
 from typing import Any, cast, override
 
 from pyoverkiz.enums import OverkizCommand, OverkizCommandParam, OverkizState
+from pyoverkiz.models import Command
+from pyoverkiz.types import CommandParameterValue
 
 from homeassistant.components.water_heater import (
     STATE_ECO,
@@ -17,6 +20,24 @@ from homeassistant.util import dt as dt_util
 
 from .. import OverkizDataUpdateCoordinator
 from ..entity import OverkizEntity
+
+# Default boost window length, matching the app.
+BOOST_DEFAULT_DURATION = timedelta(days=1)
+
+
+def _date_parameter(value: datetime) -> list[CommandParameterValue]:
+    """Build the date parameter for the setBoost(Start|End)Date commands."""
+    return [
+        {
+            "year": value.year,
+            "month": value.month,
+            "day": value.day,
+            "hour": value.hour,
+            "minute": value.minute,
+            "second": value.second,
+            "weekday": value.weekday(),
+        }
+    ]
 
 
 class AtlanticDomesticHotWaterProductionMBLComponent(OverkizEntity, WaterHeaterEntity):
@@ -228,9 +249,24 @@ class AtlanticDomesticHotWaterProductionMBLComponent(OverkizEntity, WaterHeaterE
         )
 
     async def async_turn_boost_mode_on(self) -> None:
-        """Turn boost mode on."""
-        await self.executor.async_execute_command(
-            OverkizCommand.SET_BOOST_MODE, OverkizCommandParam.ON
+        """Turn boost mode on by setting a start/end date window, then enabling boost."""
+        now = dt_util.now()
+        end = now + BOOST_DEFAULT_DURATION
+        await self.executor.async_execute_commands(
+            [
+                Command(
+                    name=OverkizCommand.SET_BOOST_START_DATE,
+                    parameters=_date_parameter(now),
+                ),
+                Command(
+                    name=OverkizCommand.SET_BOOST_END_DATE,
+                    parameters=_date_parameter(end),
+                ),
+                Command(
+                    name=OverkizCommand.SET_BOOST_MODE,
+                    parameters=[OverkizCommandParam.ON],
+                ),
+            ]
         )
 
     async def async_turn_boost_mode_off(self) -> None:

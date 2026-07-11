@@ -38,6 +38,13 @@ DHW_HITACHI_YUTAKI = FixtureDevice(
     "water_heater.yutaki_dhw",
 )
 
+# Atlantic modbuslink DHW (modbuslink:AtlanticDomesticHotWaterProductionMBLComponent)
+DHW_MBL = FixtureDevice(
+    "setup/cloud_atlantic_cozytouch.json",
+    "modbuslink://1234-5678-5643/2#1",
+    "water_heater.my_home_bathroom_water_heater",
+)
+
 SNAPSHOT_FIXTURES = [
     DHW_CE_FLAT_C2,
 ]
@@ -229,6 +236,45 @@ async def test_set_operation_mode_performance_turns_boost_on(
         commands=[
             ("refreshBoostStartDate", None),
             ("refreshBoostEndDate", None),
+            ("setBoostMode", ["on"]),
+        ],
+    )
+
+
+# --- MBL (modbuslink:AtlanticDomesticHotWaterProductionMBLComponent) ---
+async def test_mbl_performance_sets_boost_window(
+    hass: HomeAssistant,
+    freezer: FrozenDateTimeFactory,
+    mock_client: MockOverkizClient,
+    setup_overkiz_integration: SetupOverkizIntegration,
+) -> None:
+    """Test performance sets a one-day boost window before enabling boost."""
+    freezer.move_to("2026-05-28 12:00:00+00:00")
+    await setup_overkiz_integration(fixture=DHW_MBL.fixture)
+
+    await hass.services.async_call(
+        "water_heater",
+        "set_operation_mode",
+        {"entity_id": DHW_MBL.entity_id, ATTR_OPERATION_MODE: STATE_PERFORMANCE},
+        blocking=True,
+    )
+
+    now_date = {
+        "year": 2026,
+        "month": 5,
+        "day": 28,
+        "hour": 5,
+        "minute": 0,
+        "second": 0,
+        "weekday": 3,
+    }
+    end_date = {**now_date, "day": 29, "weekday": 4}
+    assert_commands_call(
+        mock_client,
+        device_url=DHW_MBL.device_url,
+        commands=[
+            ("setBoostStartDate", [now_date]),
+            ("setBoostEndDate", [end_date]),
             ("setBoostMode", ["on"]),
         ],
     )
