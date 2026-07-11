@@ -3,9 +3,12 @@
 import asyncio
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, replace
+from datetime import datetime, timedelta
 from typing import cast, override
 
 from pyoverkiz.enums import OverkizCommand, OverkizCommandParam, OverkizState
+from pyoverkiz.models import Command
+from pyoverkiz.types import CommandParameterValue
 
 from homeassistant.components.number import (
     NumberDeviceClass,
@@ -15,15 +18,46 @@ from homeassistant.components.number import (
 from homeassistant.const import EntityCategory, UnitOfTemperature, UnitOfTime
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
+from homeassistant.util import dt as dt_util
 
 from . import OverkizDataConfigEntry
 from .const import IGNORED_OVERKIZ_DEVICES
 from .coordinator import OverkizDataUpdateCoordinator
 from .cover import SUPPORTED_DEVICES as SUPPORTED_COVER_DEVICES
-from .entity import OverkizDescriptiveEntity
+from .entity import OverkizDescriptiveEntity, OverkizEntity
 
 BOOST_MODE_DURATION_DELAY = 1
 OPERATING_MODE_DELAY = 3
+
+MBL_DHW_CONTROLLABLE_NAME = "modbuslink:AtlanticDomesticHotWaterProductionMBLComponent"
+MBL_BOOST_DEFAULT_DURATION = timedelta(days=1)
+
+
+def _boost_date_parameter(value: datetime) -> list[CommandParameterValue]:
+    """Build the date parameter for the setBoost(Start|End)Date commands."""
+    return [
+        {
+            "year": value.year,
+            "month": value.month,
+            "day": value.day,
+            "hour": value.hour,
+            "minute": value.minute,
+            "second": value.second,
+            "weekday": value.weekday(),
+        }
+    ]
+
+
+def _parse_boost_date(value: dict[str, int]) -> datetime:
+    """Parse a core:Boost(Start|End)DateState dict into a naive datetime."""
+    return datetime(
+        value["year"],
+        value["month"],
+        value["day"],
+        value["hour"],
+        value["minute"],
+        value["second"],
+    )
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -198,7 +232,7 @@ async def async_setup_entry(
 ) -> None:
     """Set up the Overkiz number from a config entry."""
     data = entry.runtime_data
-    entities: list[OverkizNumber] = []
+    entities: list[OverkizNumber | OverkizBoostModeDurationNumber] = []
 
     for device in data.coordinator.data.values():
         if (
@@ -231,6 +265,11 @@ async def async_setup_entry(
                     data.coordinator,
                     description,
                 )
+            )
+
+        if device.controllable_name == MBL_DHW_CONTROLLABLE_NAME:
+            entities.append(
+                OverkizBoostModeDurationNumber(device.device_url, data.coordinator)
             )
 
     async_add_entities(entities)
@@ -290,4 +329,74 @@ class OverkizNumber(OverkizDescriptiveEntity, NumberEntity):
 
         await self.executor.async_execute_command(
             self.entity_description.command, value
+        )
+
+
+class OverkizBoostModeDurationNumber(OverkizEntity, NumberEntity):
+    """Boost duration (days) for the modbuslink DHW, backed by a date window."""
+
+    _attr_device_class = NumberDeviceClass.DURATION
+    _attr_native_unit_of_measurement = UnitOfTime.DAYS
+    _attr_native_min_value = 0
+    _attr_native_max_value = 7
+    _attr_native_step = 1
+    _attr_entity_category = EntityCategory.CONFIG
+    _attr_translation_key = "boost_mode_duration"
+
+    def __init__(
+        self,
+        device_url: str,
+        coordinator: OverkizDataUpdateCoordinator,
+    ) -> None:
+        """Initialize the boost duration number."""
+        super().__init__(device_url, coordinator)
+        self._attr_unique_id = f"{super().unique_id}-boost_mode_duration"
+        self._attr_name = "Boost mode duration"
+
+    @property
+    @override
+    def native_value(self) -> float | None:
+        """Return the configured boost window length in days, 0 when boost is off."""
+        if self.device.states.get_value(OverkizState.MODBUSLINK_DHW_BOOST_MODE) not in (
+            OverkizCommandParam.ON,
+            OverkizCommandParam.PROG,
+        ):
+            return 0
+
+        start = self.device.states.get_value(OverkizState.CORE_BOOST_START_DATE)
+        end = self.device.states.get_value(OverkizState.CORE_BOOST_END_DATE)
+        if not start or not end:
+            return 0
+
+        delta = _parse_boost_date(cast(dict, end)) - _parse_boost_date(
+            cast(dict, start)
+        )
+        return round(delta.total_seconds() / 86400)
+
+    @override
+    async def async_set_native_value(self, value: float) -> None:
+        """Set the boost window (now → now + value days) and enable boost, or cancel."""
+        if value <= 0:
+            await self.executor.async_execute_command(
+                OverkizCommand.SET_BOOST_MODE, OverkizCommandParam.OFF
+            )
+            return
+
+        now = dt_util.now()
+        end = now + timedelta(days=value)
+        await self.executor.async_execute_commands(
+            [
+                Command(
+                    name=OverkizCommand.SET_BOOST_START_DATE,
+                    parameters=_boost_date_parameter(now),
+                ),
+                Command(
+                    name=OverkizCommand.SET_BOOST_END_DATE,
+                    parameters=_boost_date_parameter(end),
+                ),
+                Command(
+                    name=OverkizCommand.SET_BOOST_MODE,
+                    parameters=[OverkizCommandParam.ON],
+                ),
+            ]
         )

@@ -21,6 +21,7 @@ from homeassistant.helpers import entity_registry as er
 from .conftest import FixtureDevice, MockOverkizClient, SetupOverkizIntegration
 from .helpers import (
     assert_command_call,
+    assert_commands_call,
     async_deliver_events,
     device_state_changed_event,
     device_unavailable_event,
@@ -47,6 +48,11 @@ COMFORT_ROOM_TEMPERATURE = FixtureDevice(
     "setup/cloud_nexity_rail_din_europe.json",
     "ovp://1234-5678-1698/374762#1",
     "number.maple_residence_terrace_radiator_comfort_room_temperature",
+)
+MBL_BOOST_DURATION = FixtureDevice(
+    "setup/cloud_atlantic_cozytouch.json",
+    "modbuslink://1234-5678-5643/2#1",
+    "number.my_home_bathroom_water_heater_boost_mode_duration",
 )
 
 SNAPSHOT_FIXTURES = [
@@ -208,3 +214,76 @@ async def test_number_unavailability(
     assert (
         hass.states.get(EXPECTED_NUMBER_OF_SHOWER.entity_id).state == STATE_UNAVAILABLE
     )
+
+
+async def test_mbl_boost_duration_set_opens_window(
+    hass: HomeAssistant,
+    freezer: FrozenDateTimeFactory,
+    setup_overkiz_integration: SetupOverkizIntegration,
+    mock_client: MockOverkizClient,
+) -> None:
+    """Test setting boost duration sets a start/end window then enables boost."""
+    freezer.move_to("2026-05-28 12:00:00+00:00")
+    await setup_overkiz_integration(fixture=MBL_BOOST_DURATION.fixture)
+
+    await hass.services.async_call(
+        NUMBER_DOMAIN,
+        SERVICE_SET_VALUE,
+        {ATTR_ENTITY_ID: MBL_BOOST_DURATION.entity_id, ATTR_VALUE: 3},
+        blocking=True,
+    )
+
+    now_date = {
+        "year": 2026,
+        "month": 5,
+        "day": 28,
+        "hour": 5,
+        "minute": 0,
+        "second": 0,
+        "weekday": 3,
+    }
+    end_date = {**now_date, "day": 31, "weekday": 6}
+    assert_commands_call(
+        mock_client,
+        device_url=MBL_BOOST_DURATION.device_url,
+        commands=[
+            ("setBoostStartDate", [now_date]),
+            ("setBoostEndDate", [end_date]),
+            ("setBoostMode", ["on"]),
+        ],
+    )
+
+
+async def test_mbl_boost_duration_zero_cancels(
+    hass: HomeAssistant,
+    setup_overkiz_integration: SetupOverkizIntegration,
+    mock_client: MockOverkizClient,
+) -> None:
+    """Test setting boost duration to 0 turns boost off."""
+    await setup_overkiz_integration(fixture=MBL_BOOST_DURATION.fixture)
+
+    await hass.services.async_call(
+        NUMBER_DOMAIN,
+        SERVICE_SET_VALUE,
+        {ATTR_ENTITY_ID: MBL_BOOST_DURATION.entity_id, ATTR_VALUE: 0},
+        blocking=True,
+    )
+
+    assert_command_call(
+        mock_client,
+        device_url=MBL_BOOST_DURATION.device_url,
+        command_name="setBoostMode",
+        parameters=["off"],
+    )
+
+
+async def test_mbl_boost_duration_reads_window(
+    hass: HomeAssistant,
+    setup_overkiz_integration: SetupOverkizIntegration,
+) -> None:
+    """Test the number reads the configured window length in days."""
+    await setup_overkiz_integration(fixture=MBL_BOOST_DURATION.fixture)
+
+    state = hass.states.get(MBL_BOOST_DURATION.entity_id)
+    assert state
+    assert state.state == "1"
