@@ -30,7 +30,6 @@ BOOST_MODE_DURATION_DELAY = 1
 OPERATING_MODE_DELAY = 3
 
 MBL_DHW_CONTROLLABLE_NAME = "modbuslink:AtlanticDomesticHotWaterProductionMBLComponent"
-MBL_BOOST_DEFAULT_DURATION = timedelta(days=1)
 
 
 def _boost_date_parameter(value: datetime) -> list[CommandParameterValue]:
@@ -341,7 +340,6 @@ class OverkizBoostModeDurationNumber(OverkizEntity, NumberEntity):
     _attr_native_max_value = 7
     _attr_native_step = 1
     _attr_entity_category = EntityCategory.CONFIG
-    _attr_translation_key = "boost_mode_duration"
 
     def __init__(
         self,
