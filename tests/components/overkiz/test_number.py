@@ -287,3 +287,38 @@ async def test_mbl_boost_duration_reads_window(
     state = hass.states.get(MBL_BOOST_DURATION.entity_id)
     assert state
     assert state.state == "1"
+
+
+async def test_mbl_boost_duration_zero_when_boost_off(
+    hass: HomeAssistant,
+    setup_overkiz_integration: SetupOverkizIntegration,
+    mock_client: MockOverkizClient,
+    freezer: FrozenDateTimeFactory,
+) -> None:
+    """Test the duration reads 0 once boost mode turns off, ignoring stale dates."""
+    await setup_overkiz_integration(fixture=MBL_BOOST_DURATION.fixture)
+
+    state = hass.states.get(MBL_BOOST_DURATION.entity_id)
+    assert state
+    assert state.state == "1"
+
+    await async_deliver_events(
+        hass,
+        freezer,
+        mock_client,
+        [
+            device_state_changed_event(
+                device_url=MBL_BOOST_DURATION.device_url,
+                device_states=[
+                    {
+                        "name": OverkizState.MODBUSLINK_DHW_BOOST_MODE.value,
+                        "type": 3,
+                        "value": "off",
+                    }
+                ],
+            )
+        ],
+    )
+
+    state = hass.states.get(MBL_BOOST_DURATION.entity_id)
+    assert state.state == "0"
