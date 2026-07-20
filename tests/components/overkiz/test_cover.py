@@ -203,6 +203,13 @@ POSITIONABLE_VENETIAN_BLIND = FixtureDevice(
     "zigbee://1234-5678-3293/16730099",
     "cover.living_room_venetian_blind",
 )
+# Velux SSL roof window: reports neither MovingState nor TargetClosureState,
+# so movement direction can only be derived from the pending set-position target.
+VELUX_SSL = FixtureDevice(
+    "setup/cloud_somfy_myfox_europe.json",
+    "io://1234-5678-1202/6566081",
+    "cover.velux_roof_window",
+)
 
 SNAPSHOT_FIXTURES = [
     AWNING,
@@ -1175,6 +1182,75 @@ async def test_awning_direct_position_mapping(
         ],
     )
     assert hass.states.get(AWNING.entity_id).attributes[ATTR_CURRENT_POSITION] == 100
+
+
+@pytest.mark.parametrize(
+    ("start_closure", "target_position", "expected_state"),
+    [
+        (100, 80, CoverState.OPENING),
+        (0, 20, CoverState.CLOSING),
+    ],
+    ids=["opening", "closing"],
+)
+async def test_set_position_movement_without_moving_state(
+    hass: HomeAssistant,
+    setup_overkiz_integration: SetupOverkizIntegration,
+    mock_client: MockOverkizClient,
+    freezer: FrozenDateTimeFactory,
+    start_closure: int,
+    target_position: int,
+    expected_state: CoverState,
+) -> None:
+    """Test set-position derives movement on covers lacking MovingState.
+
+    Velux SSL roof windows report neither core:MovingState nor
+    core:TargetClosureState, so direction is derived from the pending
+    setClosure target while its execution is running.
+    """
+    await setup_overkiz_integration(fixture=VELUX_SSL.fixture)
+
+    await async_deliver_events(
+        hass,
+        freezer,
+        mock_client,
+        [
+            device_state_changed_event(
+                device_url=VELUX_SSL.device_url,
+                device_states=[
+                    {
+                        "name": OverkizState.CORE_CLOSURE.value,
+                        "type": 1,
+                        "value": start_closure,
+                    },
+                ],
+            )
+        ],
+    )
+
+    await hass.services.async_call(
+        COVER_DOMAIN,
+        SERVICE_SET_COVER_POSITION,
+        {ATTR_ENTITY_ID: VELUX_SSL.entity_id, ATTR_POSITION: target_position},
+        blocking=True,
+    )
+    await hass.async_block_till_done()
+
+    assert hass.states.get(VELUX_SSL.entity_id).state == expected_state
+
+    await async_deliver_events(
+        hass,
+        freezer,
+        mock_client,
+        [
+            execution_state_changed_event(
+                exec_id="exec-1",
+                new_state=ExecutionState.COMPLETED,
+                old_state=ExecutionState.IN_PROGRESS,
+            )
+        ],
+    )
+
+    assert hass.states.get(VELUX_SSL.entity_id).state != expected_state
 
 
 async def test_moving_offset_missing_closure_states(

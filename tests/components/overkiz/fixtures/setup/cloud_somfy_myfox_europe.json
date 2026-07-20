@@ -4889,7 +4889,7 @@
     {
       "creationTime": 1664287234000,
       "lastUpdateTime": 1664287234000,
-      "label": "** **",
+      "label": "Velux roof window",
       "deviceURL": "io://1234-5678-1202/6566081",
       "shortcut": false,
       "controllableName": "io:RollerShutterVeluxIOComponent",
@@ -5110,7 +5110,7 @@
         {
           "name": "core:NameState",
           "type": 3,
-          "value": "** **"
+          "value": "Velux roof window"
         },
         {
           "name": "core:PriorityLockTimerState",

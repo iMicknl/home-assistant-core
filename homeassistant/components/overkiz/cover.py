@@ -577,6 +577,11 @@ class OverkizCover(OverkizDescriptiveEntity, CoverEntity):
         # Use device url as unique ID for backwards compatibility
         self._attr_unique_id = self.device.device_url
 
+        # Target of a running set-position command, in HA position space
+        # (100 open, 0 closed). Used to derive movement direction on devices
+        # that report neither core:MovingState nor core:TargetClosureState.
+        self._pending_position: int | None = None
+
         # Overkiz does support covers where only tilt commands are supported
         # and HA sets by default open/close as supported feature which conflicts
         supported_features = CoverEntityFeature(0)
@@ -708,11 +713,11 @@ class OverkizCover(OverkizDescriptiveEntity, CoverEntity):
     @override
     async def async_set_cover_position(self, **kwargs: Any) -> None:
         """Move the cover to a specific position."""
-        position = kwargs[ATTR_POSITION]
-        if self.entity_description.invert_position:
-            position = 100 - position
+        target = kwargs[ATTR_POSITION]
+        position = 100 - target if self.entity_description.invert_position else target
 
         if command := self.entity_description.set_position_command:
+            self._pending_position = target
             await self.executor.async_execute_command(command, position)
 
     @override
@@ -834,6 +839,9 @@ class OverkizCover(OverkizDescriptiveEntity, CoverEntity):
         ):
             return True
 
+        if (offset := self.pending_position_offset) is not None:
+            return offset > 0
+
         if self.moving_offset is None:
             return None
 
@@ -858,6 +866,9 @@ class OverkizCover(OverkizDescriptiveEntity, CoverEntity):
         ):
             return True
 
+        if (offset := self.pending_position_offset) is not None:
+            return offset < 0
+
         if self.moving_offset is None:
             return None
 
@@ -874,6 +885,28 @@ class OverkizCover(OverkizDescriptiveEntity, CoverEntity):
             for executions in self.coordinator.executions.values()
             for execution in executions
         )
+
+    @property
+    def pending_position_offset(self) -> int | None:
+        """Return target minus current position while a set-position runs.
+
+        Positive means opening, negative means closing. Provides direction
+        for devices that report neither core:MovingState nor
+        core:TargetClosureState (e.g. Velux SSL roof windows), where
+        moving_offset can never be computed.
+        """
+        command = self.entity_description.set_position_command
+        if (
+            self._pending_position is None
+            or command is None
+            or not self.is_running(command)
+        ):
+            return None
+
+        if (current := self.current_cover_position) is None:
+            return None
+
+        return self._pending_position - current
 
     @property
     def moving_offset(self) -> int | None:
