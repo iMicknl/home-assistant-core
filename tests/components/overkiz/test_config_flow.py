@@ -90,6 +90,26 @@ FAKE_ZERO_CONF_INFO_LOCAL = ZeroconfServiceInfo(
     },
 )
 
+FAKE_ZERO_CONF_INFO_LOCAL_IPV6 = ZeroconfServiceInfo(
+    ip_address=ip_address("fd00::51"),
+    ip_addresses=[ip_address("fd00::51")],
+    port=8443,
+    hostname=f"gateway-{TEST_GATEWAY_ID}.local.",
+    type="_kizboxdev._tcp.local.",
+    name=f"gateway-{TEST_GATEWAY_ID}._kizboxdev._tcp.local.",
+    properties={
+        "api_version": "1",
+        "gateway_pin": TEST_GATEWAY_ID,
+        "fw_version": "2021.5.4-29",
+    },
+)
+
+FAKE_DHCP_INFO = DhcpServiceInfo(
+    hostname=f"gateway-{TEST_GATEWAY_ID}",
+    ip="192.168.0.52",
+    macaddress="f8811a000000",
+)
+
 
 async def test_form_cloud(hass: HomeAssistant, mock_setup_entry: AsyncMock) -> None:
     """Test we get the form."""
@@ -1190,6 +1210,8 @@ async def test_dhcp_flow_already_configured(hass: HomeAssistant) -> None:
 
     assert result["type"] is FlowResultType.ABORT
     assert result["reason"] == "already_configured"
+    # A cloud entry is addressed by the Overkiz server, not by a host
+    assert "host" not in config_entry.data
 
 
 async def test_zeroconf_flow(hass: HomeAssistant, mock_setup_entry: AsyncMock) -> None:
@@ -1320,15 +1342,77 @@ async def test_zeroconf_flow_already_configured(hass: HomeAssistant) -> None:
 
     assert result["type"] is FlowResultType.ABORT
     assert result["reason"] == "already_configured"
+    # A cloud entry is addressed by the Overkiz server, not by a host
+    assert "host" not in config_entry.data
 
 
-async def test_local_zeroconf_flow_updates_host(hass: HomeAssistant) -> None:
-    """Test that rediscovery of a local gateway refreshes the stored host."""
+@pytest.mark.parametrize(
+    ("source", "discovery_info", "stored_host", "expected_host"),
+    [
+        pytest.param(
+            config_entries.SOURCE_ZEROCONF,
+            FAKE_ZERO_CONF_INFO_LOCAL,
+            f"gateway-{TEST_GATEWAY_ID}.local:9999",
+            TEST_HOST,
+            id="zeroconf_refreshes_port_of_stored_hostname",
+        ),
+        pytest.param(
+            config_entries.SOURCE_ZEROCONF,
+            FAKE_ZERO_CONF_INFO_LOCAL,
+            TEST_HOST2,
+            "192.168.0.51:8443",
+            id="zeroconf_refreshes_stored_ip_address",
+        ),
+        pytest.param(
+            config_entries.SOURCE_ZEROCONF,
+            FAKE_ZERO_CONF_INFO_LOCAL_IPV6,
+            TEST_HOST2,
+            "[fd00::51]:8443",
+            id="zeroconf_brackets_discovered_ipv6_address",
+        ),
+        pytest.param(
+            config_entries.SOURCE_ZEROCONF,
+            FAKE_ZERO_CONF_INFO_LOCAL,
+            "tahoma.lan:8443",
+            "tahoma.lan:8443",
+            id="zeroconf_keeps_unrelated_hostname",
+        ),
+        pytest.param(
+            config_entries.SOURCE_DHCP,
+            FAKE_DHCP_INFO,
+            TEST_HOST2,
+            "192.168.0.52:8443",
+            id="dhcp_refreshes_stored_ip_address_and_keeps_port",
+        ),
+        pytest.param(
+            config_entries.SOURCE_DHCP,
+            FAKE_DHCP_INFO,
+            "192.168.11.104",
+            "192.168.0.52",
+            id="dhcp_refreshes_stored_ip_address_without_port",
+        ),
+        pytest.param(
+            config_entries.SOURCE_DHCP,
+            FAKE_DHCP_INFO,
+            TEST_HOST,
+            TEST_HOST,
+            id="dhcp_keeps_stored_hostname",
+        ),
+    ],
+)
+async def test_local_discovery_flow_updates_host(
+    hass: HomeAssistant,
+    source: str,
+    discovery_info: DhcpServiceInfo | ZeroconfServiceInfo,
+    stored_host: str,
+    expected_host: str,
+) -> None:
+    """Test that rediscovery refreshes the host in the configured address form."""
     config_entry = MockConfigEntry(
         domain=DOMAIN,
         unique_id=TEST_GATEWAY_ID,
         data={
-            "host": "gateway-1234-5678-9123.local:9999",
+            "host": stored_host,
             "token": TEST_TOKEN,
             "verify_ssl": False,
             "hub": TEST_SERVER,
@@ -1339,13 +1423,13 @@ async def test_local_zeroconf_flow_updates_host(hass: HomeAssistant) -> None:
 
     result = await hass.config_entries.flow.async_init(
         DOMAIN,
-        data=FAKE_ZERO_CONF_INFO_LOCAL,
-        context={"source": config_entries.SOURCE_ZEROCONF},
+        data=discovery_info,
+        context={"source": source},
     )
 
     assert result["type"] is FlowResultType.ABORT
     assert result["reason"] == "already_configured"
-    assert config_entry.data["host"] == "gateway-1234-5678-9123.local:8443"
+    assert config_entry.data["host"] == expected_host
 
 
 @pytest.fixture
