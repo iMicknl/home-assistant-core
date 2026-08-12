@@ -511,14 +511,15 @@ class OverkizConfigFlow(
         stored = URL(f"//{stored_host}")
 
         if is_ip_address(stored.host or ""):
-            refreshed = stored.with_host(ip_address)
+            refreshed_host = ip_address
         elif stored.host == hostname:
-            refreshed = stored
+            # A hostname stays as it is; only its port can go stale.
+            refreshed_host = hostname
         else:
             return None
 
         # DHCP discovery advertises no port, so fall back to the stored one.
-        refreshed = refreshed.with_port(port or stored.port)
+        refreshed = stored.with_host(refreshed_host).with_port(port or stored.port)
         return {CONF_HOST: str(refreshed).removeprefix("//")}
 
     async def _process_discovery(
