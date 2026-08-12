@@ -103,6 +103,12 @@ POSITIONABLE_ROLLER_SHUTTER_UNO = FixtureDevice(
     "io://1234-5678-1516/3656107",
     "cover.front_door_shutter",
 )
+# Device with DeploymentState=124
+POSITIONABLE_HORIZONTAL_AWNING_UNO = FixtureDevice(
+    "setup/local_somfy_tahoma_switch_europe_2.json",
+    "io://1234-5678-1516/1863228",
+    "cover.terrace_awning",
+)
 POSITIONABLE_DUAL_ROLLER_SHUTTER = FixtureDevice(
     "setup/cloud_somfy_tahoma_switch_sc_europe.json",
     "io://1234-5678-5010/12931361",
@@ -785,18 +791,68 @@ def test_uno_covers_omit_is_closed_state(widget: UIWidget) -> None:
     assert description.is_closed_state is None
 
 
-async def test_uno_cover_closed_while_open_closed_state_stuck(
+@pytest.mark.parametrize(
+    ("device", "initial_state", "device_states", "expected_position", "expected_state"),
+    [
+        pytest.param(
+            POSITIONABLE_ROLLER_SHUTTER_UNO,
+            CoverState.OPEN,
+            [
+                {
+                    "name": OverkizState.CORE_CLOSURE.value,
+                    "type": 1,
+                    "value": 100,
+                },
+                {
+                    "name": OverkizState.CORE_OPEN_CLOSED.value,
+                    "type": 3,
+                    "value": OverkizCommandParam.OPEN.value,
+                },
+            ],
+            0,
+            CoverState.CLOSED,
+            id="roller_shutter_closes",
+        ),
+        pytest.param(
+            POSITIONABLE_HORIZONTAL_AWNING_UNO,
+            CoverState.CLOSED,
+            [
+                {
+                    "name": OverkizState.CORE_TARGET_CLOSURE.value,
+                    "type": 1,
+                    "value": 100,
+                },
+                {
+                    "name": OverkizState.CORE_OPEN_CLOSED.value,
+                    "type": 3,
+                    "value": OverkizCommandParam.OPEN.value,
+                },
+            ],
+            100,
+            CoverState.OPEN,
+            id="awning_deploys",
+        ),
+    ],
+)
+async def test_uno_cover_state_ignores_stuck_open_closed_state(
     hass: HomeAssistant,
     setup_overkiz_integration: SetupOverkizIntegration,
     mock_client: MockOverkizClient,
     freezer: FrozenDateTimeFactory,
+    device: FixtureDevice,
+    initial_state: CoverState,
+    device_states: list[dict[str, Any]],
+    expected_position: int,
+    expected_state: CoverState,
 ) -> None:
-    """Test that an Uno cover reports closed once the position reaches 0.
+    """Test that an Uno cover derives its state from the position.
 
     core:OpenClosedState keeps reporting "open" throughout, so the state has to
     be derived from the position alone.
     """
-    await setup_overkiz_integration(fixture=POSITIONABLE_ROLLER_SHUTTER_UNO.fixture)
+    await setup_overkiz_integration(fixture=device.fixture)
+
+    assert hass.states.get(device.entity_id).state == initial_state
 
     await async_deliver_events(
         hass,
@@ -804,26 +860,14 @@ async def test_uno_cover_closed_while_open_closed_state_stuck(
         mock_client,
         [
             device_state_changed_event(
-                device_url=POSITIONABLE_ROLLER_SHUTTER_UNO.device_url,
-                device_states=[
-                    {
-                        "name": OverkizState.CORE_CLOSURE.value,
-                        "type": 1,
-                        "value": 100,
-                    },
-                    {
-                        "name": OverkizState.CORE_OPEN_CLOSED.value,
-                        "type": 3,
-                        "value": OverkizCommandParam.OPEN.value,
-                    },
-                ],
+                device_url=device.device_url, device_states=device_states
             )
         ],
     )
 
-    state = hass.states.get(POSITIONABLE_ROLLER_SHUTTER_UNO.entity_id)
-    assert state.attributes[ATTR_CURRENT_POSITION] == 0
-    assert state.state == CoverState.CLOSED
+    state = hass.states.get(device.entity_id)
+    assert state.attributes[ATTR_CURRENT_POSITION] == expected_position
+    assert state.state == expected_state
 
 
 async def test_cover_tilt_services(
