@@ -499,12 +499,7 @@ class OverkizConfigFlow(
     def _local_host_update(
         self, gateway_id: str, hostname: str, ip_address: str, port: int | None = None
     ) -> dict[str, str] | None:
-        """Return the refreshed host of a rediscovered local gateway, if any.
-
-        The configured address form is kept: an IP address is refreshed with the
-        discovered one, a hostname is kept as is since the gateway only serves a
-        certificate valid for it, and any other host is left untouched.
-        """
+        """Return the refreshed host of a rediscovered local gateway, if any."""
         entry = self.hass.config_entries.async_entry_for_domain_unique_id(
             DOMAIN, gateway_id
         )
@@ -515,6 +510,7 @@ class OverkizConfigFlow(
         # Parsed as a URL authority, to handle IPv6 and an omitted port.
         stored = URL(f"//{stored_host}")
 
+        # The gateway's certificate is only valid for its own hostname, not its IP.
         if is_ip_address(stored.host or ""):
             refreshed = stored.with_host(ip_address)
         elif stored.host == hostname:
