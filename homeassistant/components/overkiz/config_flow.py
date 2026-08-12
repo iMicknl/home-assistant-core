@@ -53,7 +53,7 @@ from homeassistant.helpers import config_entry_oauth2_flow
 from homeassistant.helpers.aiohttp_client import async_create_clientsession
 from homeassistant.helpers.service_info.dhcp import DhcpServiceInfo
 from homeassistant.helpers.service_info.zeroconf import ZeroconfServiceInfo
-from homeassistant.util.network import is_ip_address, is_ipv6_address
+from homeassistant.util.network import is_ip_address
 
 from .const import (
     CONF_API_TYPE,
@@ -497,47 +497,34 @@ class OverkizConfigFlow(
         return await self._process_discovery(gateway_id)
 
     def _local_host_update(
-        self,
-        gateway_id: str,
-        hostname: str,
-        ip_address: str,
-        port: int | None = None,
+        self, gateway_id: str, hostname: str, ip_address: str, port: int | None = None
     ) -> dict[str, str] | None:
-        """Return refreshed host data for a rediscovered local gateway, if any.
+        """Return the refreshed host of a rediscovered local gateway, if any.
 
-        The address form the user configured is preserved: a stored IP address is
-        refreshed with the discovered one, while a stored hostname is kept, since
-        the gateway only serves a certificate valid for its own hostname. Any
-        other host is left alone, as we cannot tell whether it still resolves to
-        this gateway.
+        The configured address form is kept: an IP address is refreshed with the
+        discovered one, a hostname is kept as is since the gateway only serves a
+        certificate valid for it, and any other host is left untouched.
         """
         entry = self.hass.config_entries.async_entry_for_domain_unique_id(
             DOMAIN, gateway_id
         )
 
-        if entry is None or (stored_host := entry.data.get(CONF_HOST)) is None:
+        if entry is None or not (stored_host := entry.data.get(CONF_HOST)):
             return None
 
-        # Parse as the authority of a URL, to support IPv6 and an omitted port.
-        stored_url = URL(f"//{stored_host}")
+        # Parsed as a URL authority, to handle IPv6 and an omitted port.
+        stored = URL(f"//{stored_host}")
 
-        if stored_url.host is None:
-            return None
-
-        if is_ip_address(stored_url.host):
-            host = ip_address
-        elif stored_url.host == hostname:
-            host = hostname
+        if is_ip_address(stored.host or ""):
+            refreshed = stored.with_host(ip_address)
+        elif stored.host == hostname:
+            refreshed = stored
         else:
             return None
 
         # DHCP discovery advertises no port, so fall back to the stored one.
-        refreshed_port = port or stored_url.port
-
-        if is_ipv6_address(host):
-            host = f"[{host}]"
-
-        return {CONF_HOST: f"{host}:{refreshed_port}" if refreshed_port else host}
+        refreshed = refreshed.with_port(port or stored.port)
+        return {CONF_HOST: str(refreshed).removeprefix("//")}
 
     async def _process_discovery(
         self, gateway_id: str, *, updates: dict[str, Any] | None = None
