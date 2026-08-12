@@ -7,7 +7,7 @@ from unittest.mock import patch
 
 from aiohttp import ClientConnectorError, ServerDisconnectedError
 from freezegun.api import FrozenDateTimeFactory
-from pyoverkiz.enums import ExecutionState, OverkizCommandParam, OverkizState
+from pyoverkiz.enums import ExecutionState, OverkizCommandParam, OverkizState, UIWidget
 import pytest
 from syrupy.assertion import SnapshotAssertion
 
@@ -29,6 +29,7 @@ from homeassistant.components.cover import (
     CoverState,
 )
 from homeassistant.components.overkiz import DOMAIN
+from homeassistant.components.overkiz.cover import SUPPORTED_DEVICES
 from homeassistant.const import (
     ATTR_ENTITY_ID,
     STATE_UNAVAILABLE,
@@ -100,7 +101,7 @@ DYNAMIC_EXTERIOR_VENETIAN_BLIND = FixtureDevice(
 POSITIONABLE_ROLLER_SHUTTER_UNO = FixtureDevice(
     "setup/local_somfy_tahoma_switch_europe_2.json",
     "io://1234-5678-1516/3656107",
-    "cover.maple_residence_hallway_shutter",
+    "cover.front_door_shutter",
 )
 POSITIONABLE_DUAL_ROLLER_SHUTTER = FixtureDevice(
     "setup/cloud_somfy_tahoma_switch_sc_europe.json",
@@ -763,6 +764,66 @@ async def test_is_closed_falls_back_to_position(
     state = hass.states.get(POSITIONABLE_VENETIAN_BLIND.entity_id)
     assert state.state == CoverState.OPEN
     assert state.attributes[ATTR_CURRENT_POSITION] == 50
+
+
+@pytest.mark.parametrize(
+    "widget",
+    [widget for widget in UIWidget if "Uno" in widget.value],
+    ids=lambda widget: widget.value,
+)
+def test_uno_covers_omit_is_closed_state(widget: UIWidget) -> None:
+    """Test that every Uno widget derives is_closed from the position.
+
+    Uno receivers drive motors without position feedback, so their
+    core:OpenClosedState is stuck on "open" and must never be used. Each Uno
+    widget therefore needs its own description omitting is_closed_state,
+    instead of inheriting one from its uiClass.
+    """
+    description = SUPPORTED_DEVICES.get(widget)
+
+    assert description is not None
+    assert description.is_closed_state is None
+
+
+async def test_uno_cover_closed_while_open_closed_state_stuck(
+    hass: HomeAssistant,
+    setup_overkiz_integration: SetupOverkizIntegration,
+    mock_client: MockOverkizClient,
+    freezer: FrozenDateTimeFactory,
+) -> None:
+    """Test that an Uno cover reports closed once the position reaches 0.
+
+    core:OpenClosedState keeps reporting "open" throughout, so the state has to
+    be derived from the position alone.
+    """
+    await setup_overkiz_integration(fixture=POSITIONABLE_ROLLER_SHUTTER_UNO.fixture)
+
+    await async_deliver_events(
+        hass,
+        freezer,
+        mock_client,
+        [
+            device_state_changed_event(
+                device_url=POSITIONABLE_ROLLER_SHUTTER_UNO.device_url,
+                device_states=[
+                    {
+                        "name": OverkizState.CORE_CLOSURE.value,
+                        "type": 1,
+                        "value": 100,
+                    },
+                    {
+                        "name": OverkizState.CORE_OPEN_CLOSED.value,
+                        "type": 3,
+                        "value": OverkizCommandParam.OPEN.value,
+                    },
+                ],
+            )
+        ],
+    )
+
+    state = hass.states.get(POSITIONABLE_ROLLER_SHUTTER_UNO.entity_id)
+    assert state.attributes[ATTR_CURRENT_POSITION] == 0
+    assert state.state == CoverState.CLOSED
 
 
 async def test_cover_tilt_services(

@@ -77,6 +77,10 @@ COVER_DESCRIPTIONS: list[OverkizCoverDescription] = [
         invert_position=False,
         is_closed_state=OverkizState.CORE_OPEN_CLOSED,
     ),
+    # Uno receivers drive motors that give no position feedback, so their
+    # core:OpenClosedState is stuck on "open". Every Uno widget needs an override
+    # omitting is_closed_state, to derive the closed state from the position.
+    # uiClass is Pergola
     OverkizCoverDescription(
         key=UIWidget.PERGOLA_HORIZONTAL_AWNING_UNO,
         device_class=CoverDeviceClass.AWNING,
@@ -86,9 +90,18 @@ COVER_DESCRIPTIONS: list[OverkizCoverDescription] = [
         close_command=OverkizCommand.UNDEPLOY,
         stop_command=OverkizCommand.STOP,
         invert_position=False,
-        is_closed_state=OverkizState.CORE_OPEN_CLOSED,
     ),
-    # Needs override to omit is_closed_state, since OpenClosedState is unreliable
+    # uiClass is Awning
+    OverkizCoverDescription(
+        key=UIWidget.POSITIONABLE_HORIZONTAL_AWNING_UNO,
+        device_class=CoverDeviceClass.AWNING,
+        current_position_state=OverkizState.CORE_DEPLOYMENT,
+        set_position_command=OverkizCommand.SET_DEPLOYMENT,
+        open_command=OverkizCommand.DEPLOY,
+        close_command=OverkizCommand.UNDEPLOY,
+        stop_command=OverkizCommand.STOP,
+        invert_position=False,
+    ),
     # uiClass is RollerShutter
     OverkizCoverDescription(
         key=UIWidget.POSITIONABLE_ROLLER_SHUTTER_UNO,
@@ -98,6 +111,51 @@ COVER_DESCRIPTIONS: list[OverkizCoverDescription] = [
         open_command=OverkizCommand.OPEN,
         close_command=OverkizCommand.CLOSE,
         stop_command=OverkizCommand.STOP,
+    ),
+    # uiClass is Screen
+    OverkizCoverDescription(
+        key=UIWidget.POSITIONABLE_SCREEN_UNO,
+        device_class=CoverDeviceClass.BLIND,
+        current_position_state=OverkizState.CORE_CLOSURE,
+        set_position_command=OverkizCommand.SET_CLOSURE,
+        open_command=OverkizCommand.OPEN,
+        close_command=OverkizCommand.CLOSE,
+        stop_command=OverkizCommand.STOP,
+    ),
+    # uiClass is Window
+    OverkizCoverDescription(
+        key=UIWidget.POSITIONABLE_WINDOW_UNO,
+        device_class=CoverDeviceClass.WINDOW,
+        current_position_state=OverkizState.CORE_CLOSURE,
+        set_position_command=OverkizCommand.SET_CLOSURE,
+        open_command=OverkizCommand.OPEN,
+        close_command=OverkizCommand.CLOSE,
+        stop_command=OverkizCommand.STOP,
+    ),
+    # uiClass is Curtain
+    OverkizCoverDescription(
+        key=UIWidget.CURTAIN_TRACK_UNO,
+        device_class=CoverDeviceClass.CURTAIN,
+        current_position_state=OverkizState.CORE_CLOSURE,
+        set_position_command=OverkizCommand.SET_CLOSURE,
+        open_command=OverkizCommand.OPEN,
+        close_command=OverkizCommand.CLOSE,
+        stop_command=OverkizCommand.STOP,
+    ),
+    # uiClass is ExteriorVenetianBlind
+    OverkizCoverDescription(
+        key=UIWidget.POSITIONABLE_EXTERIOR_VENETIAN_BLIND_UNO,
+        device_class=CoverDeviceClass.BLIND,
+        current_position_state=OverkizState.CORE_CLOSURE,
+        set_position_command=OverkizCommand.SET_CLOSURE,
+        open_command=OverkizCommand.OPEN,
+        close_command=OverkizCommand.CLOSE,
+        stop_command=OverkizCommand.STOP,
+        current_tilt_position_state=OverkizState.CORE_SLATE_ORIENTATION,
+        set_tilt_position_command=OverkizCommand.SET_ORIENTATION,
+        open_tilt_command=OverkizCommand.TILT_DOWN,
+        close_tilt_command=OverkizCommand.TILT_UP,
+        stop_tilt_command=OverkizCommand.STOP,
     ),
     # Needs override to support lower/upper position control
     # uiClass is RollerShutter
