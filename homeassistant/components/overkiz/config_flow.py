@@ -510,7 +510,6 @@ class OverkizConfigFlow(
         # Parsed as a URL authority, to handle IPv6 and an omitted port.
         stored = URL(f"//{stored_host}")
 
-        # The gateway's certificate is only valid for its own hostname, not its IP.
         if is_ip_address(stored.host or ""):
             refreshed = stored.with_host(ip_address)
         elif stored.host == hostname:
