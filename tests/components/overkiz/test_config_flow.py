@@ -1378,6 +1378,13 @@ async def test_zeroconf_flow_already_configured(hass: HomeAssistant) -> None:
             id="zeroconf_keeps_unrelated_hostname",
         ),
         pytest.param(
+            config_entries.SOURCE_ZEROCONF,
+            FAKE_ZERO_CONF_INFO_LOCAL,
+            "fd00::51",
+            "fd00::51",
+            id="zeroconf_keeps_unparsable_stored_host",
+        ),
+        pytest.param(
             config_entries.SOURCE_DHCP,
             FAKE_DHCP_INFO,
             TEST_HOST2,

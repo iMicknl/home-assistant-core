@@ -514,8 +514,12 @@ class OverkizConfigFlow(
         if entry is None or not (stored_host := entry.data.get(CONF_HOST)):
             return None
 
-        # Parsed as a URL authority, to handle IPv6 and an omitted port.
-        stored = URL(f"//{stored_host}")
+        try:
+            # Parsed as a URL authority, to handle IPv6 and an omitted port.
+            stored = URL(f"//{stored_host}")
+        except ValueError:
+            # The host is free-form text, so it can be unparsable (e.g. a bare IPv6).
+            return None
 
         if is_ip_address(stored.host or ""):
             refreshed_host = ip_address
@@ -527,6 +531,7 @@ class OverkizConfigFlow(
 
         # DHCP discovery advertises no port, so fall back to the stored one.
         refreshed = stored.with_host(refreshed_host).with_port(port or stored.port)
+        # str(), not .authority, since only str() brackets an IPv6 host.
         return {CONF_HOST: str(refreshed).removeprefix("//")}
 
     async def _process_discovery(
