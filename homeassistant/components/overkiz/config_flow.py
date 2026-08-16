@@ -481,6 +481,15 @@ class OverkizConfigFlow(
 
         if discovery_info.type == "_kizbox._tcp.local.":
             self._host = f"gateway-{gateway_id}.local:8443"
+            # This service announces the cloud port, so keep the stored one.
+            return await self._process_discovery(
+                gateway_id,
+                updates=self._local_host_update(
+                    gateway_id,
+                    hostname=f"gateway-{gateway_id}.local",
+                    ip_address=discovery_info.host,
+                ),
+            )
 
         if discovery_info.type == "_kizboxdev._tcp.local.":
             advertised_hostname = hostname.removesuffix(".")

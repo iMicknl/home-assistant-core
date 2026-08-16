@@ -1385,6 +1385,20 @@ async def test_zeroconf_flow_already_configured(hass: HomeAssistant) -> None:
             id="zeroconf_keeps_unparsable_stored_host",
         ),
         pytest.param(
+            config_entries.SOURCE_ZEROCONF,
+            FAKE_ZERO_CONF_INFO,
+            TEST_HOST2,
+            "192.168.0.51:8443",
+            id="kizbox_refreshes_stored_ip_address_and_keeps_port",
+        ),
+        pytest.param(
+            config_entries.SOURCE_ZEROCONF,
+            FAKE_ZERO_CONF_INFO,
+            TEST_HOST,
+            TEST_HOST,
+            id="kizbox_keeps_stored_hostname",
+        ),
+        pytest.param(
             config_entries.SOURCE_DHCP,
             FAKE_DHCP_INFO,
             TEST_HOST2,
