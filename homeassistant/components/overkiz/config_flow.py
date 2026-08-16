@@ -457,7 +457,9 @@ class OverkizConfigFlow(
         return await self._process_discovery(
             gateway_id,
             updates=self._local_host_update(
-                gateway_id, f"gateway-{gateway_id}.local", discovery_info.ip
+                gateway_id,
+                hostname=f"gateway-{gateway_id}.local",
+                ip_address=discovery_info.ip,
             ),
         )
 
@@ -488,16 +490,21 @@ class OverkizConfigFlow(
                 gateway_id,
                 updates=self._local_host_update(
                     gateway_id,
-                    advertised_hostname,
-                    discovery_info.host,
-                    discovery_info.port,
+                    hostname=advertised_hostname,
+                    ip_address=discovery_info.host,
+                    port=discovery_info.port,
                 ),
             )
 
         return await self._process_discovery(gateway_id)
 
     def _local_host_update(
-        self, gateway_id: str, hostname: str, ip_address: str, port: int | None = None
+        self,
+        gateway_id: str,
+        *,
+        hostname: str,
+        ip_address: str,
+        port: int | None = None,
     ) -> dict[str, str] | None:
         """Return the refreshed host of a rediscovered local gateway, if any."""
         entry = self.hass.config_entries.async_entry_for_domain_unique_id(
