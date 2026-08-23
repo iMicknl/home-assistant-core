@@ -14,7 +14,7 @@ from homeassistant.components.climate import (
 from homeassistant.const import UnitOfTemperature
 from homeassistant.util import dt as dt_util
 
-from ..entity import OverkizDataUpdateCoordinator, OverkizEntity
+from ..entity import OverkizEntity
 
 PRESET_DAY_OFF = "day-off"
 PRESET_HOLIDAYS = "holidays"
@@ -41,15 +41,6 @@ class EvoHomeController(OverkizEntity, ClimateEntity):
         ClimateEntityFeature.PRESET_MODE | ClimateEntityFeature.TURN_OFF
     )
     _attr_temperature_unit = UnitOfTemperature.CELSIUS
-
-    def __init__(
-        self, device_url: str, coordinator: OverkizDataUpdateCoordinator
-    ) -> None:
-        """Init method."""
-        super().__init__(device_url, coordinator)
-
-        if self._attr_device_info:
-            self._attr_device_info["manufacturer"] = "EvoHome"
 
     @property
     @override

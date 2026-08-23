@@ -25,7 +25,7 @@ from tests.common import snapshot_platform
 TEMPERATURE_SENSOR = FixtureDevice(
     "setup/cloud_nexity_rail_din_europe.json",
     "io://1234-5678-1698/15702199#2",
-    "sensor.maple_residence_garden_radiator_bathroom_temperature_sensor_temperature",
+    "sensor.maple_residence_bathroom_temperature_sensor_temperature",
 )
 HEATING_BATTERY = FixtureDevice(
     "setup/cloud_nexity_rail_din_europe.json",
@@ -46,7 +46,7 @@ HOMEKIT_STACK = FixtureDevice(
 COZYTOUCH_DHW = FixtureDevice(
     "setup/cloud_atlantic_cozytouch.json",
     "io://1234-5678-5643/109286#2",
-    "sensor.my_home_patio_water_heating_office_energy_meter_electric_energy_consumption",
+    "sensor.my_home_office_energy_meter_electric_energy_consumption",
 )
 # Hitachi Yutaki heat pump exposing energy and temperature sensors
 YUTAKI = FixtureDevice(

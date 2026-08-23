@@ -1,15 +1,16 @@
 """Provides diagnostics for Overkiz."""
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from pyoverkiz.enums import APIType
+from pyoverkiz.models import DeviceIdentifier
 from pyoverkiz.obfuscate import obfuscate_id
 
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.device_registry import DeviceEntry
+from homeassistant.helpers import device_registry as dr
 
 from . import OverkizDataConfigEntry
-from .const import CONF_API_TYPE, CONF_HUB
+from .const import CONF_API_TYPE, CONF_HUB, DOMAIN
 
 
 async def async_get_config_entry_diagnostics(
@@ -35,19 +36,29 @@ async def async_get_config_entry_diagnostics(
 
 
 async def async_get_device_diagnostics(
-    hass: HomeAssistant, entry: OverkizDataConfigEntry, device: DeviceEntry
+    hass: HomeAssistant, entry: OverkizDataConfigEntry, device: dr.DeviceEntry
 ) -> dict[str, Any]:
     """Return diagnostics for a device entry."""
     client = entry.runtime_data.coordinator.client
 
     device_url = min(device.identifiers)[1]
 
+    # A sub device is registered as a child device, which doesn't hold the details
+    # of the physical device it belongs to.
+    physical_device = dr.async_get(hass).async_get_device_by_identifier(
+        (DOMAIN, DeviceIdentifier.from_device_url(device_url).base_device_url),
+        entry.entry_id,
+    )
+
+    if TYPE_CHECKING:
+        assert physical_device
+
     data = {
         "device": {
-            "controllable_name": device.hw_version,
-            "firmware": device.sw_version,
+            "controllable_name": physical_device.hw_version,
+            "firmware": physical_device.sw_version,
             "device_url": obfuscate_id(device_url),
-            "model": device.model,
+            "model": physical_device.model,
         },
         **await client.get_diagnostic_data(),
         "server": entry.data[CONF_HUB],

@@ -18,10 +18,10 @@ from homeassistant.exceptions import (
     OAuth2TokenRequestError,
     OAuth2TokenRequestReauthError,
 )
-from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers import device_registry as dr, entity_registry as er
 from homeassistant.setup import async_setup_component
 
-from .conftest import MockOverkizClient
+from .conftest import MockOverkizClient, SetupOverkizIntegration
 from .test_config_flow import TEST_EMAIL, TEST_GATEWAY_ID, TEST_PASSWORD, TEST_SERVER
 
 from tests.common import MockConfigEntry, RegistryEntryWithDefaults, mock_registry
@@ -33,6 +33,11 @@ ENTITY_SENSOR_TARGET_CLOSURE_STATE = "sensor.zipscreen_woonkamer_target_closure_
 ENTITY_SENSOR_TARGET_CLOSURE_STATE_2 = (
     "sensor.zipscreen_woonkamer_target_closure_state_2"
 )
+
+# A Hitachi Yutaki heat pump, exposing zones, hot water and energy as sub devices
+HI_KUMO_FIXTURE = "setup/cloud_hi_kumo_europe.json"
+HI_KUMO_GATEWAY_ID = "1234-5678-2284"
+YUTAKI_DEVICE_URL = "modbus://1234-5678-2284/5416194/1"
 
 
 async def test_unique_id_migration(hass: HomeAssistant) -> None:
@@ -111,6 +116,44 @@ async def test_unique_id_migration(hass: HomeAssistant) -> None:
 
     # Test if the config entry is migrated to the latest minor version
     assert mock_entry.minor_version == 2
+
+
+async def test_sub_devices_are_registered_as_child_devices(
+    hass: HomeAssistant,
+    setup_overkiz_integration: SetupOverkizIntegration,
+    device_registry: dr.DeviceRegistry,
+) -> None:
+    """Sub devices are registered as child devices of their physical device."""
+    config_entry = await setup_overkiz_integration(fixture=HI_KUMO_FIXTURE)
+
+    gateway = device_registry.async_get_device_by_identifier(
+        (DOMAIN, HI_KUMO_GATEWAY_ID), config_entry.entry_id
+    )
+    physical_device = device_registry.async_get_device_by_identifier(
+        (DOMAIN, YUTAKI_DEVICE_URL), config_entry.entry_id
+    )
+    assert gateway is not None
+    assert physical_device is not None
+    assert physical_device.name == "Yutaki"
+    assert physical_device.manufacturer == "Hitachi"
+    assert physical_device.model_id == "HitachiAirToWaterMainComponent"
+    assert physical_device.via_device_id == gateway.id
+
+    child_devices = dr.async_entries_for_parent_device(
+        device_registry, physical_device.id
+    )
+    # The room thermostats (#6 and #7) of this setup don't expose any supported
+    # state, thus they don't have entities and are not registered.
+    assert {child_device.name for child_device in child_devices} == {
+        "Domestic Hot Water",
+        "Domestic Hot Water Energy",
+        "Space Heating Energy",
+        "Yutaki Zone 1",
+        "Yutaki Zone 2",
+    }
+    assert {min(child_device.identifiers)[1] for child_device in child_devices} == {
+        f"{YUTAKI_DEVICE_URL}#{subsystem_id}" for subsystem_id in (2, 3, 4, 9, 10)
+    }
 
 
 async def test_setup_rexel_local_uses_local_client(

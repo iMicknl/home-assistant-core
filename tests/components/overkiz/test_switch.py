@@ -57,7 +57,7 @@ MYFOX_CAMERA = FixtureDevice(
 DOMESTIC_HOT_WATER_TANK = FixtureDevice(
     "setup/cloud_somfy_myfox_europe.json",
     "io://1234-5678-1202/6019143#7",
-    "switch.somfy_tahoma_switch_hot_water_tank",
+    "switch.hot_water_tank",
 )
 
 

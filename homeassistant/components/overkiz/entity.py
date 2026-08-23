@@ -5,14 +5,70 @@ from typing import cast, override
 from pyoverkiz.enums import APIType, OverkizAttribute, OverkizCommandParam, OverkizState
 from pyoverkiz.models import Device
 
+from homeassistant.core import callback
 from homeassistant.helpers import device_registry as dr
-from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.device_registry import ChildDeviceInfo, DeviceInfo
 from homeassistant.helpers.entity import EntityDescription
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN
+from .const import DOMAIN, WIDGET_TO_MANUFACTURER
 from .coordinator import OverkizDataUpdateCoordinator
 from .executor import OverkizExecutor
+
+
+@callback
+def async_device_info(
+    coordinator: OverkizDataUpdateCoordinator, device: Device
+) -> DeviceInfo:
+    """Return device registry information for a physical Overkiz device."""
+    manufacturer = (
+        WIDGET_TO_MANUFACTURER.get(device.widget)
+        or device.attributes.get_value(OverkizAttribute.CORE_MANUFACTURER)
+        or device.states.get_value(OverkizState.CORE_MANUFACTURER_NAME)
+        or coordinator.client.server_config.manufacturer
+    )
+
+    model = (
+        device.states.first_value(
+            [
+                OverkizState.CORE_MODEL,
+                OverkizState.CORE_PRODUCT_MODEL_NAME,
+                OverkizState.IO_MODEL,
+            ]
+        )
+        or device.ui_class.value
+    )
+
+    return DeviceInfo(
+        identifiers={(DOMAIN, device.identifier.base_device_url)},
+        name=device.label,
+        manufacturer=str(manufacturer),
+        model=str(model),
+        sw_version=cast(
+            str,
+            device.attributes.get_value(OverkizAttribute.CORE_FIRMWARE_REVISION),
+        ),
+        model_id=device.widget,
+        hw_version=device.controllable_name,
+        suggested_area=async_suggested_area(coordinator, device),
+        via_device_id=dr.async_get_device_id_by_identifier(
+            coordinator.hass,
+            (DOMAIN, device.identifier.gateway_id),
+            config_entry_id=coordinator.config_entry.entry_id,
+        ),
+        configuration_url=coordinator.client.server_config.configuration_url,
+    )
+
+
+@callback
+def async_suggested_area(
+    coordinator: OverkizDataUpdateCoordinator, device: Device
+) -> str | None:
+    """Return the area suggested by the place of the device."""
+    if coordinator.areas and device.place_oid:
+        return coordinator.areas[device.place_oid]
+
+    return None
 
 
 class OverkizEntity(CoordinatorEntity[OverkizDataUpdateCoordinator]):
@@ -20,7 +76,7 @@ class OverkizEntity(CoordinatorEntity[OverkizDataUpdateCoordinator]):
 
     _attr_has_entity_name = True
     _attr_name: str | None = None
-    _attr_device_info: DeviceInfo | None = None
+    _attr_device_info: DeviceInfo | ChildDeviceInfo | None = None
 
     def __init__(
         self, device_url: str, coordinator: OverkizDataUpdateCoordinator
@@ -32,10 +88,6 @@ class OverkizEntity(CoordinatorEntity[OverkizDataUpdateCoordinator]):
 
         self._attr_assumed_state = not self.device.states
         self._attr_unique_id = self.device.device_url
-
-        if self.device.identifier.is_sub_device:
-            # In case of sub entity, use the provided label as name
-            self._attr_name = self.device.label
 
         self._attr_device_info = self.generate_device_info()
 
@@ -64,62 +116,25 @@ class OverkizEntity(CoordinatorEntity[OverkizDataUpdateCoordinator]):
         """Return Overkiz device linked to this entity."""
         return self.coordinator.data[self.device_url]
 
-    def generate_device_info(self) -> DeviceInfo:
+    def generate_device_info(self) -> DeviceInfo | ChildDeviceInfo:
         """Return device registry information for this entity."""
         # Some devices, such as the Smart Thermostat have several devices
         # in one physical device, with same device url, terminated by '#' and a number.
-        # In this case, we use the base device url as the device identifier.
+        # Those sub devices are registered as child devices of the physical device,
+        # which is registered during the setup of the config entry.
         if self.device.identifier.is_sub_device:
-            # Only return the url of the base device, to inherit device name
-            # and model from parent device.
-            return DeviceInfo(
-                identifiers={(DOMAIN, self.device.identifier.base_device_url)},
-            )
-
-        manufacturer = (
-            self.device.attributes.get_value(OverkizAttribute.CORE_MANUFACTURER)
-            or self.device.states.get_value(OverkizState.CORE_MANUFACTURER_NAME)
-            or self.coordinator.client.server_config.manufacturer
-        )
-
-        model = (
-            self.device.states.first_value(
-                [
-                    OverkizState.CORE_MODEL,
-                    OverkizState.CORE_PRODUCT_MODEL_NAME,
-                    OverkizState.IO_MODEL,
-                ]
-            )
-            or self.device.ui_class.value
-        )
-
-        suggested_area = (
-            self.coordinator.areas[self.device.place_oid]
-            if self.coordinator.areas and self.device.place_oid
-            else None
-        )
-
-        return DeviceInfo(
-            identifiers={(DOMAIN, self.device.identifier.base_device_url)},
-            name=self.device.label,
-            manufacturer=str(manufacturer),
-            model=str(model),
-            sw_version=cast(
-                str,
-                self.device.attributes.get_value(
-                    OverkizAttribute.CORE_FIRMWARE_REVISION
+            return ChildDeviceInfo(
+                identifiers={(DOMAIN, self.device.device_url)},
+                name=self.device.label,
+                parent_device_id=dr.async_get_device_id_by_identifier(
+                    self.coordinator.hass,
+                    (DOMAIN, self.device.identifier.base_device_url),
+                    config_entry_id=self.coordinator.config_entry.entry_id,
                 ),
-            ),
-            model_id=self.device.widget,
-            hw_version=self.device.controllable_name,
-            suggested_area=suggested_area,
-            via_device_id=dr.async_get_device_id_by_identifier(
-                self.coordinator.hass,
-                (DOMAIN, self.device.identifier.gateway_id),
-                config_entry_id=self.coordinator.config_entry.entry_id,
-            ),
-            configuration_url=self.coordinator.client.server_config.configuration_url,
-        )
+                suggested_area=async_suggested_area(self.coordinator, self.device),
+            )
+
+        return async_device_info(self.coordinator, self.device)
 
 
 class OverkizDescriptiveEntity(OverkizEntity):
@@ -136,10 +151,5 @@ class OverkizDescriptiveEntity(OverkizEntity):
         self.entity_description = description
         self._attr_unique_id = f"{super().unique_id}-{self.entity_description.key}"
 
-        if self.device.identifier.is_sub_device:
-            if isinstance(description.name, str):
-                self._attr_name = f"{self.device.label} {description.name}"
-            else:
-                self._attr_name = self.device.label
-        elif isinstance(description.name, str):
+        if isinstance(description.name, str):
             self._attr_name = description.name

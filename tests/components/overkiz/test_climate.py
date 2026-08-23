@@ -56,12 +56,12 @@ ELECTRICAL_HEATER_ADJUSTABLE = FixtureDevice(
 YUTAKI_ZONE_1 = FixtureDevice(
     "setup/cloud_hi_kumo_europe.json",
     "modbus://1234-5678-2284/5416194/1#2",
-    "climate.somfy_tahoma_switch_yutaki_zone_1",
+    "climate.my_house_yutaki_zone_1",
 )
 YUTAKI_ZONE_2 = FixtureDevice(
     "setup/cloud_hi_kumo_europe.json",
     "modbus://1234-5678-2284/5416194/1#3",
-    "climate.somfy_tahoma_switch_yutaki_zone_2",
+    "climate.my_house_yutaki_zone_2",
 )
 # io:HeatingThermostatIOComponent
 THERMOSTAT_HEATING = FixtureDevice(

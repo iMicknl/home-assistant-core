@@ -124,6 +124,14 @@ OVERKIZ_DEVICE_TO_PLATFORM: dict[UIClass | UIWidget, Platform | None] = {
     UIWidget.VALVE_HEATING_TEMPERATURE_INTERFACE: Platform.CLIMATE,
 }
 
+# Some devices don't expose their manufacturer, while the widget does reveal it
+WIDGET_TO_MANUFACTURER: dict[UIWidget, str] = {
+    UIWidget.EVO_HOME_CONTROLLER: "EvoHome",
+    UIWidget.HITACHI_AIR_TO_AIR_HEAT_PUMP: "Hitachi",
+    UIWidget.HITACHI_AIR_TO_WATER_HEATING_ZONE: "Hitachi",
+    UIWidget.HITACHI_AIR_TO_WATER_MAIN_COMPONENT: "Hitachi",
+}
+
 # Map Overkiz camelCase to Home Assistant snake_case for translation
 OVERKIZ_STATE_TO_TRANSLATION: dict[str, str] = {
     OverkizCommandParam.EXTERNAL_GATEWAY: "external_gateway",

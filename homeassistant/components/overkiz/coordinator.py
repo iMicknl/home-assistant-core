@@ -20,6 +20,7 @@ from pyoverkiz.exceptions import (
 from pyoverkiz.models import (
     Device,
     DeviceEvent,
+    DeviceIdentifier,
     DeviceRemovedEvent,
     DeviceStateChangedEvent,
     ExecutionRegisteredEvent,
@@ -210,12 +211,21 @@ async def on_device_removed(
     coordinator: OverkizDataUpdateCoordinator, event: DeviceRemovedEvent
 ) -> None:
     """Handle device removed event."""
-    base_device_url = event.device_url.split("#")[0]
     registry = dr.async_get(coordinator.hass)
+    identifier = DeviceIdentifier.from_device_url(event.device_url)
+    registered_device: dr.AnyDeviceEntry | None
 
-    if registered_device := registry.async_get_device_by_identifier(
-        (DOMAIN, base_device_url), coordinator.config_entry.entry_id
-    ):
+    # Removing the physical device would remove its other sub devices as well
+    if identifier.is_sub_device:
+        registered_device = registry.async_get_child_device_by_identifier(
+            (DOMAIN, event.device_url), coordinator.config_entry.entry_id
+        )
+    else:
+        registered_device = registry.async_get_device_by_identifier(
+            (DOMAIN, identifier.base_device_url), coordinator.config_entry.entry_id
+        )
+
+    if registered_device:
         registry.async_remove_device(registered_device.id)
 
     if event.device_url in coordinator.devices:
