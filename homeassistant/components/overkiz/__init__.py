@@ -64,6 +64,7 @@ from .const import (
     CONF_REFRESH_TOKEN,
     CONF_SITE_OID,
     DOMAIN,
+    IGNORED_OVERKIZ_DEVICES,
     LOGGER,
     OVERKIZ_DEVICE_TO_PLATFORM,
     PLATFORMS,
@@ -71,6 +72,7 @@ from .const import (
     UPDATE_INTERVAL_LOCAL,
 )
 from .coordinator import OverkizDataUpdateCoordinator
+from .entity import async_device_info
 from .services import async_setup_services
 
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
@@ -223,7 +225,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: OverkizDataConfigEntry) 
 
     # Some devices reference a gateway that is not part of setup.gateways
     # (e.g. a secondary box hosting a device). Register a device for each such
-    # gateway so the via_device link of its child devices resolves.
+    # gateway so the via_device link of the devices it hosts resolves.
     for gateway_id in {
         device.identifier.gateway_id for device in coordinator.data.values()
     } - registered_gateway_ids:
@@ -235,7 +237,48 @@ async def async_setup_entry(hass: HomeAssistant, entry: OverkizDataConfigEntry) 
             configuration_url=client.server_config.configuration_url,
         )
 
+    _async_register_devices_with_sub_devices(hass, entry, coordinator)
+
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+
+
+@callback
+def _async_register_devices_with_sub_devices(
+    hass: HomeAssistant,
+    entry: OverkizDataConfigEntry,
+    coordinator: OverkizDataUpdateCoordinator,
+) -> None:
+    """Register the physical device of every sub device.
+
+    Sub devices are added as child devices, thus their physical device needs to be
+    known by the device registry before the platforms are set up. Physical devices
+    without sub devices are registered by their own entities.
+    """
+    device_registry = dr.async_get(hass)
+
+    # A setup doesn't always include the '#1' sub device, thus the sub device with
+    # the lowest subsystem id describes the physical device.
+    main_devices: dict[str, Device] = {}
+
+    for device in coordinator.data.values():
+        base_device_url = device.identifier.base_device_url
+
+        if (main_device := main_devices.get(base_device_url)) is None or (
+            device.identifier.subsystem_id or 0
+        ) < (main_device.identifier.subsystem_id or 0):
+            main_devices[base_device_url] = device
+
+    for base_device_url in {
+        device.identifier.base_device_url
+        for device in coordinator.data.values()
+        if device.identifier.is_sub_device
+        and device.widget not in IGNORED_OVERKIZ_DEVICES
+        and device.ui_class not in IGNORED_OVERKIZ_DEVICES
+    }:
+        device_registry.async_get_or_create_from_info(
+            config_entry_id=entry.entry_id,
+            device_info=async_device_info(coordinator, main_devices[base_device_url]),
+        )
 
 
 async def async_unload_entry(

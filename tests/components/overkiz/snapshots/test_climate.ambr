@@ -271,7 +271,7 @@
     'state': 'auto',
   })
 # ---
-# name: test_climate_entities_snapshot[cloud_hi_kumo_europe.json][climate.somfy_tahoma_switch_yutaki_zone_1-entry]
+# name: test_climate_entities_snapshot[cloud_hi_kumo_europe.json][climate.my_house_yutaki_yutaki_zone_1-entry]
   EntityRegistryEntrySnapshot({
     'aliases': list([
       None,
@@ -293,11 +293,11 @@
     'config_entry_id': <ANY>,
     'config_subentry_id': <ANY>,
     'device_class': None,
-    'device_id': <DeviceEntry identifiers=[('overkiz', 'modbus://1234-5678-2284/5416194/1')]>,
+    'device_id': <ChildDeviceEntry identifiers=[('overkiz', 'modbus://1234-5678-2284/5416194/1#2')]>,
     'disabled_by': None,
     'domain': 'climate',
     'entity_category': None,
-    'entity_id': 'climate.somfy_tahoma_switch_yutaki_zone_1',
+    'entity_id': 'climate.my_house_yutaki_yutaki_zone_1',
     'has_entity_name': True,
     'hidden_by': None,
     'icon': None,
@@ -305,12 +305,12 @@
     'labels': set({
     }),
     'name': None,
-    'object_id_base': 'Yutaki Zone 1',
+    'object_id_base': None,
     'options': dict({
     }),
     'original_device_class': None,
     'original_icon': None,
-    'original_name': 'Yutaki Zone 1',
+    'original_name': None,
     'platform': 'overkiz',
     'previous_unique_id': None,
     'suggested_object_id': None,
@@ -320,11 +320,11 @@
     'unit_of_measurement': None,
   })
 # ---
-# name: test_climate_entities_snapshot[cloud_hi_kumo_europe.json][climate.somfy_tahoma_switch_yutaki_zone_1-state]
+# name: test_climate_entities_snapshot[cloud_hi_kumo_europe.json][climate.my_house_yutaki_yutaki_zone_1-state]
   StateSnapshot({
     'attributes': ReadOnlyDict({
       <ClimateEntityStateAttribute.CURRENT_TEMPERATURE: 'current_temperature'>: 18.5,
-      <EntityStateAttribute.FRIENDLY_NAME: 'friendly_name'>: 'Somfy TaHoma Switch Yutaki Zone 1',
+      <EntityStateAttribute.FRIENDLY_NAME: 'friendly_name'>: 'Yutaki Zone 1',
       <ClimateEntityCapabilityAttribute.HVAC_MODES: 'hvac_modes'>: list([
         <HVACMode.HEAT: 'heat'>,
         <HVACMode.AUTO: 'auto'>,
@@ -342,14 +342,14 @@
       <ClimateEntityStateAttribute.TEMPERATURE_UNIT: 'temperature_unit'>: <UnitOfTemperature.CELSIUS: '°C'>,
     }),
     'context': <ANY>,
-    'entity_id': 'climate.somfy_tahoma_switch_yutaki_zone_1',
+    'entity_id': 'climate.my_house_yutaki_yutaki_zone_1',
     'last_changed': <ANY>,
     'last_reported': <ANY>,
     'last_updated': <ANY>,
     'state': 'auto',
   })
 # ---
-# name: test_climate_entities_snapshot[cloud_hi_kumo_europe.json][climate.somfy_tahoma_switch_yutaki_zone_2-entry]
+# name: test_climate_entities_snapshot[cloud_hi_kumo_europe.json][climate.my_house_yutaki_yutaki_zone_2-entry]
   EntityRegistryEntrySnapshot({
     'aliases': list([
       None,
@@ -371,11 +371,11 @@
     'config_entry_id': <ANY>,
     'config_subentry_id': <ANY>,
     'device_class': None,
-    'device_id': <DeviceEntry identifiers=[('overkiz', 'modbus://1234-5678-2284/5416194/1')]>,
+    'device_id': <ChildDeviceEntry identifiers=[('overkiz', 'modbus://1234-5678-2284/5416194/1#3')]>,
     'disabled_by': None,
     'domain': 'climate',
     'entity_category': None,
-    'entity_id': 'climate.somfy_tahoma_switch_yutaki_zone_2',
+    'entity_id': 'climate.my_house_yutaki_yutaki_zone_2',
     'has_entity_name': True,
     'hidden_by': None,
     'icon': None,
@@ -383,12 +383,12 @@
     'labels': set({
     }),
     'name': None,
-    'object_id_base': 'Yutaki Zone 2',
+    'object_id_base': None,
     'options': dict({
     }),
     'original_device_class': None,
     'original_icon': None,
-    'original_name': 'Yutaki Zone 2',
+    'original_name': None,
     'platform': 'overkiz',
     'previous_unique_id': None,
     'suggested_object_id': None,
@@ -398,11 +398,11 @@
     'unit_of_measurement': None,
   })
 # ---
-# name: test_climate_entities_snapshot[cloud_hi_kumo_europe.json][climate.somfy_tahoma_switch_yutaki_zone_2-state]
+# name: test_climate_entities_snapshot[cloud_hi_kumo_europe.json][climate.my_house_yutaki_yutaki_zone_2-state]
   StateSnapshot({
     'attributes': ReadOnlyDict({
       <ClimateEntityStateAttribute.CURRENT_TEMPERATURE: 'current_temperature'>: 20.5,
-      <EntityStateAttribute.FRIENDLY_NAME: 'friendly_name'>: 'Somfy TaHoma Switch Yutaki Zone 2',
+      <EntityStateAttribute.FRIENDLY_NAME: 'friendly_name'>: 'Yutaki Zone 2',
       <ClimateEntityCapabilityAttribute.HVAC_MODES: 'hvac_modes'>: list([
         <HVACMode.HEAT: 'heat'>,
         <HVACMode.AUTO: 'auto'>,
@@ -420,7 +420,7 @@
       <ClimateEntityStateAttribute.TEMPERATURE_UNIT: 'temperature_unit'>: <UnitOfTemperature.CELSIUS: '°C'>,
     }),
     'context': <ANY>,
-    'entity_id': 'climate.somfy_tahoma_switch_yutaki_zone_2',
+    'entity_id': 'climate.my_house_yutaki_yutaki_zone_2',
     'last_changed': <ANY>,
     'last_reported': <ANY>,
     'last_updated': <ANY>,
