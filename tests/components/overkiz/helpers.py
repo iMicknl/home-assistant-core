@@ -47,22 +47,27 @@ def assert_commands_call(
     *,
     device_url: str,
     commands: list[tuple[str, list[Any] | None]],
+    batched: bool = True,
 ) -> None:
-    """Assert the latest batch of commands sent through the mocked client.
+    """Assert the commands sent through the mocked client, in order.
 
-    A batch is a single action group holding one action for the device with
-    its commands in order. Each entry in commands is a
+    By default the commands must form one batch: a single action group holding
+    one action for the device. Pass batched=False for entities that send each
+    command as its own action group. Each entry in commands is a
     (command_name, parameters) tuple.
     """
-    assert mock_client.execute_action_group.await_count == 1
-    kwargs = mock_client.execute_action_group.await_args.kwargs
-    assert kwargs["label"] == "Home Assistant"
-    actions = kwargs["actions"]
-    assert len(actions) == 1
-    assert actions[0].device_url == device_url
-    assert [
-        (command.name, command.parameters or []) for command in actions[0].commands
-    ] == [(name, parameters or []) for name, parameters in commands]
+    calls = mock_client.execute_action_group.await_args_list
+    assert len(calls) == (1 if batched else len(commands))
+    sent: list[tuple[str, list[Any]]] = []
+    for call in calls:
+        assert call.kwargs["label"] == "Home Assistant"
+        actions = call.kwargs["actions"]
+        assert len(actions) == 1
+        assert actions[0].device_url == device_url
+        sent.extend(
+            (command.name, command.parameters or []) for command in actions[0].commands
+        )
+    assert sent == [(name, parameters or []) for name, parameters in commands]
 
 
 def device_state_changed_event(

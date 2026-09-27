@@ -506,6 +506,7 @@ async def test_atlantic_io_turn_away_mode_off(
     )
 
 
+# --- DomesticHotWaterProduction (io:AtlanticDomesticHotWaterProductionV2IOComponent) ---
 async def test_generic_operation_list_uses_ha_modes(
     hass: HomeAssistant,
     setup_overkiz_integration: SetupOverkizIntegration,
@@ -548,15 +549,13 @@ async def test_generic_set_advertised_operation_mode(
         blocking=True,
     )
 
-    # This class sends each command as its own action group.
-    sent = [
-        (action.device_url, command.name, command.parameters)
-        for call in mock_client.execute_action_group.await_args_list
-        for action in call.kwargs["actions"]
-        for command in action.commands
-    ]
-    assert sent == [
-        (DHW_GENERIC.device_url, "setDHWMode", [expected_param]),
-        (DHW_GENERIC.device_url, "refreshBoostModeDuration", []),
-        (DHW_GENERIC.device_url, "refreshDHWMode", []),
-    ]
+    assert_commands_call(
+        mock_client,
+        device_url=DHW_GENERIC.device_url,
+        commands=[
+            ("setDHWMode", [expected_param]),
+            ("refreshBoostModeDuration", None),
+            ("refreshDHWMode", None),
+        ],
+        batched=False,
+    )
