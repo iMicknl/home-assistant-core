@@ -851,16 +851,16 @@ class OverkizCover(OverkizDescriptiveEntity, CoverEntity):
         ):
             return True
 
+        if (moving_offset := self.moving_offset) is not None:
+            # Check if the cover is moving in a direction consistent with opening
+            if self.entity_description.invert_position:
+                return moving_offset > 0
+            return moving_offset < 0
+
         if (offset := self.pending_position_offset) is not None:
             return offset > 0
 
-        if self.moving_offset is None:
-            return None
-
-        # Check if the cover is moving in a direction consistent with opening
-        if self.entity_description.invert_position:
-            return self.moving_offset > 0
-        return self.moving_offset < 0
+        return None
 
     @property
     @override
@@ -878,16 +878,16 @@ class OverkizCover(OverkizDescriptiveEntity, CoverEntity):
         ):
             return True
 
+        if (moving_offset := self.moving_offset) is not None:
+            # Check if the cover is moving in a direction consistent with closing
+            if self.entity_description.invert_position:
+                return moving_offset < 0
+            return moving_offset > 0
+
         if (offset := self.pending_position_offset) is not None:
             return offset < 0
 
-        if self.moving_offset is None:
-            return None
-
-        # Check if the cover is moving in a direction consistent with closing
-        if self.entity_description.invert_position:
-            return self.moving_offset < 0
-        return self.moving_offset > 0
+        return None
 
     def is_running(self, command: OverkizCommand) -> bool:
         """Return if the given commands are currently running."""
@@ -913,6 +913,12 @@ class OverkizCover(OverkizDescriptiveEntity, CoverEntity):
             or command is None
             or not self.is_running(command)
         ):
+            return None
+
+        # The device explicitly reporting it is not moving outranks the
+        # pending target, e.g. when stopped or before the move starts.
+        moving_state = self.device.states.get(OverkizState.CORE_MOVING)
+        if moving_state is not None and moving_state.value_as_bool is False:
             return None
 
         if (current := self.current_cover_position) is None:

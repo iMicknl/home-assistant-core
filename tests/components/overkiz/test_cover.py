@@ -1253,6 +1253,68 @@ async def test_set_position_movement_without_moving_state(
     assert hass.states.get(VELUX_SSL.entity_id).state != expected_state
 
 
+@pytest.mark.parametrize(
+    ("target_position", "moving", "closure", "target_closure", "expected_state"),
+    [
+        pytest.param(80, True, 50, 90, CoverState.CLOSING, id="device-closing"),
+        pytest.param(20, True, 50, 10, CoverState.OPENING, id="device-opening"),
+        pytest.param(80, False, 100, 100, CoverState.CLOSED, id="device-not-moving"),
+    ],
+)
+async def test_set_position_movement_prefers_moving_state(
+    hass: HomeAssistant,
+    setup_overkiz_integration: SetupOverkizIntegration,
+    mock_client: MockOverkizClient,
+    freezer: FrozenDateTimeFactory,
+    target_position: int,
+    moving: bool,
+    closure: int,
+    target_closure: int,
+    expected_state: CoverState,
+) -> None:
+    """Test device-reported movement outranks the pending set-position target."""
+    await setup_overkiz_integration(fixture=SHUTTER.fixture)
+
+    await hass.services.async_call(
+        COVER_DOMAIN,
+        SERVICE_SET_COVER_POSITION,
+        {ATTR_ENTITY_ID: SHUTTER.entity_id, ATTR_POSITION: target_position},
+        blocking=True,
+    )
+
+    # The pending target disagrees with the device, which must win while the
+    # set-position execution is still running.
+    await async_deliver_events(
+        hass,
+        freezer,
+        mock_client,
+        [
+            device_state_changed_event(
+                device_url=SHUTTER.device_url,
+                device_states=[
+                    {
+                        "name": OverkizState.CORE_MOVING.value,
+                        "type": 6,
+                        "value": moving,
+                    },
+                    {
+                        "name": OverkizState.CORE_CLOSURE.value,
+                        "type": 1,
+                        "value": closure,
+                    },
+                    {
+                        "name": OverkizState.CORE_TARGET_CLOSURE.value,
+                        "type": 1,
+                        "value": target_closure,
+                    },
+                ],
+            )
+        ],
+    )
+
+    assert hass.states.get(SHUTTER.entity_id).state == expected_state
+
+
 async def test_moving_offset_missing_closure_states(
     hass: HomeAssistant,
     setup_overkiz_integration: SetupOverkizIntegration,
