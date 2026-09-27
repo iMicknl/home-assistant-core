@@ -388,7 +388,10 @@ class OverkizBoostModeDurationNumber(OverkizEntity, NumberEntity):
     @property
     @override
     def native_value(self) -> float | None:
-        """Return the configured boost window length in days, 0 when boost is off."""
+        """Return the active boost window length in days, 0 when boost is off.
+
+        None while an untimed boost runs, as 0 would cancel it when written back.
+        """
         if self.device.states.get_value(OverkizState.MODBUSLINK_DHW_BOOST_MODE) not in (
             OverkizCommandParam.ON,
             OverkizCommandParam.PROG,
@@ -398,11 +401,15 @@ class OverkizBoostModeDurationNumber(OverkizEntity, NumberEntity):
         start = self.device.states.get_value(OverkizState.CORE_BOOST_START_DATE)
         end = self.device.states.get_value(OverkizState.CORE_BOOST_END_DATE)
         if not start or not end:
-            return 0
+            return None
 
-        delta = _parse_boost_date(cast(dict, end)) - _parse_boost_date(
-            cast(dict, start)
-        )
+        end_date = _parse_boost_date(cast(dict, end))
+        # The device keeps the last window after it ends, so a plain
+        # setBoostMode(on) reports an already expired one.
+        if end_date <= dt_util.now().replace(tzinfo=None):
+            return None
+
+        delta = end_date - _parse_boost_date(cast(dict, start))
         return round(delta.total_seconds() / 86400)
 
     @override

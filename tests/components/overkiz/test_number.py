@@ -2,6 +2,7 @@
 
 from collections.abc import Generator
 from pathlib import Path
+from typing import Any
 from unittest.mock import patch
 
 from freezegun.api import FrozenDateTimeFactory
@@ -14,7 +15,12 @@ from homeassistant.components.number import (
     DOMAIN as NUMBER_DOMAIN,
     SERVICE_SET_VALUE,
 )
-from homeassistant.const import ATTR_ENTITY_ID, STATE_UNAVAILABLE, Platform
+from homeassistant.const import (
+    ATTR_ENTITY_ID,
+    STATE_UNAVAILABLE,
+    STATE_UNKNOWN,
+    Platform,
+)
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
 
@@ -54,6 +60,10 @@ MBL_BOOST_DURATION = FixtureDevice(
     "modbuslink://1234-5678-5643/2#1",
     "number.my_home_bathroom_water_heater_boost_mode_duration",
 )
+# The MBL fixture's boost window runs 2026-06-21 13:12:01 to 2026-06-22 13:12:01,
+# read as naive time in the HA time zone (US/Pacific in tests).
+MBL_BOOST_WINDOW_ACTIVE = "2026-06-22 00:00:00+00:00"
+MBL_BOOST_WINDOW_EXPIRED = "2026-06-23 00:00:00+00:00"
 TOWEL_DRYER_BOOST_MODE_DURATION = FixtureDevice(
     "setup/cloud_atlantic_cozytouch.json",
     "io://1234-5678-5643/5237136#1",
@@ -91,9 +101,12 @@ async def test_number_entities_snapshot(
     setup_overkiz_integration: SetupOverkizIntegration,
     entity_registry: er.EntityRegistry,
     snapshot: SnapshotAssertion,
+    freezer: FrozenDateTimeFactory,
     device: FixtureDevice,
 ) -> None:
     """Test representative real setups via snapshot."""
+    # The MBL boost duration depends on the current time.
+    freezer.move_to(MBL_BOOST_WINDOW_ACTIVE)
     config_entry = await setup_overkiz_integration(fixture=device.fixture)
 
     await snapshot_platform(hass, entity_registry, snapshot, config_entry.entry_id)
@@ -306,30 +319,74 @@ async def test_mbl_boost_duration_zero_cancels(
     )
 
 
-async def test_mbl_boost_duration_reads_window(
-    hass: HomeAssistant,
-    setup_overkiz_integration: SetupOverkizIntegration,
-) -> None:
-    """Test the number reads the configured window length in days."""
-    await setup_overkiz_integration(fixture=MBL_BOOST_DURATION.fixture)
-
-    state = hass.states.get(MBL_BOOST_DURATION.entity_id)
-    assert state
-    assert state.state == "1"
+def _mbl_boost_mode(value: str) -> dict[str, Any]:
+    return {
+        "name": OverkizState.MODBUSLINK_DHW_BOOST_MODE.value,
+        "type": 3,
+        "value": value,
+    }
 
 
-async def test_mbl_boost_duration_zero_when_boost_off(
+MBL_BOOST_END_DATE_CLEARED = {
+    "name": OverkizState.CORE_BOOST_END_DATE.value,
+    "type": 0,
+    "value": None,
+}
+
+
+@pytest.mark.parametrize(
+    ("now", "device_states", "expected_state"),
+    [
+        pytest.param(
+            MBL_BOOST_WINDOW_ACTIVE,
+            [_mbl_boost_mode("on")],
+            "1",
+            id="timed_boost_inside_window",
+        ),
+        pytest.param(
+            MBL_BOOST_WINDOW_ACTIVE,
+            [_mbl_boost_mode("prog")],
+            "1",
+            id="prog_boost_inside_window",
+        ),
+        pytest.param(
+            MBL_BOOST_WINDOW_EXPIRED,
+            [_mbl_boost_mode("on")],
+            STATE_UNKNOWN,
+            id="untimed_boost_with_expired_window",
+        ),
+        pytest.param(
+            MBL_BOOST_WINDOW_ACTIVE,
+            [_mbl_boost_mode("on"), MBL_BOOST_END_DATE_CLEARED],
+            STATE_UNKNOWN,
+            id="boost_without_window",
+        ),
+        pytest.param(
+            MBL_BOOST_WINDOW_ACTIVE,
+            [_mbl_boost_mode("off")],
+            "0",
+            id="boost_off_inside_window",
+        ),
+        pytest.param(
+            MBL_BOOST_WINDOW_EXPIRED,
+            [_mbl_boost_mode("off")],
+            "0",
+            id="boost_off_expired_window",
+        ),
+    ],
+)
+async def test_mbl_boost_duration_state(
     hass: HomeAssistant,
     setup_overkiz_integration: SetupOverkizIntegration,
     mock_client: MockOverkizClient,
     freezer: FrozenDateTimeFactory,
+    now: str,
+    device_states: list[dict[str, Any]],
+    expected_state: str,
 ) -> None:
-    """Test the duration reads 0 once boost mode turns off, ignoring stale dates."""
+    """Test the duration only reports the window length while it is current."""
+    freezer.move_to(now)
     await setup_overkiz_integration(fixture=MBL_BOOST_DURATION.fixture)
-
-    state = hass.states.get(MBL_BOOST_DURATION.entity_id)
-    assert state
-    assert state.state == "1"
 
     await async_deliver_events(
         hass,
@@ -338,16 +395,11 @@ async def test_mbl_boost_duration_zero_when_boost_off(
         [
             device_state_changed_event(
                 device_url=MBL_BOOST_DURATION.device_url,
-                device_states=[
-                    {
-                        "name": OverkizState.MODBUSLINK_DHW_BOOST_MODE.value,
-                        "type": 3,
-                        "value": "off",
-                    }
-                ],
+                device_states=device_states,
             )
         ],
     )
 
     state = hass.states.get(MBL_BOOST_DURATION.entity_id)
-    assert state.state == "0"
+    assert state
+    assert state.state == expected_state

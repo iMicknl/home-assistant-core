@@ -52,6 +52,13 @@ DHW_ATLANTIC_IO = FixtureDevice(
     "water_heater.my_home_water_heater",
 )
 
+# Sauter modbuslink DHW (modbuslink:AtlanticDomesticHotWaterProductionMBLComponent)
+DHW_MBL = FixtureDevice(
+    "setup/cloud_atlantic_cozytouch.json",
+    "modbuslink://1234-5678-5643/2#1",
+    "water_heater.my_home_bathroom_water_heater",
+)
+
 SNAPSHOT_FIXTURES = [
     DHW_CE_FLAT_C2,
 ]
@@ -494,4 +501,26 @@ async def test_atlantic_io_turn_away_mode_off(
             ),
             ("refreshAwayModeDuration", None),
         ],
+    )
+
+
+async def test_mbl_set_operation_mode_performance_sends_untimed_boost(
+    hass: HomeAssistant,
+    mock_client: MockOverkizClient,
+    setup_overkiz_integration: SetupOverkizIntegration,
+) -> None:
+    """Test 'performance' only sends setBoostMode(on), without a date window."""
+    await setup_overkiz_integration(fixture=DHW_MBL.fixture)
+
+    await hass.services.async_call(
+        "water_heater",
+        "set_operation_mode",
+        {"entity_id": DHW_MBL.entity_id, ATTR_OPERATION_MODE: STATE_PERFORMANCE},
+        blocking=True,
+    )
+
+    assert_commands_call(
+        mock_client,
+        device_url=DHW_MBL.device_url,
+        commands=[("setBoostMode", ["on"])],
     )
