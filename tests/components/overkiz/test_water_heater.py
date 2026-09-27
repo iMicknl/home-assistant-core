@@ -12,6 +12,7 @@ from syrupy.assertion import SnapshotAssertion
 from homeassistant.components.water_heater import (
     ATTR_MAX_TEMP,
     ATTR_MIN_TEMP,
+    ATTR_OPERATION_LIST,
     ATTR_OPERATION_MODE,
     ATTR_TARGET_TEMP_STEP,
     STATE_ECO,
@@ -50,6 +51,14 @@ DHW_ATLANTIC_IO = FixtureDevice(
     "setup/cloud_atlantic_cozytouch.json",
     "io://1234-5678-5643/6713703#1",
     "water_heater.my_home_water_heater",
+)
+
+# Atlantic thermodynamic water heater (io:AtlanticDomesticHotWaterProductionV2IOComponent),
+# handled by the generic DomesticHotWaterProduction class
+DHW_GENERIC = FixtureDevice(
+    "setup/cloud_atlantic_cozytouch.json",
+    "io://1234-5678-5643/4683855#1",
+    "water_heater.my_home_garage_water_heater",
 )
 
 SNAPSHOT_FIXTURES = [
@@ -495,3 +504,59 @@ async def test_atlantic_io_turn_away_mode_off(
             ("refreshAwayModeDuration", None),
         ],
     )
+
+
+async def test_generic_operation_list_uses_ha_modes(
+    hass: HomeAssistant,
+    setup_overkiz_integration: SetupOverkizIntegration,
+) -> None:
+    """Test the advertised modes are HA modes and include the current one."""
+    await setup_overkiz_integration(fixture=DHW_GENERIC.fixture)
+
+    state = hass.states.get(DHW_GENERIC.entity_id)
+    assert state is not None
+    # autoMode and manualEcoActive both map to eco, so it is listed once.
+    assert state.attributes[ATTR_OPERATION_LIST] == [STATE_ECO, STATE_OFF]
+    assert state.attributes[ATTR_OPERATION_MODE] == STATE_ECO
+
+
+@pytest.mark.parametrize(
+    ("operation_mode", "expected_param"),
+    [
+        pytest.param(STATE_ECO, "autoMode", id="eco"),
+        pytest.param(STATE_OFF, "manualEcoInactive", id="off"),
+    ],
+)
+async def test_generic_set_advertised_operation_mode(
+    hass: HomeAssistant,
+    mock_client: MockOverkizClient,
+    setup_overkiz_integration: SetupOverkizIntegration,
+    operation_mode: str,
+    expected_param: str,
+) -> None:
+    """Test every advertised operation mode can be set (issue #177621)."""
+    await setup_overkiz_integration(fixture=DHW_GENERIC.fixture)
+
+    state = hass.states.get(DHW_GENERIC.entity_id)
+    assert state is not None
+    assert operation_mode in state.attributes[ATTR_OPERATION_LIST]
+
+    await hass.services.async_call(
+        "water_heater",
+        "set_operation_mode",
+        {"entity_id": DHW_GENERIC.entity_id, ATTR_OPERATION_MODE: operation_mode},
+        blocking=True,
+    )
+
+    # This class sends each command as its own action group.
+    sent = [
+        (action.device_url, command.name, command.parameters)
+        for call in mock_client.execute_action_group.await_args_list
+        for action in call.kwargs["actions"]
+        for command in action.commands
+    ]
+    assert sent == [
+        (DHW_GENERIC.device_url, "setDHWMode", [expected_param]),
+        (DHW_GENERIC.device_url, "refreshBoostModeDuration", []),
+        (DHW_GENERIC.device_url, "refreshDHWMode", []),
+    ]

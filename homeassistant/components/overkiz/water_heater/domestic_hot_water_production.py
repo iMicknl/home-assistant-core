@@ -55,7 +55,6 @@ class DomesticHotWaterProduction(OverkizEntity, WaterHeaterEntity):
 
         # Init operation mode to set for this specific device
         self.operation_mode_to_overkiz: dict[str, str] = {}
-        self._attr_operation_list = []
         state_mode_definition = self.executor.select_definition_state(
             OverkizState.IO_DHW_MODE, OverkizState.MODBUSLINK_DHW_MODE
         )
@@ -66,7 +65,8 @@ class DomesticHotWaterProduction(OverkizEntity, WaterHeaterEntity):
                 state_mode_definition.values and param in state_mode_definition.values
             ):
                 self.operation_mode_to_overkiz[mode] = param
-                self._attr_operation_list.append(param)
+
+        self._attr_operation_list = list(self.operation_mode_to_overkiz)
 
     @property
     def _is_boost_mode_on(self) -> bool:
