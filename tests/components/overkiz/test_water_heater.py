@@ -2,6 +2,7 @@
 
 from collections.abc import Generator
 from pathlib import Path
+from typing import Any
 from unittest.mock import patch
 
 from freezegun.api import FrozenDateTimeFactory
@@ -10,11 +11,15 @@ import pytest
 from syrupy.assertion import SnapshotAssertion
 
 from homeassistant.components.water_heater import (
+    ATTR_AWAY_MODE,
     ATTR_MAX_TEMP,
     ATTR_MIN_TEMP,
+    ATTR_OPERATION_LIST,
     ATTR_OPERATION_MODE,
     ATTR_TARGET_TEMP_STEP,
     STATE_ECO,
+    STATE_ELECTRIC,
+    STATE_HEAT_PUMP,
     STATE_PERFORMANCE,
 )
 from homeassistant.const import ATTR_TEMPERATURE, STATE_OFF, STATE_ON, Platform
@@ -50,6 +55,13 @@ DHW_ATLANTIC_IO = FixtureDevice(
     "setup/cloud_atlantic_cozytouch.json",
     "io://1234-5678-5643/6713703#1",
     "water_heater.my_home_water_heater",
+)
+
+# Atlantic 200 L thermodynamic (io:AtlanticDomesticHotWaterProductionV2_SPLIT_IOComponent)
+DHW_V2_SPLIT = FixtureDevice(
+    "setup/cloud_atlantic_cozytouch.json",
+    "io://1234-5678-5643/5767598#1",
+    "water_heater.my_home_split_water_heater",
 )
 
 SNAPSHOT_FIXTURES = [
@@ -495,3 +507,234 @@ async def test_atlantic_io_turn_away_mode_off(
             ("refreshAwayModeDuration", None),
         ],
     )
+
+
+def executed_commands(
+    mock_client: MockOverkizClient,
+) -> list[tuple[str, list[tuple[str, list[Any]]]]]:
+    """Return (device_url, [(command, parameters)]) for every action group sent."""
+    return [
+        (
+            action.device_url,
+            [(command.name, command.parameters) for command in action.commands],
+        )
+        for call in mock_client.execute_action_group.await_args_list
+        for action in call.kwargs["actions"]
+    ]
+
+
+async def test_v2_split_state(
+    hass: HomeAssistant,
+    setup_overkiz_integration: SetupOverkizIntegration,
+) -> None:
+    """Test the SPLIT variant uses the V2 entity, including away mode."""
+    await setup_overkiz_integration(fixture=DHW_V2_SPLIT.fixture)
+
+    state = hass.states.get(DHW_V2_SPLIT.entity_id)
+    assert state is not None
+    # io:DHWModeState is autoMode, which the V2 entity reports as performance.
+    assert state.state == STATE_PERFORMANCE
+    assert state.attributes[ATTR_OPERATION_LIST] == [
+        STATE_ECO,
+        STATE_PERFORMANCE,
+        STATE_HEAT_PUMP,
+        STATE_ELECTRIC,
+    ]
+    assert state.attributes[ATTR_AWAY_MODE] == STATE_OFF
+
+
+@pytest.mark.parametrize(
+    ("operation_mode", "expected_commands"),
+    [
+        pytest.param(
+            STATE_ECO,
+            [
+                ("setDHWMode", ["manualEcoActive"]),
+                ("refreshTargetTemperature", []),
+            ],
+            id="eco",
+        ),
+        pytest.param(
+            STATE_PERFORMANCE,
+            [("setDHWMode", ["autoMode"])],
+            id="performance",
+        ),
+        pytest.param(
+            STATE_HEAT_PUMP,
+            [
+                ("setDHWMode", ["manualEcoInactive"]),
+                ("refreshTargetTemperature", []),
+            ],
+            id="heat_pump",
+        ),
+        pytest.param(
+            STATE_ELECTRIC,
+            [
+                ("setBoostModeDuration", [7]),
+                ("setCurrentOperatingMode", [{"relaunch": "on", "absence": "off"}]),
+                ("refreshBoostModeDuration", []),
+                ("refreshTargetTemperature", []),
+            ],
+            id="electric",
+        ),
+    ],
+)
+async def test_v2_split_set_operation_mode(
+    hass: HomeAssistant,
+    mock_client: MockOverkizClient,
+    setup_overkiz_integration: SetupOverkizIntegration,
+    operation_mode: str,
+    expected_commands: list[tuple[str, list[Any]]],
+) -> None:
+    """Test each operation mode sends the V2 commands, one action group each."""
+    await setup_overkiz_integration(fixture=DHW_V2_SPLIT.fixture)
+
+    await hass.services.async_call(
+        "water_heater",
+        "set_operation_mode",
+        {"entity_id": DHW_V2_SPLIT.entity_id, ATTR_OPERATION_MODE: operation_mode},
+        blocking=True,
+    )
+
+    assert executed_commands(mock_client) == [
+        (DHW_V2_SPLIT.device_url, [command]) for command in expected_commands
+    ]
+
+
+async def test_v2_split_set_temperature(
+    hass: HomeAssistant,
+    mock_client: MockOverkizClient,
+    setup_overkiz_integration: SetupOverkizIntegration,
+) -> None:
+    """Test setting the temperature sends setTargetTemperature then a refresh."""
+    await setup_overkiz_integration(fixture=DHW_V2_SPLIT.fixture)
+
+    await hass.services.async_call(
+        "water_heater",
+        "set_temperature",
+        {"entity_id": DHW_V2_SPLIT.entity_id, ATTR_TEMPERATURE: 55.0},
+        blocking=True,
+    )
+
+    assert executed_commands(mock_client) == [
+        (DHW_V2_SPLIT.device_url, [("setTargetTemperature", [55.0])]),
+        (DHW_V2_SPLIT.device_url, [("refreshTargetTemperature", [])]),
+    ]
+
+
+@pytest.mark.parametrize(
+    ("away_mode", "absence"),
+    [
+        pytest.param(True, "on", id="on"),
+        pytest.param(False, "off", id="off"),
+    ],
+)
+async def test_v2_split_away_mode(
+    hass: HomeAssistant,
+    mock_client: MockOverkizClient,
+    setup_overkiz_integration: SetupOverkizIntegration,
+    away_mode: bool,
+    absence: str,
+) -> None:
+    """Test away mode toggles absence via setCurrentOperatingMode then refreshes."""
+    await setup_overkiz_integration(fixture=DHW_V2_SPLIT.fixture)
+
+    await hass.services.async_call(
+        "water_heater",
+        "set_away_mode",
+        {"entity_id": DHW_V2_SPLIT.entity_id, ATTR_AWAY_MODE: away_mode},
+        blocking=True,
+    )
+
+    assert executed_commands(mock_client) == [
+        (
+            DHW_V2_SPLIT.device_url,
+            [("setCurrentOperatingMode", [{"relaunch": "off", "absence": absence}])],
+        ),
+        (DHW_V2_SPLIT.device_url, [("refreshAwayModeDuration", [])]),
+    ]
+
+
+@pytest.mark.parametrize(
+    ("device_states", "expected_operation"),
+    [
+        pytest.param(
+            [{"name": OverkizState.IO_DHW_MODE, "type": 3, "value": "manualEcoActive"}],
+            STATE_ECO,
+            id="eco",
+        ),
+        pytest.param(
+            [
+                {
+                    "name": OverkizState.IO_DHW_MODE,
+                    "type": 3,
+                    "value": "manualEcoInactive",
+                }
+            ],
+            STATE_HEAT_PUMP,
+            id="heat_pump",
+        ),
+        pytest.param(
+            [{"name": OverkizState.CORE_BOOST_MODE_DURATION, "type": 1, "value": 7}],
+            STATE_ELECTRIC,
+            id="boost",
+        ),
+    ],
+)
+async def test_v2_split_current_operation(
+    hass: HomeAssistant,
+    freezer: FrozenDateTimeFactory,
+    mock_client: MockOverkizClient,
+    setup_overkiz_integration: SetupOverkizIntegration,
+    device_states: list[dict[str, Any]],
+    expected_operation: str,
+) -> None:
+    """Test the reported operation follows io:DHWModeState and boost duration."""
+    await setup_overkiz_integration(fixture=DHW_V2_SPLIT.fixture)
+
+    await async_deliver_events(
+        hass,
+        freezer,
+        mock_client,
+        [
+            device_state_changed_event(
+                device_url=DHW_V2_SPLIT.device_url, device_states=device_states
+            )
+        ],
+    )
+
+    state = hass.states.get(DHW_V2_SPLIT.entity_id)
+    assert state is not None
+    assert state.state == expected_operation
+
+
+async def test_v2_split_away_mode_state(
+    hass: HomeAssistant,
+    freezer: FrozenDateTimeFactory,
+    mock_client: MockOverkizClient,
+    setup_overkiz_integration: SetupOverkizIntegration,
+) -> None:
+    """Test away mode reports on while io:AwayModeDurationState is non-zero."""
+    await setup_overkiz_integration(fixture=DHW_V2_SPLIT.fixture)
+
+    await async_deliver_events(
+        hass,
+        freezer,
+        mock_client,
+        [
+            device_state_changed_event(
+                device_url=DHW_V2_SPLIT.device_url,
+                device_states=[
+                    {
+                        "name": OverkizState.IO_AWAY_MODE_DURATION,
+                        "type": 3,
+                        "value": "always",
+                    }
+                ],
+            )
+        ],
+    )
+
+    state = hass.states.get(DHW_V2_SPLIT.entity_id)
+    assert state is not None
+    assert state.attributes[ATTR_AWAY_MODE] == STATE_ON

@@ -78,4 +78,7 @@ CONTROLLABLE_NAME_TO_WATER_HEATER_ENTITY = {
     "io:AtlanticDomesticHotWaterProductionV2_MURAL_IOComponent": (
         AtlanticDomesticHotWaterProductionV2IOComponent
     ),
+    "io:AtlanticDomesticHotWaterProductionV2_SPLIT_IOComponent": (
+        AtlanticDomesticHotWaterProductionV2IOComponent
+    ),
 }
