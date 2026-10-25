@@ -87,8 +87,8 @@ class OverkizExecutor:
         ) as exception:
             raise HomeAssistantError("Failed to connect") from exception
 
-        # ExecutionRegisteredEvent doesn't contain the device_url, thus we need
-        # to register it here.
+        # Register now, since ExecutionRegisteredEvent only arrives with the
+        # next event poll.
         self.coordinator.register_execution(exec_id, actions)
         if refresh_afterwards:
             self.coordinator.async_execution_started()
