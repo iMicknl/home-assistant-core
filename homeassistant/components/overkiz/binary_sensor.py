@@ -24,7 +24,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from . import OverkizDataConfigEntry
-from .const import GATEWAY_UPDATE_READY_STATUSES, IGNORED_OVERKIZ_DEVICES
+from .const import IGNORED_OVERKIZ_DEVICES
 from .entity import OverkizDescriptiveEntity, OverkizGatewayEntity
 
 
@@ -174,16 +174,6 @@ SUPPORTED_STATES = {
 PARALLEL_UPDATES = 0
 
 
-def _gateway_update_pending(gateway: Gateway) -> bool | None:
-    """Return True if a firmware update is pending for the gateway."""
-    status = gateway.update_status
-    if status in GATEWAY_UPDATE_READY_STATUSES or status == UpdateBoxStatus.UPDATING:
-        return True
-    if status == UpdateBoxStatus.UP_TO_DATE:
-        return False
-    return None
-
-
 @dataclass(frozen=True, kw_only=True)
 class OverkizGatewayBinarySensorDescription(BinarySensorEntityDescription):
     """Class to describe an Overkiz gateway binary sensor."""
@@ -200,7 +190,7 @@ GATEWAY_BINARY_SENSOR_DESCRIPTIONS: list[OverkizGatewayBinarySensorDescription] 
         translation_key="firmware_update",
         device_class=BinarySensorDeviceClass.UPDATE,
         entity_category=EntityCategory.DIAGNOSTIC,
-        value_fn=_gateway_update_pending,
+        value_fn=lambda gateway: gateway.update_status != UpdateBoxStatus.UP_TO_DATE,
         supported_fn=lambda gateway: (
             gateway.update_status not in (None, UpdateBoxStatus.NOT_UPDATABLE)
         ),

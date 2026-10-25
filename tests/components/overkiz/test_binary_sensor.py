@@ -19,13 +19,7 @@ from pytest_homeassistant.common import MockConfigEntry, snapshot_platform
 from syrupy.assertion import SnapshotAssertion
 
 from homeassistant.components.overkiz.const import DOMAIN
-from homeassistant.const import (
-    STATE_OFF,
-    STATE_ON,
-    STATE_UNAVAILABLE,
-    STATE_UNKNOWN,
-    Platform,
-)
+from homeassistant.const import STATE_OFF, STATE_ON, STATE_UNAVAILABLE, Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
 
@@ -204,7 +198,7 @@ async def test_binary_sensor_unavailability(
         ),
         pytest.param(UpdateBoxStatus.UPDATING, STATE_ON, id="updating"),
         pytest.param(UpdateBoxStatus.UP_TO_DATE, STATE_OFF, id="up_to_date"),
-        pytest.param(UpdateBoxStatus.UNKNOWN, STATE_UNKNOWN, id="unknown"),
+        pytest.param(UpdateBoxStatus.UNKNOWN, STATE_ON, id="unknown"),
     ],
 )
 async def test_gateway_firmware_update_polling(
