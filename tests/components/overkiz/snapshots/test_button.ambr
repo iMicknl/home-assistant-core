@@ -1793,6 +1793,108 @@
     'state': 'unknown',
   })
 # ---
+# name: test_button_entities_snapshot[cloud_nexity_rail_din_europe.json][button.nexity_rail_din_install_firmware_update-entry]
+  EntityRegistryEntrySnapshot({
+    'aliases': list([
+      None,
+    ]),
+    'area_id': None,
+    'capabilities': None,
+    'config_entry_id': <ANY>,
+    'config_subentry_id': <ANY>,
+    'device_class': None,
+    'device_id': <DeviceEntry identifiers=[('overkiz', '1234-5678-1698')]>,
+    'disabled_by': None,
+    'domain': 'button',
+    'entity_category': <EntityCategory.CONFIG: 'config'>,
+    'entity_id': 'button.nexity_rail_din_install_firmware_update',
+    'has_entity_name': True,
+    'hidden_by': None,
+    'icon': None,
+    'id': <ANY>,
+    'labels': set({
+    }),
+    'name': None,
+    'object_id_base': 'Install firmware update',
+    'options': dict({
+    }),
+    'original_device_class': <ButtonDeviceClass.UPDATE: 'update'>,
+    'original_icon': None,
+    'original_name': 'Install firmware update',
+    'platform': 'overkiz',
+    'previous_unique_id': None,
+    'suggested_object_id': None,
+    'supported_features': 0,
+    'translation_key': 'install_firmware_update',
+    'unique_id': '1234-5678-1698-install_firmware_update',
+    'unit_of_measurement': None,
+  })
+# ---
+# name: test_button_entities_snapshot[cloud_nexity_rail_din_europe.json][button.nexity_rail_din_install_firmware_update-state]
+  StateSnapshot({
+    'attributes': ReadOnlyDict({
+      <EntityStateAttribute.DEVICE_CLASS: 'device_class'>: 'update',
+      <EntityStateAttribute.FRIENDLY_NAME: 'friendly_name'>: 'Nexity Rail Din Install firmware update',
+    }),
+    'context': <ANY>,
+    'entity_id': 'button.nexity_rail_din_install_firmware_update',
+    'last_changed': <ANY>,
+    'last_reported': <ANY>,
+    'last_updated': <ANY>,
+    'state': 'unknown',
+  })
+# ---
+# name: test_button_entities_snapshot[cloud_somfy_connexoon_rts_asia.json][button.connexoon_rts_install_firmware_update-entry]
+  EntityRegistryEntrySnapshot({
+    'aliases': list([
+      None,
+    ]),
+    'area_id': None,
+    'capabilities': None,
+    'config_entry_id': <ANY>,
+    'config_subentry_id': <ANY>,
+    'device_class': None,
+    'device_id': <DeviceEntry identifiers=[('overkiz', '1234-1234-6362')]>,
+    'disabled_by': None,
+    'domain': 'button',
+    'entity_category': <EntityCategory.CONFIG: 'config'>,
+    'entity_id': 'button.connexoon_rts_install_firmware_update',
+    'has_entity_name': True,
+    'hidden_by': None,
+    'icon': None,
+    'id': <ANY>,
+    'labels': set({
+    }),
+    'name': None,
+    'object_id_base': 'Install firmware update',
+    'options': dict({
+    }),
+    'original_device_class': <ButtonDeviceClass.UPDATE: 'update'>,
+    'original_icon': None,
+    'original_name': 'Install firmware update',
+    'platform': 'overkiz',
+    'previous_unique_id': None,
+    'suggested_object_id': None,
+    'supported_features': 0,
+    'translation_key': 'install_firmware_update',
+    'unique_id': '1234-1234-6362-install_firmware_update',
+    'unit_of_measurement': None,
+  })
+# ---
+# name: test_button_entities_snapshot[cloud_somfy_connexoon_rts_asia.json][button.connexoon_rts_install_firmware_update-state]
+  StateSnapshot({
+    'attributes': ReadOnlyDict({
+      <EntityStateAttribute.DEVICE_CLASS: 'device_class'>: 'update',
+      <EntityStateAttribute.FRIENDLY_NAME: 'friendly_name'>: 'Connexoon RTS Install firmware update',
+    }),
+    'context': <ANY>,
+    'entity_id': 'button.connexoon_rts_install_firmware_update',
+    'last_changed': <ANY>,
+    'last_reported': <ANY>,
+    'last_updated': <ANY>,
+    'state': 'unknown',
+  })
+# ---
 # name: test_button_entities_snapshot[cloud_somfy_connexoon_rts_asia.json][button.palm_court_jaloezie_my_position-entry]
   EntityRegistryEntrySnapshot({
     'aliases': list([
@@ -6925,6 +7027,57 @@
     }),
     'context': <ANY>,
     'entity_id': 'button.reading_nook_living_room_shutter_stop_identify',
+    'last_changed': <ANY>,
+    'last_reported': <ANY>,
+    'last_updated': <ANY>,
+    'state': 'unknown',
+  })
+# ---
+# name: test_button_entities_snapshot[cloud_somfy_tahoma_v2_europe.json][button.tahoma_v2_install_firmware_update-entry]
+  EntityRegistryEntrySnapshot({
+    'aliases': list([
+      None,
+    ]),
+    'area_id': None,
+    'capabilities': None,
+    'config_entry_id': <ANY>,
+    'config_subentry_id': <ANY>,
+    'device_class': None,
+    'device_id': <DeviceEntry identifiers=[('overkiz', '1234-1234-6233')]>,
+    'disabled_by': None,
+    'domain': 'button',
+    'entity_category': <EntityCategory.CONFIG: 'config'>,
+    'entity_id': 'button.tahoma_v2_install_firmware_update',
+    'has_entity_name': True,
+    'hidden_by': None,
+    'icon': None,
+    'id': <ANY>,
+    'labels': set({
+    }),
+    'name': None,
+    'object_id_base': 'Install firmware update',
+    'options': dict({
+    }),
+    'original_device_class': <ButtonDeviceClass.UPDATE: 'update'>,
+    'original_icon': None,
+    'original_name': 'Install firmware update',
+    'platform': 'overkiz',
+    'previous_unique_id': None,
+    'suggested_object_id': None,
+    'supported_features': 0,
+    'translation_key': 'install_firmware_update',
+    'unique_id': '1234-1234-6233-install_firmware_update',
+    'unit_of_measurement': None,
+  })
+# ---
+# name: test_button_entities_snapshot[cloud_somfy_tahoma_v2_europe.json][button.tahoma_v2_install_firmware_update-state]
+  StateSnapshot({
+    'attributes': ReadOnlyDict({
+      <EntityStateAttribute.DEVICE_CLASS: 'device_class'>: 'update',
+      <EntityStateAttribute.FRIENDLY_NAME: 'friendly_name'>: 'TaHoma V2 Install firmware update',
+    }),
+    'context': <ANY>,
+    'entity_id': 'button.tahoma_v2_install_firmware_update',
     'last_changed': <ANY>,
     'last_reported': <ANY>,
     'last_updated': <ANY>,

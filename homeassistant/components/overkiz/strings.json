@@ -91,6 +91,16 @@
     }
   },
   "entity": {
+    "binary_sensor": {
+      "firmware_update": {
+        "name": "Firmware update"
+      }
+    },
+    "button": {
+      "install_firmware_update": {
+        "name": "Install firmware update"
+      }
+    },
     "climate": {
       "overkiz": {
         "state_attributes": {
@@ -230,6 +240,9 @@
     }
   },
   "exceptions": {
+    "no_firmware_update_available": {
+      "message": "There is no firmware update available to install for this gateway."
+    },
     "unsupported_set_position_and_tilt": {
       "message": "This device does not support setting position and tilt simultaneously."
     }

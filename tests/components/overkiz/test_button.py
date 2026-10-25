@@ -6,6 +6,7 @@ from typing import Any
 from unittest.mock import patch
 
 from freezegun.api import FrozenDateTimeFactory
+from pyoverkiz.enums import UpdateBoxStatus
 import pytest
 from pytest_homeassistant.common import snapshot_platform
 from syrupy.assertion import SnapshotAssertion
@@ -13,10 +14,16 @@ from syrupy.assertion import SnapshotAssertion
 from homeassistant.components.button import DOMAIN as BUTTON_DOMAIN, SERVICE_PRESS
 from homeassistant.const import ATTR_ENTITY_ID, STATE_UNAVAILABLE, Platform
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers import entity_registry as er
 
 from .conftest import FixtureDevice, MockOverkizClient, SetupOverkizIntegration
-from .helpers import assert_command_call, async_deliver_events, device_unavailable_event
+from .helpers import (
+    assert_command_call,
+    async_deliver_events,
+    async_poll_gateway_update_status,
+    device_unavailable_event,
+)
 
 MY_POSITION = FixtureDevice(
     "setup/cloud_somfy_tahoma_v2_europe.json",
@@ -47,6 +54,11 @@ STEP_NEGATIVE = FixtureDevice(
     "setup/cloud_somfy_connexoon_rts_asia.json",
     "rts://1234-1234-6362/16752757",
     "button.palm_court_led_strip_brightness_down",
+)
+GATEWAY_FIRMWARE_UPDATE = FixtureDevice(
+    "setup/cloud_somfy_tahoma_switch_europe.json",
+    "internal://1234-5678-6867/pod/0",
+    "button.tahoma_switch_install_firmware_update",
 )
 
 SNAPSHOT_FIXTURES = [
@@ -164,3 +176,49 @@ async def test_button_unavailability(
     )
 
     assert hass.states.get(MY_POSITION.entity_id).state == STATE_UNAVAILABLE
+
+
+async def test_gateway_firmware_update_press(
+    hass: HomeAssistant,
+    setup_overkiz_integration: SetupOverkizIntegration,
+    mock_client: MockOverkizClient,
+    freezer: FrozenDateTimeFactory,
+) -> None:
+    """Test pressing the firmware update button sends update to the gateway pod."""
+    await setup_overkiz_integration(fixture=GATEWAY_FIRMWARE_UPDATE.fixture)
+    await async_poll_gateway_update_status(
+        hass, freezer, mock_client, UpdateBoxStatus.READY_TO_UPDATE
+    )
+
+    await hass.services.async_call(
+        BUTTON_DOMAIN,
+        SERVICE_PRESS,
+        {ATTR_ENTITY_ID: GATEWAY_FIRMWARE_UPDATE.entity_id},
+        blocking=True,
+    )
+
+    assert_command_call(
+        mock_client,
+        device_url=GATEWAY_FIRMWARE_UPDATE.device_url,
+        command_name="update",
+    )
+
+
+async def test_gateway_firmware_update_press_without_update(
+    hass: HomeAssistant,
+    setup_overkiz_integration: SetupOverkizIntegration,
+    mock_client: MockOverkizClient,
+) -> None:
+    """Test pressing the firmware update button without a pending update fails."""
+    await setup_overkiz_integration(fixture=GATEWAY_FIRMWARE_UPDATE.fixture)
+
+    with pytest.raises(ServiceValidationError) as exc_info:
+        await hass.services.async_call(
+            BUTTON_DOMAIN,
+            SERVICE_PRESS,
+            {ATTR_ENTITY_ID: GATEWAY_FIRMWARE_UPDATE.entity_id},
+            blocking=True,
+        )
+
+    assert exc_info.value.translation_key == "no_firmware_update_available"
+    mock_client.execute_action_group.assert_not_awaited()

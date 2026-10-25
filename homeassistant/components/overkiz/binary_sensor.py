@@ -4,7 +4,14 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import cast, override
 
-from pyoverkiz.enums import OverkizCommandParam, OverkizState, UIClass, UIWidget
+from pyoverkiz.enums import (
+    OverkizCommandParam,
+    OverkizState,
+    UIClass,
+    UIWidget,
+    UpdateBoxStatus,
+)
+from pyoverkiz.models import Gateway
 from pyoverkiz.types import StateType as OverkizStateType
 
 from homeassistant.components.binary_sensor import (
@@ -12,12 +19,13 @@ from homeassistant.components.binary_sensor import (
     BinarySensorEntity,
     BinarySensorEntityDescription,
 )
+from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from . import OverkizDataConfigEntry
-from .const import IGNORED_OVERKIZ_DEVICES
-from .entity import OverkizDescriptiveEntity
+from .const import GATEWAY_UPDATE_READY_STATUSES, IGNORED_OVERKIZ_DEVICES
+from .entity import OverkizDescriptiveEntity, OverkizGatewayEntity
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -166,6 +174,40 @@ SUPPORTED_STATES = {
 PARALLEL_UPDATES = 0
 
 
+def _gateway_update_pending(gateway: Gateway) -> bool | None:
+    """Return True if a firmware update is pending for the gateway."""
+    status = gateway.update_status
+    if status in GATEWAY_UPDATE_READY_STATUSES or status == UpdateBoxStatus.UPDATING:
+        return True
+    if status == UpdateBoxStatus.UP_TO_DATE:
+        return False
+    return None
+
+
+@dataclass(frozen=True, kw_only=True)
+class OverkizGatewayBinarySensorDescription(BinarySensorEntityDescription):
+    """Class to describe an Overkiz gateway binary sensor."""
+
+    value_fn: Callable[[Gateway], bool | None]
+    supported_fn: Callable[[Gateway], bool] = lambda _: True
+
+
+GATEWAY_BINARY_SENSOR_DESCRIPTIONS: list[OverkizGatewayBinarySensorDescription] = [
+    # Overkiz only reports that an update is pending, not which version,
+    # so this can't be an update entity.
+    OverkizGatewayBinarySensorDescription(
+        key="firmware_update",
+        translation_key="firmware_update",
+        device_class=BinarySensorDeviceClass.UPDATE,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=_gateway_update_pending,
+        supported_fn=lambda gateway: (
+            gateway.update_status not in (None, UpdateBoxStatus.NOT_UPDATABLE)
+        ),
+    ),
+]
+
+
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: OverkizDataConfigEntry,
@@ -173,7 +215,7 @@ async def async_setup_entry(
 ) -> None:
     """Set up the Overkiz binary sensors from a config entry."""
     data = entry.runtime_data
-    entities: list[OverkizBinarySensor] = []
+    entities: list[BinarySensorEntity] = []
 
     for device in data.coordinator.data.values():
         if (
@@ -197,6 +239,14 @@ async def async_setup_entry(
             )
         )
 
+    if gateway_coordinator := data.gateway_coordinator:
+        entities.extend(
+            OverkizGatewayBinarySensor(gateway_id, gateway_coordinator, description)
+            for gateway_id, gateway in gateway_coordinator.data.items()
+            for description in GATEWAY_BINARY_SENSOR_DESCRIPTIONS
+            if description.supported_fn(gateway)
+        )
+
     async_add_entities(entities)
 
 
@@ -213,3 +263,15 @@ class OverkizBinarySensor(OverkizDescriptiveEntity, BinarySensorEntity):
             return self.entity_description.value_fn(state.value)
 
         return None
+
+
+class OverkizGatewayBinarySensor(OverkizGatewayEntity, BinarySensorEntity):
+    """Representation of an Overkiz gateway binary sensor."""
+
+    entity_description: OverkizGatewayBinarySensorDescription
+
+    @property
+    @override
+    def is_on(self) -> bool | None:
+        """Return the state of the sensor."""
+        return self.entity_description.value_fn(self.gateway)

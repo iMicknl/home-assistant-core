@@ -10,6 +10,7 @@ from pyoverkiz.enums import (
     Server,
     UIClass,
     UIWidget,
+    UpdateBoxStatus,
 )
 
 from homeassistant.const import (
@@ -45,6 +46,14 @@ DEFAULT_HOST: Final = "gateway-xxxx-xxxx-xxxx.local:8443"
 UPDATE_INTERVAL: Final = timedelta(seconds=30)
 UPDATE_INTERVAL_LOCAL: Final = timedelta(seconds=5)
 UPDATE_INTERVAL_ALL_ASSUMED_STATE: Final = timedelta(minutes=60)
+# setup/gateways is rate limited to one call per day per session.
+UPDATE_INTERVAL_GATEWAYS: Final = timedelta(days=1)
+
+GATEWAY_UPDATE_READY_STATUSES: Final = {
+    UpdateBoxStatus.READY_TO_UPDATE,
+    UpdateBoxStatus.READY_TO_BE_UPDATED_BY_SERVER,
+    UpdateBoxStatus.READY_TO_UPDATE_LOCALLY,
+}
 
 PLATFORMS: list[Platform] = [
     Platform.ALARM_CONTROL_PANEL,

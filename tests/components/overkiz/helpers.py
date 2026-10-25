@@ -3,8 +3,9 @@
 from datetime import timedelta
 from typing import Any
 
+from attrs import evolve
 from freezegun.api import FrozenDateTimeFactory
-from pyoverkiz.enums import DataType, EventName, ExecutionState
+from pyoverkiz.enums import DataType, EventName, ExecutionState, UpdateBoxStatus
 from pyoverkiz.models import (
     DeviceAvailableEvent,
     DeviceCreatedEvent,
@@ -17,7 +18,10 @@ from pyoverkiz.models import (
 )
 from pytest_homeassistant.common import async_fire_time_changed
 
-from homeassistant.components.overkiz.const import UPDATE_INTERVAL
+from homeassistant.components.overkiz.const import (
+    UPDATE_INTERVAL,
+    UPDATE_INTERVAL_GATEWAYS,
+)
 from homeassistant.core import HomeAssistant
 
 from .conftest import MockOverkizClient
@@ -124,5 +128,21 @@ async def async_deliver_events(
     """Queue event batches and advance time to trigger a coordinator refresh."""
     mock_client.queue_events(*event_batches)
     freezer.tick(update_interval)
+    async_fire_time_changed(hass)
+    await hass.async_block_till_done()
+
+
+async def async_poll_gateway_update_status(
+    hass: HomeAssistant,
+    freezer: FrozenDateTimeFactory,
+    mock_client: MockOverkizClient,
+    update_status: UpdateBoxStatus,
+) -> None:
+    """Return a new gateway update status on the next daily gateway poll."""
+    mock_client.setup.gateways = [
+        evolve(gateway, update_status=update_status)
+        for gateway in mock_client.setup.gateways
+    ]
+    freezer.tick(UPDATE_INTERVAL_GATEWAYS)
     async_fire_time_changed(hass)
     await hass.async_block_till_done()

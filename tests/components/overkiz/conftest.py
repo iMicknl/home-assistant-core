@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, patch
 
 from pyoverkiz.client import OverkizClient
 from pyoverkiz.enums import APIType
-from pyoverkiz.models import Event, ServerConfig, Setup
+from pyoverkiz.models import Event, Gateway, ServerConfig, Setup
 import pytest
 from pytest_homeassistant.common import MockConfigEntry
 
@@ -51,6 +51,7 @@ class MockOverkizClient(OverkizClient):
         self.login = AsyncMock(return_value=True)
         self.get_setup = AsyncMock(side_effect=self._async_get_setup)
         self.get_devices = AsyncMock(side_effect=self._async_get_devices)
+        self.get_gateways = AsyncMock(side_effect=self._async_get_gateways)
         self.get_action_groups = AsyncMock(return_value=[])
         self.fetch_events = AsyncMock(side_effect=self._async_fetch_events)
         self.get_current_executions = AsyncMock(return_value=[])
@@ -74,6 +75,7 @@ class MockOverkizClient(OverkizClient):
         self.login.reset_mock()
         self.get_setup.reset_mock()
         self.get_devices.reset_mock()
+        self.get_gateways.reset_mock()
         self.get_action_groups.reset_mock()
         self.fetch_events.reset_mock()
         self.get_current_executions.reset_mock()
@@ -87,6 +89,10 @@ class MockOverkizClient(OverkizClient):
     async def _async_get_devices(self, refresh: bool = False) -> list:
         """Return the configured devices."""
         return self.setup.devices
+
+    async def _async_get_gateways(self, refresh: bool = False) -> list[Gateway]:
+        """Return the configured gateways."""
+        return self.setup.gateways
 
     async def _async_fetch_events(self) -> list[Event]:
         """Return queued event batches one refresh at a time."""

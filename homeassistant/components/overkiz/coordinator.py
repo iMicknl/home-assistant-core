@@ -5,11 +5,12 @@ from datetime import timedelta
 import logging
 from typing import TYPE_CHECKING, Any, override
 
-from aiohttp import ClientConnectorError, ServerDisconnectedError
+from aiohttp import ClientConnectorError, ClientError, ServerDisconnectedError
 from pyoverkiz.client import OverkizClient
 from pyoverkiz.enums import EventName, ExecutionState, Protocol
 from pyoverkiz.exceptions import (
     BadCredentialsError,
+    BaseOverkizError,
     InvalidEventListenerIdError,
     MaintenanceError,
     NotAuthenticatedError,
@@ -25,6 +26,8 @@ from pyoverkiz.models import (
     DeviceStateChangedEvent,
     ExecutionRegisteredEvent,
     ExecutionStateChangedEvent,
+    Gateway,
+    GatewayEvent,
     Place,
 )
 
@@ -41,7 +44,13 @@ from homeassistant.util.decorator import Registry
 if TYPE_CHECKING:
     from . import OverkizDataConfigEntry
 
-from .const import DOMAIN, IGNORED_OVERKIZ_DEVICES, LOGGER, UPDATE_INTERVAL
+from .const import (
+    DOMAIN,
+    IGNORED_OVERKIZ_DEVICES,
+    LOGGER,
+    UPDATE_INTERVAL,
+    UPDATE_INTERVAL_GATEWAYS,
+)
 
 # Events are a discriminated union; each handler narrows to its own subtype.
 EVENT_HANDLERS: Registry[
@@ -80,6 +89,7 @@ class OverkizDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Device]]):
         self.executions: dict[str, list[dict[str, str]]] = {}
         self.areas = self._places_to_area(places) if places else None
         self._default_update_interval = UPDATE_INTERVAL
+        self.gateway_coordinator: OverkizGatewayCoordinator | None = None
 
         self.is_stateless = all(
             device.identifier.protocol in (Protocol.RTS, Protocol.INTERNAL)
@@ -165,6 +175,55 @@ class OverkizDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Device]]):
         self._default_update_interval = update_interval
 
 
+class OverkizGatewayCoordinator(DataUpdateCoordinator[dict[str, Gateway]]):
+    """Class to manage fetching gateway data from Overkiz platform."""
+
+    config_entry: OverkizDataConfigEntry
+
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        config_entry: OverkizDataConfigEntry,
+        logger: logging.Logger,
+        *,
+        client: OverkizClient,
+        gateways: list[Gateway],
+    ) -> None:
+        """Initialize gateway updater."""
+        super().__init__(
+            hass,
+            logger,
+            config_entry=config_entry,
+            name="gateways",
+            update_interval=UPDATE_INTERVAL_GATEWAYS,
+        )
+
+        self.client = client
+        # Seeded from the setup call, so no extra request is made on startup.
+        self.data = {gateway.id: gateway for gateway in gateways}
+
+    @override
+    async def _async_update_data(self) -> dict[str, Gateway]:
+        """Fetch Overkiz gateways."""
+        try:
+            gateways = await self.client.get_gateways(refresh=True)
+        except (
+            BadCredentialsError,
+            NotAuthenticatedError,
+            OAuth2TokenRequestReauthError,
+        ) as exception:
+            raise ConfigEntryAuthFailed("Invalid authentication.") from exception
+        except (
+            BaseOverkizError,
+            OAuth2TokenRequestError,
+            TimeoutError,
+            ClientError,
+        ) as exception:
+            raise UpdateFailed("Failed to fetch gateways.") from exception
+
+        return {gateway.id: gateway for gateway in gateways}
+
+
 @EVENT_HANDLERS.register(EventName.DEVICE_AVAILABLE)
 async def on_device_available(
     coordinator: OverkizDataUpdateCoordinator, event: DeviceEvent
@@ -247,3 +306,13 @@ async def on_execution_state_changed(
         ExecutionState.FAILED,
     ]:
         del coordinator.executions[event.exec_id]
+
+
+@EVENT_HANDLERS.register(EventName.GATEWAY_FIRMWARE_UPDATED)
+@EVENT_HANDLERS.register(EventName.GATEWAY_FIRMWARE_UPDATE_COMPLETED)
+async def on_gateway_firmware_updated(
+    coordinator: OverkizDataUpdateCoordinator, event: GatewayEvent
+) -> None:
+    """Handle gateway firmware updated event."""
+    if coordinator.gateway_coordinator:
+        await coordinator.gateway_coordinator.async_request_refresh()

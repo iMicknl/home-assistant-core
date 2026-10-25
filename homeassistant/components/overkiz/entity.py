@@ -3,7 +3,7 @@
 from typing import cast, override
 
 from pyoverkiz.enums import APIType, OverkizAttribute, OverkizCommandParam, OverkizState
-from pyoverkiz.models import Device
+from pyoverkiz.models import Device, Gateway
 
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.device_registry import DeviceInfo
@@ -11,7 +11,7 @@ from homeassistant.helpers.entity import EntityDescription
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
-from .coordinator import OverkizDataUpdateCoordinator
+from .coordinator import OverkizDataUpdateCoordinator, OverkizGatewayCoordinator
 from .executor import OverkizExecutor
 
 
@@ -143,3 +143,37 @@ class OverkizDescriptiveEntity(OverkizEntity):
                 self._attr_name = self.device.label
         elif isinstance(description.name, str):
             self._attr_name = description.name
+
+
+class OverkizGatewayEntity(CoordinatorEntity[OverkizGatewayCoordinator]):
+    """Representation of an Overkiz gateway entity.
+
+    Gateway entities use their own coordinator, so they stay available while
+    the gateway itself is offline.
+    """
+
+    _attr_has_entity_name = True
+
+    def __init__(
+        self,
+        gateway_id: str,
+        coordinator: OverkizGatewayCoordinator,
+        description: EntityDescription,
+    ) -> None:
+        """Initialize the gateway entity."""
+        super().__init__(coordinator)
+        self.gateway_id = gateway_id
+        self.entity_description = description
+        self._attr_unique_id = f"{gateway_id}-{description.key}"
+        self._attr_device_info = DeviceInfo(identifiers={(DOMAIN, gateway_id)})
+
+    @property
+    @override
+    def available(self) -> bool:
+        """Return True if entity is available."""
+        return super().available and self.gateway_id in self.coordinator.data
+
+    @property
+    def gateway(self) -> Gateway:
+        """Return Overkiz gateway linked to this entity."""
+        return self.coordinator.data[self.gateway_id]

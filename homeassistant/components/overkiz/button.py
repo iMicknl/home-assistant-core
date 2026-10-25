@@ -3,7 +3,12 @@
 from dataclasses import dataclass
 from typing import override
 
-from pyoverkiz.enums import OverkizCommand, OverkizCommandParam
+from pyoverkiz.enums import (
+    OverkizCommand,
+    OverkizCommandParam,
+    UIClass,
+    UpdateBoxStatus,
+)
 from pyoverkiz.types import StateType as OverkizStateType
 
 from homeassistant.components.button import (
@@ -13,11 +18,14 @@ from homeassistant.components.button import (
 )
 from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from . import OverkizDataConfigEntry
-from .const import IGNORED_OVERKIZ_DEVICES
-from .entity import OverkizDescriptiveEntity
+from .const import DOMAIN, GATEWAY_UPDATE_READY_STATUSES, IGNORED_OVERKIZ_DEVICES
+from .coordinator import OverkizGatewayCoordinator
+from .entity import OverkizDescriptiveEntity, OverkizGatewayEntity
+from .executor import OverkizExecutor
 
 
 @dataclass(frozen=True)
@@ -108,6 +116,13 @@ BUTTON_DESCRIPTIONS: list[OverkizButtonDescription] = [
     ),
 ]
 
+GATEWAY_FIRMWARE_UPDATE_BUTTON = ButtonEntityDescription(
+    key="install_firmware_update",
+    translation_key="install_firmware_update",
+    device_class=ButtonDeviceClass.UPDATE,
+    entity_category=EntityCategory.CONFIG,
+)
+
 SUPPORTED_COMMANDS = {
     description.key: description for description in BUTTON_DESCRIPTIONS
 }
@@ -142,6 +157,29 @@ async def async_setup_entry(
             if (description := SUPPORTED_COMMANDS.get(command))
         )
 
+    if gateway_coordinator := data.gateway_coordinator:
+        # The firmware update is triggered through the gateway's pod device.
+        for device in data.coordinator.data.values():
+            if (
+                device.ui_class != UIClass.POD
+                or OverkizCommand.UPDATE not in device.definition.commands
+                or not (
+                    gateway := gateway_coordinator.data.get(
+                        device.identifier.gateway_id
+                    )
+                )
+                or gateway.update_status in (None, UpdateBoxStatus.NOT_UPDATABLE)
+            ):
+                continue
+
+            entities.append(
+                OverkizGatewayFirmwareUpdateButton(
+                    gateway.id,
+                    gateway_coordinator,
+                    OverkizExecutor(device.device_url, data.coordinator),
+                )
+            )
+
     async_add_entities(entities)
 
 
@@ -160,3 +198,28 @@ class OverkizButton(OverkizDescriptiveEntity, ButtonEntity):
             return
 
         await self.executor.async_execute_command(self.entity_description.key)
+
+
+class OverkizGatewayFirmwareUpdateButton(OverkizGatewayEntity, ButtonEntity):
+    """Representation of an Overkiz gateway firmware update button."""
+
+    def __init__(
+        self,
+        gateway_id: str,
+        coordinator: OverkizGatewayCoordinator,
+        executor: OverkizExecutor,
+    ) -> None:
+        """Initialize the button."""
+        super().__init__(gateway_id, coordinator, GATEWAY_FIRMWARE_UPDATE_BUTTON)
+        self.executor = executor
+
+    @override
+    async def async_press(self) -> None:
+        """Install the pending firmware update."""
+        if self.gateway.update_status not in GATEWAY_UPDATE_READY_STATUSES:
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="no_firmware_update_available",
+            )
+
+        await self.executor.async_execute_command(OverkizCommand.UPDATE)
