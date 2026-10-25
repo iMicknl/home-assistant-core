@@ -205,6 +205,14 @@ GATEWAY_BINARY_SENSOR_DESCRIPTIONS: list[OverkizGatewayBinarySensorDescription] 
             gateway.update_status not in (None, UpdateBoxStatus.NOT_UPDATABLE)
         ),
     ),
+    # Connection between the gateway and the Overkiz cloud.
+    OverkizGatewayBinarySensorDescription(
+        key="connectivity",
+        device_class=BinarySensorDeviceClass.CONNECTIVITY,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda gateway: gateway.alive,
+        supported_fn=lambda gateway: gateway.alive is not None,
+    ),
 ]
 
 

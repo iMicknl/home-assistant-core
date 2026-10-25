@@ -295,3 +295,21 @@ async def on_gateway_firmware_updated(
 ) -> None:
     """Handle gateway firmware updated event."""
     coordinator.gateways_refresh_at = dt_util.utcnow()
+
+
+@EVENT_HANDLERS.register(EventName.GATEWAY_ALIVE)
+async def on_gateway_alive(
+    coordinator: OverkizDataUpdateCoordinator, event: GatewayEvent
+) -> None:
+    """Handle gateway alive event."""
+    if gateway := coordinator.gateways.get(event.gateway_id):
+        gateway.alive = True
+
+
+@EVENT_HANDLERS.register(EventName.GATEWAY_DOWN)
+async def on_gateway_down(
+    coordinator: OverkizDataUpdateCoordinator, event: GatewayEvent
+) -> None:
+    """Handle gateway down event."""
+    if gateway := coordinator.gateways.get(event.gateway_id):
+        gateway.alive = False

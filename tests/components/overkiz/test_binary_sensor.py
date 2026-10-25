@@ -9,6 +9,8 @@ from freezegun.api import FrozenDateTimeFactory
 from pyoverkiz.enums import APIType, EventName, OverkizState, UpdateBoxStatus
 from pyoverkiz.exceptions import BadCredentialsError, MaintenanceError
 from pyoverkiz.models import (
+    GatewayAliveEvent,
+    GatewayDownEvent,
     GatewayFirmwareUpdateCompletedEvent,
     GatewayFirmwareUpdatedEvent,
 )
@@ -60,6 +62,7 @@ TILT_SENSOR = FixtureDevice(
 GATEWAY_FIXTURE = "setup/cloud_somfy_tahoma_v2_europe.json"
 GATEWAY_ID = "1234-1234-6233"
 GATEWAY_FIRMWARE_UPDATE_ENTITY_ID = "binary_sensor.tahoma_v2_firmware_update"
+GATEWAY_CONNECTIVITY_ENTITY_ID = "binary_sensor.tahoma_v2_connectivity"
 
 SNAPSHOT_FIXTURES = [
     SMOKE_SENSOR,
@@ -306,21 +309,24 @@ async def test_gateway_firmware_update_auth_failure_starts_reauth(
     assert config_entry.async_get_active_flows(hass, {SOURCE_REAUTH})
 
 
-async def test_gateway_firmware_update_not_updatable(
+async def test_gateway_entities_skip_unsupported_gateways(
     hass: HomeAssistant,
     setup_overkiz_integration: SetupOverkizIntegration,
     entity_registry: er.EntityRegistry,
 ) -> None:
-    """Test gateways that can't be updated get no firmware update sensor."""
+    """Test gateways without update status or alive state get no sensors."""
     await setup_overkiz_integration(fixture="setup/cloud_somfy_myfox_europe.json")
 
     gateway_entities = {
         entry.unique_id
         for entry in entity_registry.entities.values()
-        if entry.unique_id.endswith("-firmware_update")
+        if entry.unique_id.endswith(("-firmware_update", "-connectivity"))
     }
-    # The Somfy Protect and thermostat gateways report NOT_UPDATABLE.
-    assert gateway_entities == {"1234-5678-1202-firmware_update"}
+    # The Somfy Protect and thermostat gateways are NOT_UPDATABLE without alive.
+    assert gateway_entities == {
+        "1234-5678-1202-firmware_update",
+        "1234-5678-1202-connectivity",
+    }
 
 
 @pytest.mark.parametrize(
@@ -346,7 +352,7 @@ async def test_gateway_firmware_update_not_created_for_local_api(
     entity_registry: er.EntityRegistry,
     freezer: FrozenDateTimeFactory,
 ) -> None:
-    """Test the Local API, which has no gateway update status, is not polled."""
+    """Test the Local API, which has no gateway status, gets no gateway sensors."""
     mock_client.server_config = evolve(
         mock_client.server_config, api_type=APIType.LOCAL
     )
@@ -357,7 +363,7 @@ async def test_gateway_firmware_update_not_created_for_local_api(
     assert not [
         entry
         for entry in entity_registry.entities.values()
-        if entry.unique_id.endswith("-firmware_update")
+        if entry.unique_id.startswith("1234-5678-6508-")
     ]
 
     await async_poll_gateway_update_status(
@@ -365,3 +371,53 @@ async def test_gateway_firmware_update_not_created_for_local_api(
     )
 
     mock_client.get_gateways.assert_not_awaited()
+
+
+async def test_gateway_connectivity_events(
+    hass: HomeAssistant,
+    setup_overkiz_integration: SetupOverkizIntegration,
+    mock_client: MockOverkizClient,
+    freezer: FrozenDateTimeFactory,
+) -> None:
+    """Test the gateway connectivity sensor follows gateway down and alive events."""
+    await setup_overkiz_integration(fixture=GATEWAY_FIXTURE)
+
+    assert hass.states.get(GATEWAY_CONNECTIVITY_ENTITY_ID).state == STATE_ON
+
+    await async_deliver_events(
+        hass,
+        freezer,
+        mock_client,
+        [GatewayDownEvent(name=EventName.GATEWAY_DOWN, gateway_id=GATEWAY_ID)],
+    )
+
+    # The cloud still reports the gateway as down, so the sensor stays available.
+    assert hass.states.get(GATEWAY_CONNECTIVITY_ENTITY_ID).state == STATE_OFF
+
+    await async_deliver_events(
+        hass,
+        freezer,
+        mock_client,
+        [GatewayAliveEvent(name=EventName.GATEWAY_ALIVE, gateway_id=GATEWAY_ID)],
+    )
+
+    assert hass.states.get(GATEWAY_CONNECTIVITY_ENTITY_ID).state == STATE_ON
+
+
+async def test_gateway_connectivity_event_for_unknown_gateway(
+    hass: HomeAssistant,
+    setup_overkiz_integration: SetupOverkizIntegration,
+    mock_client: MockOverkizClient,
+    freezer: FrozenDateTimeFactory,
+) -> None:
+    """Test gateway events for an unknown gateway are ignored."""
+    await setup_overkiz_integration(fixture=GATEWAY_FIXTURE)
+
+    await async_deliver_events(
+        hass,
+        freezer,
+        mock_client,
+        [GatewayDownEvent(name=EventName.GATEWAY_DOWN, gateway_id="9999-9999-9999")],
+    )
+
+    assert hass.states.get(GATEWAY_CONNECTIVITY_ENTITY_ID).state == STATE_ON
