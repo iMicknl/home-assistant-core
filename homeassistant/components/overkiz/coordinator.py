@@ -168,18 +168,23 @@ class OverkizDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Device]]):
 
         try:
             gateways = await self.client.get_gateways(refresh=True)
-        except (
-            BadCredentialsError,
-            NotAuthenticatedError,
-            OAuth2TokenRequestReauthError,
-        ) as exception:
-            raise ConfigEntryAuthFailed("Invalid authentication.") from exception
         except BaseOverkizError, OAuth2TokenRequestError, TimeoutError, ClientError:
-            # Keep the previous gateway data rather than failing every entity.
+            # Keep the previous data rather than failing every entity. Auth
+            # errors also fail the next event fetch, which starts reauth.
             LOGGER.debug("Failed to fetch gateways", exc_info=True)
             return
 
         self.gateways = {gateway.id: gateway for gateway in gateways}
+
+        # The device registry only gets the firmware version during setup.
+        device_registry = dr.async_get(self.hass)
+        for gateway in gateways:
+            if device := device_registry.async_get_device_by_identifier(
+                (DOMAIN, gateway.id), self.config_entry.entry_id
+            ):
+                device_registry.async_update_device(
+                    device.id, sw_version=gateway.connectivity.protocol_version
+                )
 
     async def _get_devices(self) -> dict[str, Device]:
         """Fetch devices."""

@@ -12,6 +12,7 @@ from pyoverkiz.exceptions import (
     TooManyConcurrentRequestsError,
     TooManyRequestsError,
 )
+from pyoverkiz.models import Connectivity
 import pytest
 from pytest_homeassistant.common import MockConfigEntry, async_fire_time_changed
 
@@ -22,7 +23,12 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr, entity_registry as er
 
 from .conftest import FixtureDevice, MockOverkizClient, SetupOverkizIntegration
-from .helpers import async_deliver_events, device_created_event, device_removed_event
+from .helpers import (
+    async_deliver_events,
+    async_poll_gateways,
+    device_created_event,
+    device_removed_event,
+)
 
 TEMPERATURE_SENSOR = FixtureDevice(
     "setup/cloud_nexity_rail_din_europe.json",
@@ -209,3 +215,27 @@ async def test_child_devices_link_to_their_gateway(
     assert secondary_gateway is not None
     assert secondary_child is not None
     assert secondary_child.via_device_id == secondary_gateway.id
+
+
+async def test_gateway_poll_updates_firmware_version(
+    hass: HomeAssistant,
+    setup_overkiz_integration: SetupOverkizIntegration,
+    mock_client: MockOverkizClient,
+    device_registry: dr.DeviceRegistry,
+    freezer: FrozenDateTimeFactory,
+) -> None:
+    """Test the daily gateway poll updates the gateway firmware version."""
+    config_entry = await setup_overkiz_integration(fixture=TAHOMA_V2_FIXTURE)
+
+    await async_poll_gateways(
+        hass,
+        freezer,
+        mock_client,
+        connectivity=Connectivity(status="OK", protocol_version="2026.1.4"),
+    )
+
+    gateway = device_registry.async_get_device_by_identifier(
+        (DOMAIN, MAIN_GATEWAY_ID), config_entry.entry_id
+    )
+    assert gateway
+    assert gateway.sw_version == "2026.1.4"

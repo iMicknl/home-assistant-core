@@ -21,7 +21,7 @@ from .conftest import FixtureDevice, MockOverkizClient, SetupOverkizIntegration
 from .helpers import (
     assert_command_call,
     async_deliver_events,
-    async_poll_gateway_update_status,
+    async_poll_gateways,
     device_unavailable_event,
 )
 
@@ -186,8 +186,8 @@ async def test_gateway_firmware_update_press(
 ) -> None:
     """Test pressing the firmware update button sends update to the gateway pod."""
     await setup_overkiz_integration(fixture=GATEWAY_FIRMWARE_UPDATE.fixture)
-    await async_poll_gateway_update_status(
-        hass, freezer, mock_client, UpdateBoxStatus.READY_TO_UPDATE
+    await async_poll_gateways(
+        hass, freezer, mock_client, update_status=UpdateBoxStatus.READY_TO_UPDATE
     )
 
     await hass.services.async_call(

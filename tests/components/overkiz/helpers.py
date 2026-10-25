@@ -5,7 +5,7 @@ from typing import Any
 
 from attrs import evolve
 from freezegun.api import FrozenDateTimeFactory
-from pyoverkiz.enums import DataType, EventName, ExecutionState, UpdateBoxStatus
+from pyoverkiz.enums import DataType, EventName, ExecutionState
 from pyoverkiz.models import (
     DeviceAvailableEvent,
     DeviceCreatedEvent,
@@ -132,16 +132,15 @@ async def async_deliver_events(
     await hass.async_block_till_done()
 
 
-async def async_poll_gateway_update_status(
+async def async_poll_gateways(
     hass: HomeAssistant,
     freezer: FrozenDateTimeFactory,
     mock_client: MockOverkizClient,
-    update_status: UpdateBoxStatus,
+    **changes: Any,
 ) -> None:
-    """Return a new gateway update status on the next daily gateway poll."""
+    """Return gateways with the given changes on the next daily gateway poll."""
     mock_client.setup.gateways = [
-        evolve(gateway, update_status=update_status)
-        for gateway in mock_client.setup.gateways
+        evolve(gateway, **changes) for gateway in mock_client.setup.gateways
     ]
     freezer.tick(UPDATE_INTERVAL_GATEWAYS)
     async_fire_time_changed(hass)

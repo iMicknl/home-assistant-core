@@ -7,7 +7,7 @@ from unittest.mock import patch
 from attrs import evolve
 from freezegun.api import FrozenDateTimeFactory
 from pyoverkiz.enums import APIType, EventName, OverkizState, UpdateBoxStatus
-from pyoverkiz.exceptions import BadCredentialsError, MaintenanceError
+from pyoverkiz.exceptions import MaintenanceError
 from pyoverkiz.models import (
     GatewayAliveEvent,
     GatewayDownEvent,
@@ -19,7 +19,6 @@ from pytest_homeassistant.common import MockConfigEntry, snapshot_platform
 from syrupy.assertion import SnapshotAssertion
 
 from homeassistant.components.overkiz.const import DOMAIN
-from homeassistant.config_entries import SOURCE_REAUTH
 from homeassistant.const import (
     STATE_OFF,
     STATE_ON,
@@ -33,7 +32,7 @@ from homeassistant.helpers import entity_registry as er
 from .conftest import FixtureDevice, MockOverkizClient, SetupOverkizIntegration
 from .helpers import (
     async_deliver_events,
-    async_poll_gateway_update_status,
+    async_poll_gateways,
     device_state_changed_event,
     device_unavailable_event,
 )
@@ -223,7 +222,7 @@ async def test_gateway_firmware_update_polling(
     # The gateways from the setup call are reused, so nothing is polled on startup.
     mock_client.get_gateways.assert_not_awaited()
 
-    await async_poll_gateway_update_status(hass, freezer, mock_client, update_status)
+    await async_poll_gateways(hass, freezer, mock_client, update_status=update_status)
 
     mock_client.get_gateways.assert_awaited_once_with(refresh=True)
     assert hass.states.get(GATEWAY_FIRMWARE_UPDATE_ENTITY_ID).state == expected_state
@@ -272,8 +271,8 @@ async def test_gateway_firmware_update_fetch_error_keeps_state(
     await setup_overkiz_integration(fixture=GATEWAY_FIXTURE)
 
     mock_client.get_gateways.side_effect = MaintenanceError("Maintenance")
-    await async_poll_gateway_update_status(
-        hass, freezer, mock_client, UpdateBoxStatus.READY_TO_UPDATE
+    await async_poll_gateways(
+        hass, freezer, mock_client, update_status=UpdateBoxStatus.READY_TO_UPDATE
     )
 
     assert hass.states.get(GATEWAY_FIRMWARE_UPDATE_ENTITY_ID).state == STATE_OFF
@@ -284,29 +283,12 @@ async def test_gateway_firmware_update_fetch_error_keeps_state(
     mock_client.get_gateways.assert_awaited_once()
 
     mock_client.get_gateways.side_effect = mock_client._async_get_gateways
-    await async_poll_gateway_update_status(
-        hass, freezer, mock_client, UpdateBoxStatus.READY_TO_UPDATE
+    await async_poll_gateways(
+        hass, freezer, mock_client, update_status=UpdateBoxStatus.READY_TO_UPDATE
     )
 
     assert mock_client.get_gateways.await_count == 2
     assert hass.states.get(GATEWAY_FIRMWARE_UPDATE_ENTITY_ID).state == STATE_ON
-
-
-async def test_gateway_firmware_update_auth_failure_starts_reauth(
-    hass: HomeAssistant,
-    setup_overkiz_integration: SetupOverkizIntegration,
-    mock_client: MockOverkizClient,
-    freezer: FrozenDateTimeFactory,
-) -> None:
-    """Test an authentication error while polling gateways starts reauth."""
-    config_entry = await setup_overkiz_integration(fixture=GATEWAY_FIXTURE)
-
-    mock_client.get_gateways.side_effect = BadCredentialsError("Bad credentials")
-    await async_poll_gateway_update_status(
-        hass, freezer, mock_client, UpdateBoxStatus.UP_TO_DATE
-    )
-
-    assert config_entry.async_get_active_flows(hass, {SOURCE_REAUTH})
 
 
 async def test_gateway_entities_skip_unsupported_gateways(
@@ -366,8 +348,8 @@ async def test_gateway_firmware_update_not_created_for_local_api(
         if entry.unique_id.startswith("1234-5678-6508-")
     ]
 
-    await async_poll_gateway_update_status(
-        hass, freezer, mock_client, UpdateBoxStatus.READY_TO_UPDATE
+    await async_poll_gateways(
+        hass, freezer, mock_client, update_status=UpdateBoxStatus.READY_TO_UPDATE
     )
 
     mock_client.get_gateways.assert_not_awaited()
