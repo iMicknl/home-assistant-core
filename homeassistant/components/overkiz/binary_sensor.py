@@ -239,13 +239,12 @@ async def async_setup_entry(
             )
         )
 
-    if gateway_coordinator := data.gateway_coordinator:
-        entities.extend(
-            OverkizGatewayBinarySensor(gateway_id, gateway_coordinator, description)
-            for gateway_id, gateway in gateway_coordinator.data.items()
-            for description in GATEWAY_BINARY_SENSOR_DESCRIPTIONS
-            if description.supported_fn(gateway)
-        )
+    entities.extend(
+        OverkizGatewayBinarySensor(gateway_id, data.coordinator, description)
+        for gateway_id, gateway in data.coordinator.gateways.items()
+        for description in GATEWAY_BINARY_SENSOR_DESCRIPTIONS
+        if description.supported_fn(gateway)
+    )
 
     async_add_entities(entities)
 

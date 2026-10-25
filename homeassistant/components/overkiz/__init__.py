@@ -70,7 +70,7 @@ from .const import (
     UPDATE_INTERVAL_ALL_ASSUMED_STATE,
     UPDATE_INTERVAL_LOCAL,
 )
-from .coordinator import OverkizDataUpdateCoordinator, OverkizGatewayCoordinator
+from .coordinator import OverkizDataUpdateCoordinator
 from .services import async_setup_services
 
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
@@ -81,7 +81,6 @@ class HomeAssistantOverkizData:
     """Overkiz data stored in the runtime data object."""
 
     coordinator: OverkizDataUpdateCoordinator
-    gateway_coordinator: OverkizGatewayCoordinator | None
     platforms: defaultdict[Platform, list[Device]]
     scenarios: list[PersistedActionGroup]
 
@@ -170,6 +169,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: OverkizDataConfigEntry) 
         LOGGER,
         client=client,
         devices=setup.devices,
+        gateways=setup.gateways,
         places=setup.root_place,
     )
 
@@ -190,25 +190,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: OverkizDataConfigEntry) 
         )
         coordinator.set_update_interval(UPDATE_INTERVAL_LOCAL)
 
-    # Local API does not expose the gateway update status.
-    gateway_coordinator: OverkizGatewayCoordinator | None = None
-    if api_type == APIType.CLOUD:
-        gateway_coordinator = OverkizGatewayCoordinator(
-            hass,
-            entry,
-            LOGGER,
-            client=client,
-            gateways=setup.gateways,
-        )
-        coordinator.gateway_coordinator = gateway_coordinator
-
     platforms: defaultdict[Platform, list[Device]] = defaultdict(list)
 
     entry.runtime_data = HomeAssistantOverkizData(
-        coordinator=coordinator,
-        gateway_coordinator=gateway_coordinator,
-        platforms=platforms,
-        scenarios=scenarios,
+        coordinator=coordinator, platforms=platforms, scenarios=scenarios
     )
 
     # Map Overkiz entities to Home Assistant platform

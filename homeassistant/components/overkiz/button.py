@@ -23,7 +23,7 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from . import OverkizDataConfigEntry
 from .const import DOMAIN, GATEWAY_UPDATE_READY_STATUSES, IGNORED_OVERKIZ_DEVICES
-from .coordinator import OverkizGatewayCoordinator
+from .coordinator import OverkizDataUpdateCoordinator
 from .entity import OverkizDescriptiveEntity, OverkizGatewayEntity
 from .executor import OverkizExecutor
 
@@ -157,28 +157,23 @@ async def async_setup_entry(
             if (description := SUPPORTED_COMMANDS.get(command))
         )
 
-    if gateway_coordinator := data.gateway_coordinator:
-        # The firmware update is triggered through the gateway's pod device.
-        for device in data.coordinator.data.values():
-            if (
-                device.ui_class != UIClass.POD
-                or OverkizCommand.UPDATE not in device.definition.commands
-                or not (
-                    gateway := gateway_coordinator.data.get(
-                        device.identifier.gateway_id
-                    )
-                )
-                or gateway.update_status in (None, UpdateBoxStatus.NOT_UPDATABLE)
-            ):
-                continue
-
-            entities.append(
-                OverkizGatewayFirmwareUpdateButton(
-                    gateway.id,
-                    gateway_coordinator,
-                    OverkizExecutor(device.device_url, data.coordinator),
-                )
+    # The firmware update is triggered through the gateway's pod device.
+    for device in data.coordinator.data.values():
+        if (
+            device.ui_class != UIClass.POD
+            or OverkizCommand.UPDATE not in device.definition.commands
+            or not (
+                gateway := data.coordinator.gateways.get(device.identifier.gateway_id)
             )
+            or gateway.update_status in (None, UpdateBoxStatus.NOT_UPDATABLE)
+        ):
+            continue
+
+        entities.append(
+            OverkizGatewayFirmwareUpdateButton(
+                gateway.id, data.coordinator, device.device_url
+            )
+        )
 
     async_add_entities(entities)
 
@@ -206,12 +201,12 @@ class OverkizGatewayFirmwareUpdateButton(OverkizGatewayEntity, ButtonEntity):
     def __init__(
         self,
         gateway_id: str,
-        coordinator: OverkizGatewayCoordinator,
-        executor: OverkizExecutor,
+        coordinator: OverkizDataUpdateCoordinator,
+        pod_device_url: str,
     ) -> None:
         """Initialize the button."""
         super().__init__(gateway_id, coordinator, GATEWAY_FIRMWARE_UPDATE_BUTTON)
-        self.executor = executor
+        self.executor = OverkizExecutor(pod_device_url, coordinator)
 
     @override
     async def async_press(self) -> None:

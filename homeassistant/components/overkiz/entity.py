@@ -11,7 +11,7 @@ from homeassistant.helpers.entity import EntityDescription
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
-from .coordinator import OverkizDataUpdateCoordinator, OverkizGatewayCoordinator
+from .coordinator import OverkizDataUpdateCoordinator
 from .executor import OverkizExecutor
 
 
@@ -145,19 +145,15 @@ class OverkizDescriptiveEntity(OverkizEntity):
             self._attr_name = description.name
 
 
-class OverkizGatewayEntity(CoordinatorEntity[OverkizGatewayCoordinator]):
-    """Representation of an Overkiz gateway entity.
-
-    Gateway entities use their own coordinator, so they stay available while
-    the gateway itself is offline.
-    """
+class OverkizGatewayEntity(CoordinatorEntity[OverkizDataUpdateCoordinator]):
+    """Representation of an Overkiz gateway entity."""
 
     _attr_has_entity_name = True
 
     def __init__(
         self,
         gateway_id: str,
-        coordinator: OverkizGatewayCoordinator,
+        coordinator: OverkizDataUpdateCoordinator,
         description: EntityDescription,
     ) -> None:
         """Initialize the gateway entity."""
@@ -171,9 +167,9 @@ class OverkizGatewayEntity(CoordinatorEntity[OverkizGatewayCoordinator]):
     @override
     def available(self) -> bool:
         """Return True if entity is available."""
-        return super().available and self.gateway_id in self.coordinator.data
+        return super().available and self.gateway_id in self.coordinator.gateways
 
     @property
     def gateway(self) -> Gateway:
         """Return Overkiz gateway linked to this entity."""
-        return self.coordinator.data[self.gateway_id]
+        return self.coordinator.gateways[self.gateway_id]

@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any, override
 
 from aiohttp import ClientConnectorError, ClientError, ServerDisconnectedError
 from pyoverkiz.client import OverkizClient
-from pyoverkiz.enums import EventName, ExecutionState, Protocol
+from pyoverkiz.enums import APIType, EventName, ExecutionState, Protocol
 from pyoverkiz.exceptions import (
     BadCredentialsError,
     BaseOverkizError,
@@ -39,6 +39,7 @@ from homeassistant.exceptions import (
 )
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+from homeassistant.util import dt as dt_util
 from homeassistant.util.decorator import Registry
 
 if TYPE_CHECKING:
@@ -72,6 +73,7 @@ class OverkizDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Device]]):
         *,
         client: OverkizClient,
         devices: list[Device],
+        gateways: list[Gateway],
         places: Place | None,
     ) -> None:
         """Initialize global data updater."""
@@ -89,7 +91,11 @@ class OverkizDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Device]]):
         self.executions: dict[str, list[dict[str, str]]] = {}
         self.areas = self._places_to_area(places) if places else None
         self._default_update_interval = UPDATE_INTERVAL
-        self.gateway_coordinator: OverkizGatewayCoordinator | None = None
+        self.gateways: dict[str, Gateway] = {g.id: g for g in gateways}
+        # Local API does not expose the gateway update status.
+        self._poll_gateways = client.server_config.api_type == APIType.CLOUD
+        # Gateways from the setup call are fresh, so the first poll waits a day.
+        self.gateways_refresh_at = dt_util.utcnow() + UPDATE_INTERVAL_GATEWAYS
 
         self.is_stateless = all(
             device.identifier.protocol in (Protocol.RTS, Protocol.INTERNAL)
@@ -146,11 +152,34 @@ class OverkizDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Device]]):
             if event_handler := EVENT_HANDLERS.get(event.name):
                 await event_handler(self, event)
 
+        if self._poll_gateways and dt_util.utcnow() >= self.gateways_refresh_at:
+            await self._async_refresh_gateways()
+
         # Restore the default update interval if no executions are pending
         if not self.executions:
             self.update_interval = self._default_update_interval
 
         return self.devices
+
+    async def _async_refresh_gateways(self) -> None:
+        """Fetch gateways, as not all gateway properties are sent as events."""
+        # setup/gateways is rate limited, so a failed fetch waits a day as well.
+        self.gateways_refresh_at = dt_util.utcnow() + UPDATE_INTERVAL_GATEWAYS
+
+        try:
+            gateways = await self.client.get_gateways(refresh=True)
+        except (
+            BadCredentialsError,
+            NotAuthenticatedError,
+            OAuth2TokenRequestReauthError,
+        ) as exception:
+            raise ConfigEntryAuthFailed("Invalid authentication.") from exception
+        except BaseOverkizError, OAuth2TokenRequestError, TimeoutError, ClientError:
+            # Keep the previous gateway data rather than failing every entity.
+            LOGGER.debug("Failed to fetch gateways", exc_info=True)
+            return
+
+        self.gateways = {gateway.id: gateway for gateway in gateways}
 
     async def _get_devices(self) -> dict[str, Device]:
         """Fetch devices."""
@@ -173,55 +202,6 @@ class OverkizDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Device]]):
         """Set the update interval and store this value."""
         self.update_interval = update_interval
         self._default_update_interval = update_interval
-
-
-class OverkizGatewayCoordinator(DataUpdateCoordinator[dict[str, Gateway]]):
-    """Class to manage fetching gateway data from Overkiz platform."""
-
-    config_entry: OverkizDataConfigEntry
-
-    def __init__(
-        self,
-        hass: HomeAssistant,
-        config_entry: OverkizDataConfigEntry,
-        logger: logging.Logger,
-        *,
-        client: OverkizClient,
-        gateways: list[Gateway],
-    ) -> None:
-        """Initialize gateway updater."""
-        super().__init__(
-            hass,
-            logger,
-            config_entry=config_entry,
-            name="gateways",
-            update_interval=UPDATE_INTERVAL_GATEWAYS,
-        )
-
-        self.client = client
-        # Seeded from the setup call, so no extra request is made on startup.
-        self.data = {gateway.id: gateway for gateway in gateways}
-
-    @override
-    async def _async_update_data(self) -> dict[str, Gateway]:
-        """Fetch Overkiz gateways."""
-        try:
-            gateways = await self.client.get_gateways(refresh=True)
-        except (
-            BadCredentialsError,
-            NotAuthenticatedError,
-            OAuth2TokenRequestReauthError,
-        ) as exception:
-            raise ConfigEntryAuthFailed("Invalid authentication.") from exception
-        except (
-            BaseOverkizError,
-            OAuth2TokenRequestError,
-            TimeoutError,
-            ClientError,
-        ) as exception:
-            raise UpdateFailed("Failed to fetch gateways.") from exception
-
-        return {gateway.id: gateway for gateway in gateways}
 
 
 @EVENT_HANDLERS.register(EventName.DEVICE_AVAILABLE)
@@ -314,5 +294,4 @@ async def on_gateway_firmware_updated(
     coordinator: OverkizDataUpdateCoordinator, event: GatewayEvent
 ) -> None:
     """Handle gateway firmware updated event."""
-    if coordinator.gateway_coordinator:
-        await coordinator.gateway_coordinator.async_request_refresh()
+    coordinator.gateways_refresh_at = dt_util.utcnow()

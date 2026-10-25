@@ -4,8 +4,9 @@ from collections.abc import Generator
 from pathlib import Path
 from unittest.mock import patch
 
+from attrs import evolve
 from freezegun.api import FrozenDateTimeFactory
-from pyoverkiz.enums import EventName, OverkizState, UpdateBoxStatus
+from pyoverkiz.enums import APIType, EventName, OverkizState, UpdateBoxStatus
 from pyoverkiz.exceptions import BadCredentialsError, MaintenanceError
 from pyoverkiz.models import (
     GatewayFirmwareUpdateCompletedEvent,
@@ -56,9 +57,9 @@ TILT_SENSOR = FixtureDevice(
     "io://1234-1234-6233/8059108#1",
     "binary_sensor.living_room_balcony_window_tilt",
 )
-GATEWAY_FIXTURE = "setup/cloud_somfy_tahoma_switch_europe.json"
-GATEWAY_ID = "1234-5678-6867"
-GATEWAY_FIRMWARE_UPDATE_ENTITY_ID = "binary_sensor.tahoma_switch_firmware_update"
+GATEWAY_FIXTURE = "setup/cloud_somfy_tahoma_v2_europe.json"
+GATEWAY_ID = "1234-1234-6233"
+GATEWAY_FIRMWARE_UPDATE_ENTITY_ID = "binary_sensor.tahoma_v2_firmware_update"
 
 SNAPSHOT_FIXTURES = [
     SMOKE_SENSOR,
@@ -251,29 +252,41 @@ async def test_gateway_firmware_update_event_refreshes_gateways(
     event: GatewayFirmwareUpdatedEvent | GatewayFirmwareUpdateCompletedEvent,
 ) -> None:
     """Test a gateway firmware event refreshes the gateways right away."""
-    # Needs a device entity, otherwise nothing listens for events.
-    await setup_overkiz_integration(fixture=CONTACT_SENSOR.fixture)
+    await setup_overkiz_integration(fixture=GATEWAY_FIXTURE)
 
     await async_deliver_events(hass, freezer, mock_client, [event])
 
     mock_client.get_gateways.assert_awaited_once_with(refresh=True)
 
 
-async def test_gateway_firmware_update_unavailable_on_error(
+async def test_gateway_firmware_update_fetch_error_keeps_state(
     hass: HomeAssistant,
     setup_overkiz_integration: SetupOverkizIntegration,
     mock_client: MockOverkizClient,
     freezer: FrozenDateTimeFactory,
 ) -> None:
-    """Test the gateway firmware update sensor goes unavailable when polling fails."""
+    """Test a failed gateway fetch keeps the last state and retries a day later."""
     await setup_overkiz_integration(fixture=GATEWAY_FIXTURE)
 
     mock_client.get_gateways.side_effect = MaintenanceError("Maintenance")
     await async_poll_gateway_update_status(
-        hass, freezer, mock_client, UpdateBoxStatus.UP_TO_DATE
+        hass, freezer, mock_client, UpdateBoxStatus.READY_TO_UPDATE
     )
 
-    assert hass.states.get(GATEWAY_FIRMWARE_UPDATE_ENTITY_ID).state == STATE_UNAVAILABLE
+    assert hass.states.get(GATEWAY_FIRMWARE_UPDATE_ENTITY_ID).state == STATE_OFF
+    mock_client.get_gateways.assert_awaited_once()
+
+    # The rate limited endpoint is not retried on the next event refresh.
+    await async_deliver_events(hass, freezer, mock_client, [])
+    mock_client.get_gateways.assert_awaited_once()
+
+    mock_client.get_gateways.side_effect = mock_client._async_get_gateways
+    await async_poll_gateway_update_status(
+        hass, freezer, mock_client, UpdateBoxStatus.READY_TO_UPDATE
+    )
+
+    assert mock_client.get_gateways.await_count == 2
+    assert hass.states.get(GATEWAY_FIRMWARE_UPDATE_ENTITY_ID).state == STATE_ON
 
 
 async def test_gateway_firmware_update_auth_failure_starts_reauth(
@@ -315,9 +328,9 @@ async def test_gateway_firmware_update_not_updatable(
     [
         MockConfigEntry(
             domain=DOMAIN,
-            unique_id=GATEWAY_ID,
+            unique_id="1234-5678-6508",
             data={
-                "host": "gateway-1234-5678-6867.local:8443",
+                "host": "gateway-1234-5678-6508.local:8443",
                 "token": "1234123412341234",
                 "verify_ssl": True,
                 "hub": "somfy_europe",
@@ -329,8 +342,26 @@ async def test_gateway_firmware_update_not_updatable(
 async def test_gateway_firmware_update_not_created_for_local_api(
     hass: HomeAssistant,
     setup_overkiz_integration: SetupOverkizIntegration,
+    mock_client: MockOverkizClient,
+    entity_registry: er.EntityRegistry,
+    freezer: FrozenDateTimeFactory,
 ) -> None:
-    """Test the Local API, which has no gateway update status, gets no sensor."""
-    await setup_overkiz_integration(fixture=GATEWAY_FIXTURE)
+    """Test the Local API, which has no gateway update status, is not polled."""
+    mock_client.server_config = evolve(
+        mock_client.server_config, api_type=APIType.LOCAL
+    )
+    await setup_overkiz_integration(
+        fixture="setup/local_somfy_tahoma_switch_europe.json"
+    )
 
-    assert hass.states.get(GATEWAY_FIRMWARE_UPDATE_ENTITY_ID) is None
+    assert not [
+        entry
+        for entry in entity_registry.entities.values()
+        if entry.unique_id.endswith("-firmware_update")
+    ]
+
+    await async_poll_gateway_update_status(
+        hass, freezer, mock_client, UpdateBoxStatus.READY_TO_UPDATE
+    )
+
+    mock_client.get_gateways.assert_not_awaited()
