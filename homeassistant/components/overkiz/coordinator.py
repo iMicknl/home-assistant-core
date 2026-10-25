@@ -3,7 +3,7 @@
 from collections.abc import Callable, Coroutine
 from datetime import timedelta
 import logging
-from typing import TYPE_CHECKING, Any, override
+from typing import TYPE_CHECKING, Any, NamedTuple, override
 
 from aiohttp import ClientConnectorError, ServerDisconnectedError
 from pyoverkiz.client import OverkizClient
@@ -49,6 +49,13 @@ EVENT_HANDLERS: Registry[
 ] = Registry()
 
 
+class OverkizExecution(NamedTuple):
+    """A command running on a device as part of an execution."""
+
+    device_url: str
+    command_name: str
+
+
 class OverkizDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Device]]):
     """Class to manage fetching data from Overkiz platform."""
 
@@ -77,7 +84,7 @@ class OverkizDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Device]]):
         self.data = {}
         self.client = client
         self.devices: dict[str, Device] = {d.device_url: d for d in devices}
-        self.executions: dict[str, list[dict[str, str]]] = {}
+        self.executions: dict[str, set[OverkizExecution]] = {}
         self.areas = self._places_to_area(places) if places else None
         self._default_update_interval = UPDATE_INTERVAL
 
@@ -230,8 +237,7 @@ async def on_execution_registered(
     coordinator: OverkizDataUpdateCoordinator, event: ExecutionRegisteredEvent
 ) -> None:
     """Handle execution registered event."""
-    if event.exec_id not in coordinator.executions:
-        coordinator.executions[event.exec_id] = []
+    coordinator.executions.setdefault(event.exec_id, set())
 
     if not coordinator.is_stateless:
         coordinator.update_interval = timedelta(seconds=1)

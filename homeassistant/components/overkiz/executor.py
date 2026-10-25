@@ -9,7 +9,7 @@ from pyoverkiz.models import Action, Command, Device, StateDefinition
 
 from homeassistant.exceptions import HomeAssistantError
 
-from .coordinator import OverkizDataUpdateCoordinator
+from .coordinator import OverkizDataUpdateCoordinator, OverkizExecution
 
 
 class OverkizExecutor:
@@ -74,11 +74,8 @@ class OverkizExecutor:
         # ExecutionRegisteredEvent doesn't contain the device_url, thus we need
         # to register it here. The action queue can merge concurrent action
         # groups under one exec_id, so accumulate rather than overwrite.
-        self.coordinator.executions.setdefault(exec_id, []).append(
-            {
-                "device_url": self.device.device_url,
-                "command_name": command_name,
-            }
+        self.coordinator.executions.setdefault(exec_id, set()).add(
+            OverkizExecution(self.device.device_url, command_name)
         )
         if refresh_afterwards:
             await self.coordinator.async_refresh()
@@ -113,11 +110,8 @@ class OverkizExecutor:
         ) as exception:
             raise HomeAssistantError("Failed to connect") from exception
 
-        self.coordinator.executions.setdefault(exec_id, []).append(
-            {
-                "device_url": self.device.device_url,
-                "command_name": commands[-1].name,
-            }
+        self.coordinator.executions.setdefault(exec_id, set()).add(
+            OverkizExecution(self.device.device_url, commands[-1].name)
         )
         if refresh_afterwards:
             await self.coordinator.async_refresh()
@@ -136,8 +130,8 @@ class OverkizExecutor:
                 # Reverse dictionary to cancel the last added execution
                 for exec_id, executions in reversed(self.coordinator.executions.items())
                 for execution in executions
-                if execution.get("device_url") == self.device.device_url
-                and execution.get("command_name") in commands_to_cancel
+                if execution.device_url == self.device.device_url
+                and execution.command_name in commands_to_cancel
             ),
             None,
         )
