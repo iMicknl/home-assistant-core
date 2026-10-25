@@ -9,7 +9,7 @@ from pyoverkiz.models import Action, Command, Device, StateDefinition
 
 from homeassistant.exceptions import HomeAssistantError
 
-from .coordinator import OverkizDataUpdateCoordinator, OverkizExecution
+from .coordinator import OverkizDataUpdateCoordinator
 
 
 class OverkizExecutor:
@@ -51,34 +51,10 @@ class OverkizExecutor:
         """
         parameters = [arg for arg in args if arg is not None]
 
-        try:
-            exec_id = await self.coordinator.client.execute_action_group(
-                label="Home Assistant",
-                actions=[
-                    Action(
-                        device_url=self.device.device_url,
-                        commands=[Command(name=command_name, parameters=parameters)],
-                    )
-                ],
-            )
-        # Catch Overkiz exceptions to support `continue_on_error` functionality
-        except BaseOverkizError as exception:
-            raise HomeAssistantError(exception) from exception
-        except (
-            TimeoutError,
-            ClientConnectorError,
-            ServerDisconnectedError,
-        ) as exception:
-            raise HomeAssistantError("Failed to connect") from exception
-
-        # ExecutionRegisteredEvent doesn't contain the device_url, thus we need
-        # to register it here. The action queue can merge concurrent action
-        # groups under one exec_id, so accumulate rather than overwrite.
-        self.coordinator.executions.setdefault(exec_id, set()).add(
-            OverkizExecution(self.device.device_url, command_name)
+        await self.async_execute_commands(
+            [Command(name=command_name, parameters=parameters)],
+            refresh_afterwards=refresh_afterwards,
         )
-        if refresh_afterwards:
-            await self.coordinator.async_refresh()
 
     async def async_execute_commands(
         self, commands: list[Command], refresh_afterwards: bool = True
@@ -95,10 +71,11 @@ class OverkizExecutor:
         if not commands:
             return
 
+        actions = [Action(device_url=self.device.device_url, commands=commands)]
+
         try:
             exec_id = await self.coordinator.client.execute_action_group(
-                label="Home Assistant",
-                actions=[Action(device_url=self.device.device_url, commands=commands)],
+                label="Home Assistant", actions=actions
             )
         # Catch Overkiz exceptions to support `continue_on_error` functionality
         except BaseOverkizError as exception:
@@ -110,9 +87,9 @@ class OverkizExecutor:
         ) as exception:
             raise HomeAssistantError("Failed to connect") from exception
 
-        self.coordinator.executions.setdefault(exec_id, set()).add(
-            OverkizExecution(self.device.device_url, commands[-1].name)
-        )
+        # ExecutionRegisteredEvent doesn't contain the device_url, thus we need
+        # to register it here.
+        self.coordinator.register_execution(exec_id, actions)
         if refresh_afterwards:
             await self.coordinator.async_refresh()
 
@@ -128,10 +105,12 @@ class OverkizExecutor:
             (
                 exec_id
                 # Reverse dictionary to cancel the last added execution
-                for exec_id, executions in reversed(self.coordinator.executions.items())
-                for execution in executions
-                if execution.device_url == self.device.device_url
-                and execution.command_name in commands_to_cancel
+                for exec_id, device_commands in reversed(
+                    self.coordinator.executions.items()
+                )
+                for device_command in device_commands
+                if device_command.device_url == self.device.device_url
+                and device_command.command_name in commands_to_cancel
             ),
             None,
         )
