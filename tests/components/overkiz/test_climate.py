@@ -1,12 +1,12 @@
 """Tests for the Overkiz climate platform."""
 
-from collections.abc import Generator
+from collections.abc import Callable, Generator
 from pathlib import Path
 from unittest.mock import patch
 
 from freezegun.api import FrozenDateTimeFactory
 from pyoverkiz.enums import OverkizState
-from pyoverkiz.models import Event
+from pyoverkiz.models import Event, Setup
 import pytest
 from pytest_homeassistant.common import snapshot_platform
 from syrupy.assertion import SnapshotAssertion
@@ -16,6 +16,7 @@ from homeassistant.components.climate import (
     ATTR_FAN_MODE,
     ATTR_HVAC_ACTION,
     ATTR_PRESET_MODE,
+    ATTR_PRESET_MODES,
     HVACAction,
     HVACMode,
 )
@@ -450,6 +451,48 @@ async def test_pass_apc_heating_zone_frost_protection_not_settable(
         )
 
     mock_client.execute_action_group.assert_not_awaited()
+
+
+def _add_frost_protection_heating_mode(setup: Setup) -> None:
+    device = next(
+        device
+        for device in setup.devices
+        if device.device_url == PASS_APC_HEATING_ZONE.device_url
+    )
+    device.definition.states[OverkizState.IO_PASS_APC_HEATING_MODE].values.append(
+        "frostprotection"
+    )
+
+
+@pytest.mark.parametrize(
+    ("mutate", "preset_modes"),
+    [
+        pytest.param(
+            None,
+            ["comfort", "away", "eco", "external", "home"],
+            id="frost_protection_not_listed",
+        ),
+        pytest.param(
+            _add_frost_protection_heating_mode,
+            ["comfort", "away", "eco", "frost_protection", "external", "home"],
+            id="frost_protection_listed",
+        ),
+    ],
+)
+async def test_pass_apc_heating_zone_preset_modes(
+    hass: HomeAssistant,
+    setup_overkiz_integration: SetupOverkizIntegration,
+    mutate: Callable[[Setup], None] | None,
+    preset_modes: list[str],
+) -> None:
+    """Test presets only include heating modes listed in the device definition."""
+    await setup_overkiz_integration(
+        fixture=PASS_APC_HEATING_ZONE.fixture, mutate=mutate
+    )
+
+    state = hass.states.get(PASS_APC_HEATING_ZONE.entity_id)
+    assert state is not None
+    assert state.attributes[ATTR_PRESET_MODES] == preset_modes
 
 
 @pytest.mark.parametrize(

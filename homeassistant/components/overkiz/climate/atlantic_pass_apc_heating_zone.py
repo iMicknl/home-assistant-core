@@ -52,6 +52,7 @@ PRESET_MODES_TO_OVERKIZ: dict[str, str] = {
     PRESET_COMFORT: OverkizCommandParam.COMFORT,
     PRESET_AWAY: OverkizCommandParam.ABSENCE,
     PRESET_ECO: OverkizCommandParam.ECO,
+    PRESET_FROST_PROTECTION: OverkizCommandParam.FROSTPROTECTION,
     PRESET_EXTERNAL: OverkizCommandParam.EXTERNAL_SCHEDULING,
     PRESET_HOME: OverkizCommandParam.INTERNAL_SCHEDULING,
 }
@@ -80,7 +81,6 @@ class AtlanticPassAPCHeatingZone(OverkizEntity, ClimateEntity):
     """Representation of Atlantic Pass APC Heating Zone Control."""
 
     _attr_hvac_modes = [*HVAC_MODE_TO_OVERKIZ]
-    _attr_preset_modes = [*PRESET_MODES_TO_OVERKIZ]
     _attr_supported_features = (
         ClimateEntityFeature.TARGET_TEMPERATURE
         | ClimateEntityFeature.PRESET_MODE
@@ -102,6 +102,19 @@ class AtlanticPassAPCHeatingZone(OverkizEntity, ClimateEntity):
             if (subsystem_id := self.device.identifier.subsystem_id) is not None
             else None
         )
+
+        # Not every model accepts every heating mode (e.g. frostprotection),
+        # offer all presets if the device doesn't list its modes.
+        heating_mode_definition = self.executor.select_definition_state(
+            OverkizState.IO_PASS_APC_HEATING_MODE
+        )
+        self._attr_preset_modes = [
+            preset
+            for preset, mode in PRESET_MODES_TO_OVERKIZ.items()
+            if not heating_mode_definition
+            or not heating_mode_definition.values
+            or mode in heating_mode_definition.values
+        ]
 
     @property
     @override
