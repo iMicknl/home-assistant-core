@@ -52,7 +52,6 @@ PRESET_MODES_TO_OVERKIZ: dict[str, str] = {
     PRESET_COMFORT: OverkizCommandParam.COMFORT,
     PRESET_AWAY: OverkizCommandParam.ABSENCE,
     PRESET_ECO: OverkizCommandParam.ECO,
-    PRESET_FROST_PROTECTION: OverkizCommandParam.FROSTPROTECTION,
     PRESET_EXTERNAL: OverkizCommandParam.EXTERNAL_SCHEDULING,
     PRESET_HOME: OverkizCommandParam.INTERNAL_SCHEDULING,
 }

@@ -21,6 +21,7 @@ from homeassistant.components.climate import (
 )
 from homeassistant.const import ATTR_TEMPERATURE, Platform
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers import entity_registry as er
 
 from .conftest import FixtureDevice, MockOverkizClient, SetupOverkizIntegration
@@ -50,6 +51,12 @@ ELECTRICAL_HEATER_ADJUSTABLE = FixtureDevice(
     "setup/cloud_atlantic_cozytouch.json",
     "io://1234-5678-5643/11009627#1",
     "climate.my_home_living_room_heater",
+)
+# Atlantic Alféa Duo Extensa zone (io:AtlanticPassAPCHeatingAndCoolingZoneComponent)
+PASS_APC_HEATING_ZONE = FixtureDevice(
+    "setup/cloud_atlantic_cozytouch.json",
+    "io://1234-5678-5643/10080568#8",
+    "climate.my_home_heat_pump_radiator_zone",
 )
 
 # Hitachi Yutaki 2-zone air-to-water heat pump
@@ -421,3 +428,80 @@ async def test_heat_recovery_ventilation_without_ventilation_mode(
         {"entity_id": HEAT_RECOVERY_VENTILATION.entity_id, **service_data},
         blocking=True,
     )
+
+
+async def test_pass_apc_heating_zone_frost_protection_not_settable(
+    hass: HomeAssistant,
+    mock_client: MockOverkizClient,
+    setup_overkiz_integration: SetupOverkizIntegration,
+) -> None:
+    """Test frost protection is rejected, as setPassAPCHeatingMode does not accept it."""
+    await setup_overkiz_integration(fixture=PASS_APC_HEATING_ZONE.fixture)
+
+    with pytest.raises(ServiceValidationError):
+        await hass.services.async_call(
+            "climate",
+            "set_preset_mode",
+            {
+                "entity_id": PASS_APC_HEATING_ZONE.entity_id,
+                ATTR_PRESET_MODE: "frost_protection",
+            },
+            blocking=True,
+        )
+
+    mock_client.execute_action_group.assert_not_awaited()
+
+
+@pytest.mark.parametrize(
+    ("heating_mode", "heating_profile", "preset_mode"),
+    [
+        pytest.param("comfort", "comfort", "comfort", id="comfort"),
+        pytest.param("eco", "eco", "eco", id="eco"),
+        pytest.param("internalScheduling", "comfort", "comfort", id="schedule_comfort"),
+        # Frost protection is only reported as a profile, never as a mode
+        pytest.param(
+            "internalScheduling",
+            "frostprotection",
+            "frost_protection",
+            id="schedule_frost_protection",
+        ),
+    ],
+)
+async def test_pass_apc_heating_zone_preset_mode(
+    hass: HomeAssistant,
+    freezer: FrozenDateTimeFactory,
+    mock_client: MockOverkizClient,
+    setup_overkiz_integration: SetupOverkizIntegration,
+    heating_mode: str,
+    heating_profile: str,
+    preset_mode: str,
+) -> None:
+    """Test the preset reflects the heating mode, or the profile when scheduled."""
+    await setup_overkiz_integration(fixture=PASS_APC_HEATING_ZONE.fixture)
+
+    await async_deliver_events(
+        hass,
+        freezer,
+        mock_client,
+        [
+            device_state_changed_event(
+                device_url=PASS_APC_HEATING_ZONE.device_url,
+                device_states=[
+                    {
+                        "name": OverkizState.IO_PASS_APC_HEATING_MODE,
+                        "type": 3,
+                        "value": heating_mode,
+                    },
+                    {
+                        "name": OverkizState.IO_PASS_APC_HEATING_PROFILE,
+                        "type": 3,
+                        "value": heating_profile,
+                    },
+                ],
+            )
+        ],
+    )
+
+    state = hass.states.get(PASS_APC_HEATING_ZONE.entity_id)
+    assert state is not None
+    assert state.attributes[ATTR_PRESET_MODE] == preset_mode

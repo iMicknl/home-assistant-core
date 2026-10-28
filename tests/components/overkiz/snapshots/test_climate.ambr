@@ -176,6 +176,158 @@
     'state': 'heat',
   })
 # ---
+# name: test_climate_entities_snapshot[cloud_atlantic_cozytouch.json][climate.my_home_heat_pump-entry]
+  EntityRegistryEntrySnapshot({
+    'aliases': list([
+      None,
+    ]),
+    'area_id': None,
+    'capabilities': dict({
+      <ClimateEntityCapabilityAttribute.HVAC_MODES: 'hvac_modes'>: list([
+        <HVACMode.OFF: 'off'>,
+        <HVACMode.HEAT: 'heat'>,
+        <HVACMode.COOL: 'cool'>,
+      ]),
+      <ClimateEntityCapabilityAttribute.MAX_TEMP: 'max_temp'>: 35,
+      <ClimateEntityCapabilityAttribute.MIN_TEMP: 'min_temp'>: 7,
+    }),
+    'config_entry_id': <ANY>,
+    'config_subentry_id': None,
+    'device_class': None,
+    'device_id': <DeviceEntry identifiers=[('overkiz', 'io://1234-5678-5643/10080568')]>,
+    'disabled_by': None,
+    'domain': 'climate',
+    'entity_category': None,
+    'entity_id': 'climate.my_home_heat_pump',
+    'has_entity_name': True,
+    'hidden_by': None,
+    'icon': None,
+    'id': <ANY>,
+    'labels': set({
+    }),
+    'name': None,
+    'object_id_base': None,
+    'options': dict({
+    }),
+    'original_device_class': None,
+    'original_icon': None,
+    'original_name': None,
+    'platform': 'overkiz',
+    'previous_unique_id': None,
+    'suggested_object_id': None,
+    'supported_features': <ClimateEntityFeature: 384>,
+    'translation_key': 'overkiz',
+    'unique_id': 'io://1234-5678-5643/10080568#1',
+    'unit_of_measurement': None,
+  })
+# ---
+# name: test_climate_entities_snapshot[cloud_atlantic_cozytouch.json][climate.my_home_heat_pump-state]
+  StateSnapshot({
+    'attributes': ReadOnlyDict({
+      <ClimateEntityStateAttribute.CURRENT_TEMPERATURE: 'current_temperature'>: None,
+      <EntityStateAttribute.FRIENDLY_NAME: 'friendly_name'>: 'Heat Pump',
+      <ClimateEntityCapabilityAttribute.HVAC_MODES: 'hvac_modes'>: list([
+        <HVACMode.OFF: 'off'>,
+        <HVACMode.HEAT: 'heat'>,
+        <HVACMode.COOL: 'cool'>,
+      ]),
+      <ClimateEntityCapabilityAttribute.MAX_TEMP: 'max_temp'>: 35,
+      <ClimateEntityCapabilityAttribute.MIN_TEMP: 'min_temp'>: 7,
+      <EntityStateAttribute.SUPPORTED_FEATURES: 'supported_features'>: <ClimateEntityFeature: 384>,
+      <ClimateEntityStateAttribute.TEMPERATURE_UNIT: 'temperature_unit'>: <UnitOfTemperature.CELSIUS: '°C'>,
+    }),
+    'context': <ANY>,
+    'entity_id': 'climate.my_home_heat_pump',
+    'last_changed': <ANY>,
+    'last_reported': <ANY>,
+    'last_updated': <ANY>,
+    'state': 'heat',
+  })
+# ---
+# name: test_climate_entities_snapshot[cloud_atlantic_cozytouch.json][climate.my_home_heat_pump_radiator_zone-entry]
+  EntityRegistryEntrySnapshot({
+    'aliases': list([
+      None,
+    ]),
+    'area_id': None,
+    'capabilities': dict({
+      <ClimateEntityCapabilityAttribute.HVAC_MODES: 'hvac_modes'>: list([
+        <HVACMode.AUTO: 'auto'>,
+        <HVACMode.HEAT: 'heat'>,
+        <HVACMode.OFF: 'off'>,
+      ]),
+      <ClimateEntityCapabilityAttribute.MAX_TEMP: 'max_temp'>: 35,
+      <ClimateEntityCapabilityAttribute.MIN_TEMP: 'min_temp'>: 7,
+      <ClimateEntityCapabilityAttribute.PRESET_MODES: 'preset_modes'>: list([
+        'comfort',
+        'away',
+        'eco',
+        'external',
+        'home',
+      ]),
+    }),
+    'config_entry_id': <ANY>,
+    'config_subentry_id': None,
+    'device_class': None,
+    'device_id': <DeviceEntry identifiers=[('overkiz', 'io://1234-5678-5643/10080568')]>,
+    'disabled_by': None,
+    'domain': 'climate',
+    'entity_category': None,
+    'entity_id': 'climate.my_home_heat_pump_radiator_zone',
+    'has_entity_name': True,
+    'hidden_by': None,
+    'icon': None,
+    'id': <ANY>,
+    'labels': set({
+    }),
+    'name': None,
+    'object_id_base': 'Radiator Zone',
+    'options': dict({
+    }),
+    'original_device_class': None,
+    'original_icon': None,
+    'original_name': 'Radiator Zone',
+    'platform': 'overkiz',
+    'previous_unique_id': None,
+    'suggested_object_id': None,
+    'supported_features': <ClimateEntityFeature: 401>,
+    'translation_key': 'overkiz',
+    'unique_id': 'io://1234-5678-5643/10080568#8',
+    'unit_of_measurement': None,
+  })
+# ---
+# name: test_climate_entities_snapshot[cloud_atlantic_cozytouch.json][climate.my_home_heat_pump_radiator_zone-state]
+  StateSnapshot({
+    'attributes': ReadOnlyDict({
+      <ClimateEntityStateAttribute.CURRENT_TEMPERATURE: 'current_temperature'>: 20.0,
+      <EntityStateAttribute.FRIENDLY_NAME: 'friendly_name'>: 'Heat Pump Radiator Zone',
+      <ClimateEntityCapabilityAttribute.HVAC_MODES: 'hvac_modes'>: list([
+        <HVACMode.AUTO: 'auto'>,
+        <HVACMode.HEAT: 'heat'>,
+        <HVACMode.OFF: 'off'>,
+      ]),
+      <ClimateEntityCapabilityAttribute.MAX_TEMP: 'max_temp'>: 35,
+      <ClimateEntityCapabilityAttribute.MIN_TEMP: 'min_temp'>: 7,
+      <ClimateEntityStateAttribute.PRESET_MODE: 'preset_mode'>: 'eco',
+      <ClimateEntityCapabilityAttribute.PRESET_MODES: 'preset_modes'>: list([
+        'comfort',
+        'away',
+        'eco',
+        'external',
+        'home',
+      ]),
+      <EntityStateAttribute.SUPPORTED_FEATURES: 'supported_features'>: <ClimateEntityFeature: 401>,
+      <ClimateEntityStateAttribute.TARGET_TEMPERATURE: 'temperature'>: 17.0,
+      <ClimateEntityStateAttribute.TEMPERATURE_UNIT: 'temperature_unit'>: <UnitOfTemperature.CELSIUS: '°C'>,
+    }),
+    'context': <ANY>,
+    'entity_id': 'climate.my_home_heat_pump_radiator_zone',
+    'last_changed': <ANY>,
+    'last_reported': <ANY>,
+    'last_updated': <ANY>,
+    'state': 'auto',
+  })
+# ---
 # name: test_climate_entities_snapshot[cloud_atlantic_cozytouch.json][climate.my_home_living_room_heater-entry]
   EntityRegistryEntrySnapshot({
     'aliases': list([

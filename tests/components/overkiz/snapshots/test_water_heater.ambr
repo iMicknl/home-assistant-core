@@ -149,6 +149,79 @@
     'state': 'auto',
   })
 # ---
+# name: test_water_heater_entities_snapshot[cloud_atlantic_cozytouch.json][water_heater.somfy_tahoma_switch_hot_water-entry]
+  EntityRegistryEntrySnapshot({
+    'aliases': list([
+      None,
+    ]),
+    'area_id': None,
+    'capabilities': dict({
+      <WaterHeaterCapabilityAttribute.MAX_TEMP: 'max_temp'>: 60.0,
+      <WaterHeaterCapabilityAttribute.MIN_TEMP: 'min_temp'>: 43.3,
+      <WaterHeaterCapabilityAttribute.OPERATION_LIST: 'operation_list'>: list([
+        'off',
+        'heat_pump',
+        'performance',
+      ]),
+    }),
+    'config_entry_id': <ANY>,
+    'config_subentry_id': None,
+    'device_class': None,
+    'device_id': <DeviceEntry identifiers=[('overkiz', 'io://1234-5678-5643/10080568')]>,
+    'disabled_by': None,
+    'domain': 'water_heater',
+    'entity_category': None,
+    'entity_id': 'water_heater.somfy_tahoma_switch_hot_water',
+    'has_entity_name': True,
+    'hidden_by': None,
+    'icon': None,
+    'id': <ANY>,
+    'labels': set({
+    }),
+    'name': None,
+    'object_id_base': 'Hot Water',
+    'options': dict({
+    }),
+    'original_device_class': None,
+    'original_icon': None,
+    'original_name': 'Hot Water',
+    'platform': 'overkiz',
+    'previous_unique_id': None,
+    'suggested_object_id': None,
+    'supported_features': <WaterHeaterEntityFeature: 7>,
+    'translation_key': None,
+    'unique_id': 'io://1234-5678-5643/10080568#2',
+    'unit_of_measurement': None,
+  })
+# ---
+# name: test_water_heater_entities_snapshot[cloud_atlantic_cozytouch.json][water_heater.somfy_tahoma_switch_hot_water-state]
+  StateSnapshot({
+    'attributes': ReadOnlyDict({
+      <WaterHeaterStateAttribute.AWAY_MODE: 'away_mode'>: 'off',
+      <WaterHeaterStateAttribute.CURRENT_TEMPERATURE: 'current_temperature'>: None,
+      <EntityStateAttribute.FRIENDLY_NAME: 'friendly_name'>: 'Somfy TaHoma Switch Hot Water',
+      <WaterHeaterCapabilityAttribute.MAX_TEMP: 'max_temp'>: 60.0,
+      <WaterHeaterCapabilityAttribute.MIN_TEMP: 'min_temp'>: 43.3,
+      <WaterHeaterCapabilityAttribute.OPERATION_LIST: 'operation_list'>: list([
+        'off',
+        'heat_pump',
+        'performance',
+      ]),
+      <WaterHeaterStateAttribute.OPERATION_MODE: 'operation_mode'>: 'heat_pump',
+      <EntityStateAttribute.SUPPORTED_FEATURES: 'supported_features'>: <WaterHeaterEntityFeature: 7>,
+      <WaterHeaterStateAttribute.TARGET_TEMP_HIGH: 'target_temp_high'>: None,
+      <WaterHeaterStateAttribute.TARGET_TEMP_LOW: 'target_temp_low'>: None,
+      <WaterHeaterStateAttribute.TARGET_TEMPERATURE: 'temperature'>: 50,
+      <WaterHeaterStateAttribute.TEMPERATURE_UNIT: 'temperature_unit'>: <UnitOfTemperature.CELSIUS: '°C'>,
+    }),
+    'context': <ANY>,
+    'entity_id': 'water_heater.somfy_tahoma_switch_hot_water',
+    'last_changed': <ANY>,
+    'last_reported': <ANY>,
+    'last_updated': <ANY>,
+    'state': 'heat_pump',
+  })
+# ---
 # name: test_water_heater_entities_snapshot[cloud_atlantic_cozytouch.json][water_heater.somfy_tahoma_switch_yutaki_dhw-entry]
   EntityRegistryEntrySnapshot({
     'aliases': list([

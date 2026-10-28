@@ -5748,6 +5748,2147 @@
       "type": 1,
       "oid": "f8b9db16-0797-41d4-982d-2038c5d503f9",
       "uiClass": "WaterHeatingSystem"
+    },
+    {
+      "creationTime": 1791896294000,
+      "lastUpdateTime": 1791896294000,
+      "label": "Heat Pump",
+      "deviceURL": "io://1234-5678-5643/10080568#1",
+      "shortcut": false,
+      "controllableName": "io:AtlanticPassAPCHeatPumpMainComponent",
+      "definition": {
+        "commands": [
+          {
+            "commandName": "addLockLevel",
+            "nparams": 2
+          },
+          {
+            "commandName": "advancedRefresh",
+            "nparams": 2
+          },
+          {
+            "commandName": "cancelAbsence",
+            "nparams": 0
+          },
+          {
+            "commandName": "delayedStopIdentify",
+            "nparams": 1
+          },
+          {
+            "commandName": "getName",
+            "nparams": 0
+          },
+          {
+            "commandName": "identify",
+            "nparams": 0
+          },
+          {
+            "commandName": "refreshDeviceSerialNumber",
+            "nparams": 0
+          },
+          {
+            "commandName": "refreshElectricEnergyConsumption",
+            "nparams": 0
+          },
+          {
+            "commandName": "refreshErrorCode",
+            "nparams": 0
+          },
+          {
+            "commandName": "refreshHeatingDerogationAvailability",
+            "nparams": 0
+          },
+          {
+            "commandName": "refreshOperatingMode",
+            "nparams": 0
+          },
+          {
+            "commandName": "refreshOutsideTemperature",
+            "nparams": 0
+          },
+          {
+            "commandName": "refreshTimeProgramById",
+            "nparams": 1
+          },
+          {
+            "commandName": "refreshZonesNumber",
+            "nparams": 0
+          },
+          {
+            "commandName": "refreshZonesTargetTemperature",
+            "nparams": 0
+          },
+          {
+            "commandName": "removeLockLevel",
+            "nparams": 1
+          },
+          {
+            "commandName": "resetLockLevels",
+            "nparams": 0
+          },
+          {
+            "commandName": "setAbsenceCoolingTargetTemperature",
+            "nparams": 1
+          },
+          {
+            "commandName": "setAbsenceEndDateTime",
+            "nparams": 1
+          },
+          {
+            "commandName": "setAbsenceHeatingTargetTemperature",
+            "nparams": 1
+          },
+          {
+            "commandName": "setAbsenceStartDateTime",
+            "nparams": 1
+          },
+          {
+            "commandName": "setName",
+            "nparams": 1
+          },
+          {
+            "commandName": "setTimeProgramById",
+            "nparams": 2
+          },
+          {
+            "commandName": "startIdentify",
+            "nparams": 0
+          },
+          {
+            "commandName": "stopIdentify",
+            "nparams": 0
+          },
+          {
+            "commandName": "wink",
+            "nparams": 1
+          },
+          {
+            "commandName": "pairOneWayController",
+            "nparams": 2
+          },
+          {
+            "commandName": "refreshAbsenceSchedulingAvailability",
+            "nparams": 0
+          },
+          {
+            "commandName": "refreshDHWAvailability",
+            "nparams": 0
+          },
+          {
+            "commandName": "refreshEnergyConsumptionAvailability",
+            "nparams": 0
+          },
+          {
+            "commandName": "refreshOutsideTemperatureSensorAvailability",
+            "nparams": 0
+          },
+          {
+            "commandName": "refreshProductType",
+            "nparams": 0
+          },
+          {
+            "commandName": "refreshThermalSchedulingAvailability",
+            "nparams": 0
+          },
+          {
+            "commandName": "refreshZonesPassAPCCoolingProfile",
+            "nparams": 0
+          },
+          {
+            "commandName": "refreshZonesPassAPCHeatingProfile",
+            "nparams": 0
+          },
+          {
+            "commandName": "refreshZonesTemperature",
+            "nparams": 0
+          },
+          {
+            "commandName": "refreshZonesTemperatureSensorAvailability",
+            "nparams": 0
+          },
+          {
+            "commandName": "refreshZonesThermalConfiguration",
+            "nparams": 0
+          },
+          {
+            "commandName": "setPassAPCOperatingMode",
+            "nparams": 1
+          },
+          {
+            "commandName": "unpairAllOneWayControllers",
+            "nparams": 0
+          },
+          {
+            "commandName": "unpairOneWayController",
+            "nparams": 2
+          }
+        ],
+        "states": [
+          {
+            "type": "ContinuousState",
+            "qualifiedName": "core:AbsenceCoolingTargetTemperatureState"
+          },
+          {
+            "type": "DataState",
+            "qualifiedName": "core:AbsenceEndDateTimeState"
+          },
+          {
+            "type": "ContinuousState",
+            "qualifiedName": "core:AbsenceHeatingTargetTemperatureState"
+          },
+          {
+            "type": "DataState",
+            "qualifiedName": "core:AbsenceStartDateTimeState"
+          },
+          {
+            "eventBased": true,
+            "type": "DataState",
+            "qualifiedName": "core:CommandLockLevelsState"
+          },
+          {
+            "type": "DataState",
+            "qualifiedName": "core:DeviceSerialNumberState"
+          },
+          {
+            "type": "DiscreteState",
+            "values": ["good", "low", "normal", "verylow"],
+            "qualifiedName": "core:DiscreteRSSILevelState"
+          },
+          {
+            "type": "ContinuousState",
+            "qualifiedName": "core:ECSPowerConsumptionExtra1State"
+          },
+          {
+            "type": "ContinuousState",
+            "qualifiedName": "core:ECSPowerConsumptionExtra2State"
+          },
+          {
+            "type": "ContinuousState",
+            "qualifiedName": "core:ECSPowerConsumptionExtra3State"
+          },
+          {
+            "type": "ContinuousState",
+            "qualifiedName": "core:ECSPowerConsumptionState"
+          },
+          {
+            "type": "DataState",
+            "qualifiedName": "core:ErrorCodeState"
+          },
+          {
+            "type": "DiscreteState",
+            "values": ["available", "unavailable"],
+            "qualifiedName": "core:HeatingDerogationAvailabilityState"
+          },
+          {
+            "type": "ContinuousState",
+            "qualifiedName": "core:HeatingPowerConsumptionExtra1State"
+          },
+          {
+            "type": "ContinuousState",
+            "qualifiedName": "core:HeatingPowerConsumptionExtra2State"
+          },
+          {
+            "type": "ContinuousState",
+            "qualifiedName": "core:HeatingPowerConsumptionExtra3State"
+          },
+          {
+            "type": "ContinuousState",
+            "qualifiedName": "core:HeatingPowerConsumptionState"
+          },
+          {
+            "type": "DataState",
+            "qualifiedName": "core:NameState"
+          },
+          {
+            "type": "ContinuousState",
+            "qualifiedName": "core:PriorityLockTimerState"
+          },
+          {
+            "type": "DataState",
+            "qualifiedName": "core:ProductModelNameState"
+          },
+          {
+            "type": "ContinuousState",
+            "qualifiedName": "core:RSSILevelState"
+          },
+          {
+            "type": "DiscreteState",
+            "values": ["available", "unavailable"],
+            "qualifiedName": "core:StatusState"
+          },
+          {
+            "type": "DataState",
+            "qualifiedName": "core:TimeProgram1State"
+          },
+          {
+            "type": "DataState",
+            "qualifiedName": "core:TimeProgram2State"
+          },
+          {
+            "type": "DataState",
+            "qualifiedName": "core:TimeProgram3State"
+          },
+          {
+            "type": "DataState",
+            "qualifiedName": "core:TimeProgram4State"
+          },
+          {
+            "type": "ContinuousState",
+            "qualifiedName": "core:VersionState"
+          },
+          {
+            "type": "DataState",
+            "qualifiedName": "core:ZonesNumberState"
+          },
+          {
+            "type": "DiscreteState",
+            "values": ["available", "unavailable"],
+            "qualifiedName": "io:AbsenceSchedulingAvailabilityState"
+          },
+          {
+            "type": "DiscreteState",
+            "values": ["dateScheduling", "numberOfDaysScheduling"],
+            "qualifiedName": "io:AbsenceSchedulingModeState"
+          },
+          {
+            "type": "DiscreteState",
+            "values": ["available", "unavailable"],
+            "qualifiedName": "io:DHWAvailabilityState"
+          },
+          {
+            "type": "DiscreteState",
+            "values": ["available", "unavailable"],
+            "qualifiedName": "io:EnergyConsumptionAvailabilityState"
+          },
+          {
+            "type": "DiscreteState",
+            "values": ["cooling", "drying", "heating", "stop"],
+            "qualifiedName": "io:LastPassAPCOperatingModeState"
+          },
+          {
+            "type": "DiscreteState",
+            "values": ["cooling", "drying", "heating", "stop"],
+            "qualifiedName": "io:PassAPCOperatingModeState"
+          },
+          {
+            "type": "DiscreteState",
+            "values": [
+              "accumulationDomesticHotWater",
+              "airConditioning",
+              "boiler",
+              "convector",
+              "doubleFlowControlledMechanicalVentilation",
+              "heatPump",
+              "heater",
+              "hybrid",
+              "singleFlowControlledMechanicalVentilation",
+              "thermodynamicDomesticHotWater",
+              "zoneController"
+            ],
+            "qualifiedName": "io:PassAPCProductTypeState"
+          },
+          {
+            "type": "DiscreteState",
+            "values": [
+              "comfortLevel1",
+              "comfortLevel2",
+              "comfortLevel3",
+              "comfortLevel4",
+              "environmentProtection",
+              "humanProtection",
+              "userLevel1",
+              "userLevel2"
+            ],
+            "qualifiedName": "io:PriorityLockLevelState"
+          },
+          {
+            "type": "DiscreteState",
+            "values": [
+              "LSC",
+              "SAAC",
+              "SFC",
+              "UPS",
+              "externalGateway",
+              "localUser",
+              "myself",
+              "rain",
+              "security",
+              "temperature",
+              "timer",
+              "user",
+              "wind"
+            ],
+            "qualifiedName": "io:PriorityLockOriginatorState"
+          },
+          {
+            "type": "DiscreteState",
+            "values": ["available", "unavailable"],
+            "qualifiedName": "io:ThermalSchedulingAvailabilityState"
+          },
+          {
+            "type": "DiscreteState",
+            "values": [
+              "heatingAndCoolingCommonScheduling",
+              "heatingAndCoolingSeparatedScheduling"
+            ],
+            "qualifiedName": "io:ThermalSchedulingModeState"
+          }
+        ],
+        "dataProperties": [
+          {
+            "value": "500",
+            "qualifiedName": "core:identifyInterval"
+          }
+        ],
+        "widgetName": "AtlanticPassAPCHeatPump",
+        "uiProfiles": ["Specific"],
+        "uiClass": "HeatingSystem",
+        "uiClassifiers": ["generator"],
+        "qualifiedName": "io:AtlanticPassAPCHeatPumpMainComponent",
+        "type": "ACTUATOR"
+      },
+      "states": [
+        {
+          "name": "core:NameState",
+          "type": 3,
+          "value": "Heat Pump"
+        },
+        {
+          "name": "core:VersionState",
+          "type": 3,
+          "value": "43363637323130202020"
+        },
+        {
+          "name": "core:CommandLockLevelsState",
+          "type": 3,
+          "value": "[]",
+          "lastUpdateTime": 1791896295000
+        },
+        {
+          "name": "core:StatusState",
+          "type": 3,
+          "value": "available"
+        },
+        {
+          "name": "core:DiscreteRSSILevelState",
+          "type": 3,
+          "value": "good"
+        },
+        {
+          "name": "core:RSSILevelState",
+          "type": 2,
+          "value": 88.0
+        },
+        {
+          "name": "core:ProductModelNameState",
+          "type": 3,
+          "value": "R002430900"
+        },
+        {
+          "name": "core:DeviceSerialNumberState",
+          "type": 3,
+          "value": "        1234567890"
+        },
+        {
+          "name": "io:PassAPCProductTypeState",
+          "type": 3,
+          "value": "heatPump"
+        },
+        {
+          "name": "core:ZonesNumberState",
+          "type": 1,
+          "value": 1
+        },
+        {
+          "name": "io:DHWAvailabilityState",
+          "type": 3,
+          "value": "available"
+        },
+        {
+          "name": "core:HeatingPowerConsumptionState",
+          "type": 1,
+          "value": 10
+        },
+        {
+          "name": "core:HeatingPowerConsumptionExtra1State",
+          "type": 1,
+          "value": 3
+        },
+        {
+          "name": "core:HeatingPowerConsumptionExtra2State",
+          "type": 1,
+          "value": 0
+        },
+        {
+          "name": "core:HeatingPowerConsumptionExtra3State",
+          "type": 1,
+          "value": 0
+        },
+        {
+          "name": "core:ECSPowerConsumptionState",
+          "type": 1,
+          "value": 10
+        },
+        {
+          "name": "core:ECSPowerConsumptionExtra1State",
+          "type": 1,
+          "value": 1
+        },
+        {
+          "name": "core:ECSPowerConsumptionExtra2State",
+          "type": 1,
+          "value": 0
+        },
+        {
+          "name": "core:ECSPowerConsumptionExtra3State",
+          "type": 1,
+          "value": 0
+        },
+        {
+          "name": "io:EnergyConsumptionAvailabilityState",
+          "type": 3,
+          "value": "available"
+        },
+        {
+          "name": "io:PassAPCOperatingModeState",
+          "type": 3,
+          "value": "heating"
+        },
+        {
+          "name": "core:HeatingDerogationAvailabilityState",
+          "type": 3,
+          "value": "available"
+        },
+        {
+          "name": "io:ThermalSchedulingAvailabilityState",
+          "type": 3,
+          "value": "available"
+        },
+        {
+          "name": "io:ThermalSchedulingModeState",
+          "type": 3,
+          "value": "heatingAndCoolingSeparatedScheduling"
+        },
+        {
+          "name": "core:TimeProgram1State",
+          "type": 10,
+          "value": [
+            {
+              "monday": [
+                {
+                  "start": "05:00",
+                  "end": "20:30"
+                },
+                {
+                  "start": "00:00",
+                  "end": "00:00"
+                },
+                {
+                  "start": "00:00",
+                  "end": "00:00"
+                }
+              ]
+            },
+            {
+              "tuesday": [
+                {
+                  "start": "05:00",
+                  "end": "20:30"
+                },
+                {
+                  "start": "00:00",
+                  "end": "00:00"
+                },
+                {
+                  "start": "00:00",
+                  "end": "00:00"
+                }
+              ]
+            },
+            {
+              "wednesday": [
+                {
+                  "start": "05:00",
+                  "end": "20:30"
+                },
+                {
+                  "start": "00:00",
+                  "end": "00:00"
+                },
+                {
+                  "start": "00:00",
+                  "end": "00:00"
+                }
+              ]
+            },
+            {
+              "thursday": [
+                {
+                  "start": "05:00",
+                  "end": "20:30"
+                },
+                {
+                  "start": "00:00",
+                  "end": "00:00"
+                },
+                {
+                  "start": "00:00",
+                  "end": "00:00"
+                }
+              ]
+            },
+            {
+              "friday": [
+                {
+                  "start": "05:00",
+                  "end": "20:30"
+                },
+                {
+                  "start": "00:00",
+                  "end": "00:00"
+                },
+                {
+                  "start": "00:00",
+                  "end": "00:00"
+                }
+              ]
+            },
+            {
+              "saturday": [
+                {
+                  "start": "05:00",
+                  "end": "21:00"
+                },
+                {
+                  "start": "00:00",
+                  "end": "00:00"
+                },
+                {
+                  "start": "00:00",
+                  "end": "00:00"
+                }
+              ]
+            },
+            {
+              "sunday": [
+                {
+                  "start": "06:00",
+                  "end": "20:30"
+                },
+                {
+                  "start": "00:00",
+                  "end": "00:00"
+                },
+                {
+                  "start": "00:00",
+                  "end": "00:00"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "core:TimeProgram2State",
+          "type": 10,
+          "value": [
+            {
+              "monday": [
+                {
+                  "start": "06:00",
+                  "end": "22:00"
+                },
+                {
+                  "start": "00:00",
+                  "end": "00:00"
+                },
+                {
+                  "start": "00:00",
+                  "end": "00:00"
+                }
+              ]
+            },
+            {
+              "tuesday": [
+                {
+                  "start": "06:00",
+                  "end": "22:00"
+                },
+                {
+                  "start": "00:00",
+                  "end": "00:00"
+                },
+                {
+                  "start": "00:00",
+                  "end": "00:00"
+                }
+              ]
+            },
+            {
+              "wednesday": [
+                {
+                  "start": "06:00",
+                  "end": "22:00"
+                },
+                {
+                  "start": "00:00",
+                  "end": "00:00"
+                },
+                {
+                  "start": "00:00",
+                  "end": "00:00"
+                }
+              ]
+            },
+            {
+              "thursday": [
+                {
+                  "start": "06:00",
+                  "end": "22:00"
+                },
+                {
+                  "start": "00:00",
+                  "end": "00:00"
+                },
+                {
+                  "start": "00:00",
+                  "end": "00:00"
+                }
+              ]
+            },
+            {
+              "friday": [
+                {
+                  "start": "06:00",
+                  "end": "22:00"
+                },
+                {
+                  "start": "00:00",
+                  "end": "00:00"
+                },
+                {
+                  "start": "00:00",
+                  "end": "00:00"
+                }
+              ]
+            },
+            {
+              "saturday": [
+                {
+                  "start": "06:00",
+                  "end": "22:00"
+                },
+                {
+                  "start": "00:00",
+                  "end": "00:00"
+                },
+                {
+                  "start": "00:00",
+                  "end": "00:00"
+                }
+              ]
+            },
+            {
+              "sunday": [
+                {
+                  "start": "06:00",
+                  "end": "22:00"
+                },
+                {
+                  "start": "00:00",
+                  "end": "00:00"
+                },
+                {
+                  "start": "00:00",
+                  "end": "00:00"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "core:TimeProgram3State",
+          "type": 10,
+          "value": [
+            {
+              "monday": [
+                {
+                  "start": "06:00",
+                  "end": "22:00"
+                },
+                {
+                  "start": "00:00",
+                  "end": "00:00"
+                },
+                {
+                  "start": "00:00",
+                  "end": "00:00"
+                }
+              ]
+            },
+            {
+              "tuesday": [
+                {
+                  "start": "06:00",
+                  "end": "22:00"
+                },
+                {
+                  "start": "00:00",
+                  "end": "00:00"
+                },
+                {
+                  "start": "00:00",
+                  "end": "00:00"
+                }
+              ]
+            },
+            {
+              "wednesday": [
+                {
+                  "start": "06:00",
+                  "end": "22:00"
+                },
+                {
+                  "start": "00:00",
+                  "end": "00:00"
+                },
+                {
+                  "start": "00:00",
+                  "end": "00:00"
+                }
+              ]
+            },
+            {
+              "thursday": [
+                {
+                  "start": "06:00",
+                  "end": "22:00"
+                },
+                {
+                  "start": "00:00",
+                  "end": "00:00"
+                },
+                {
+                  "start": "00:00",
+                  "end": "00:00"
+                }
+              ]
+            },
+            {
+              "friday": [
+                {
+                  "start": "06:00",
+                  "end": "22:00"
+                },
+                {
+                  "start": "00:00",
+                  "end": "00:00"
+                },
+                {
+                  "start": "00:00",
+                  "end": "00:00"
+                }
+              ]
+            },
+            {
+              "saturday": [
+                {
+                  "start": "06:00",
+                  "end": "22:00"
+                },
+                {
+                  "start": "00:00",
+                  "end": "00:00"
+                },
+                {
+                  "start": "00:00",
+                  "end": "00:00"
+                }
+              ]
+            },
+            {
+              "sunday": [
+                {
+                  "start": "06:00",
+                  "end": "22:00"
+                },
+                {
+                  "start": "00:00",
+                  "end": "00:00"
+                },
+                {
+                  "start": "00:00",
+                  "end": "00:00"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "core:TimeProgram4State",
+          "type": 10,
+          "value": [
+            {
+              "monday": [
+                {
+                  "start": "06:00",
+                  "end": "22:00"
+                },
+                {
+                  "start": "00:00",
+                  "end": "00:00"
+                },
+                {
+                  "start": "00:00",
+                  "end": "00:00"
+                }
+              ]
+            },
+            {
+              "tuesday": [
+                {
+                  "start": "06:00",
+                  "end": "22:00"
+                },
+                {
+                  "start": "00:00",
+                  "end": "00:00"
+                },
+                {
+                  "start": "00:00",
+                  "end": "00:00"
+                }
+              ]
+            },
+            {
+              "wednesday": [
+                {
+                  "start": "06:00",
+                  "end": "22:00"
+                },
+                {
+                  "start": "00:00",
+                  "end": "00:00"
+                },
+                {
+                  "start": "00:00",
+                  "end": "00:00"
+                }
+              ]
+            },
+            {
+              "thursday": [
+                {
+                  "start": "06:00",
+                  "end": "22:00"
+                },
+                {
+                  "start": "00:00",
+                  "end": "00:00"
+                },
+                {
+                  "start": "00:00",
+                  "end": "00:00"
+                }
+              ]
+            },
+            {
+              "friday": [
+                {
+                  "start": "06:00",
+                  "end": "22:00"
+                },
+                {
+                  "start": "00:00",
+                  "end": "00:00"
+                },
+                {
+                  "start": "00:00",
+                  "end": "00:00"
+                }
+              ]
+            },
+            {
+              "saturday": [
+                {
+                  "start": "06:00",
+                  "end": "22:00"
+                },
+                {
+                  "start": "00:00",
+                  "end": "00:00"
+                },
+                {
+                  "start": "00:00",
+                  "end": "00:00"
+                }
+              ]
+            },
+            {
+              "sunday": [
+                {
+                  "start": "06:00",
+                  "end": "22:00"
+                },
+                {
+                  "start": "00:00",
+                  "end": "00:00"
+                },
+                {
+                  "start": "00:00",
+                  "end": "00:00"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "io:AbsenceSchedulingAvailabilityState",
+          "type": 3,
+          "value": "available"
+        },
+        {
+          "name": "io:AbsenceSchedulingModeState",
+          "type": 3,
+          "value": "dateScheduling"
+        },
+        {
+          "name": "core:AbsenceHeatingTargetTemperatureState",
+          "type": 2,
+          "value": 15.0
+        },
+        {
+          "name": "core:AbsenceCoolingTargetTemperatureState",
+          "type": 2,
+          "value": 35.0
+        },
+        {
+          "name": "core:ErrorCodeState",
+          "type": 1,
+          "value": 0
+        }
+      ],
+      "attributes": [
+        {
+          "name": "core:FirmwareRevision",
+          "type": 3,
+          "value": "C667210"
+        },
+        {
+          "name": "core:Manufacturer",
+          "type": 3,
+          "value": "Atlantic Group"
+        },
+        {
+          "name": "core:ElectricPowerConsumptionStateMeasuredValueType",
+          "type": 3,
+          "value": "core:ElectricalPowerInkW"
+        }
+      ],
+      "available": true,
+      "enabled": true,
+      "placeOID": "61435d6a-4ba6-4c96-b7b5-105bb31d3b87",
+      "widget": "AtlanticPassAPCHeatPump",
+      "type": 1,
+      "oid": "fc9d24fb-7c5b-4057-a946-6f8d3f87ee38",
+      "uiClass": "HeatingSystem"
+    },
+    {
+      "creationTime": 1791896298000,
+      "lastUpdateTime": 1791896298000,
+      "label": "Hot Water",
+      "deviceURL": "io://1234-5678-5643/10080568#2",
+      "shortcut": false,
+      "controllableName": "io:AtlanticPassAPCDHWComponent",
+      "definition": {
+        "commands": [
+          {
+            "commandName": "addLockLevel",
+            "nparams": 2
+          },
+          {
+            "commandName": "advancedRefresh",
+            "nparams": 2
+          },
+          {
+            "commandName": "refreshComfortTargetDHWTemperature",
+            "nparams": 0
+          },
+          {
+            "commandName": "refreshDHWDerogationAvailability",
+            "nparams": 0
+          },
+          {
+            "commandName": "refreshDHWOnOffState",
+            "nparams": 0
+          },
+          {
+            "commandName": "refreshEcoTargetDHWTemperature",
+            "nparams": 0
+          },
+          {
+            "commandName": "refreshTargetDHWTemperature",
+            "nparams": 0
+          },
+          {
+            "commandName": "removeLockLevel",
+            "nparams": 1
+          },
+          {
+            "commandName": "resetLockLevels",
+            "nparams": 0
+          },
+          {
+            "commandName": "setBoostOnOffState",
+            "nparams": 1
+          },
+          {
+            "commandName": "setComfortTargetDHWTemperature",
+            "nparams": 1
+          },
+          {
+            "commandName": "setDHWOnOffState",
+            "nparams": 1
+          },
+          {
+            "commandName": "setEcoTargetDHWTemperature",
+            "nparams": 1
+          },
+          {
+            "commandName": "refreshDHWConfiguration",
+            "nparams": 0
+          },
+          {
+            "commandName": "refreshPassAPCDHWMode",
+            "nparams": 0
+          },
+          {
+            "commandName": "refreshPassAPCDHWProfile",
+            "nparams": 0
+          },
+          {
+            "commandName": "setPassAPCDHWMode",
+            "nparams": 1
+          }
+        ],
+        "states": [
+          {
+            "type": "DiscreteState",
+            "values": ["off", "on"],
+            "qualifiedName": "core:BoostOnOffState"
+          },
+          {
+            "type": "ContinuousState",
+            "qualifiedName": "core:ComfortTargetDHWTemperatureState"
+          },
+          {
+            "eventBased": true,
+            "type": "DataState",
+            "qualifiedName": "core:CommandLockLevelsState"
+          },
+          {
+            "type": "DiscreteState",
+            "values": ["available", "unavailable"],
+            "qualifiedName": "core:DHWDerogationAvailabilityState"
+          },
+          {
+            "type": "DiscreteState",
+            "values": ["off", "on"],
+            "qualifiedName": "core:DHWOnOffState"
+          },
+          {
+            "type": "ContinuousState",
+            "qualifiedName": "core:EcoTargetDHWTemperatureState"
+          },
+          {
+            "type": "DiscreteState",
+            "values": ["available", "unavailable"],
+            "qualifiedName": "core:StatusState"
+          },
+          {
+            "type": "ContinuousState",
+            "qualifiedName": "core:TargetDHWTemperatureState"
+          },
+          {
+            "type": "DiscreteState",
+            "values": ["cumulated", "snapshot"],
+            "qualifiedName": "io:PassAPCDHWConfigurationState"
+          },
+          {
+            "type": "DiscreteState",
+            "values": [
+              "comfort",
+              "eco",
+              "externalScheduling",
+              "internalScheduling",
+              "manu",
+              "peakAndOffPeakScheduling",
+              "peakAndOffPeakTimes",
+              "stop"
+            ],
+            "qualifiedName": "io:PassAPCDHWModeState"
+          },
+          {
+            "type": "DiscreteState",
+            "values": [
+              "absence",
+              "comfort",
+              "derogation",
+              "eco",
+              "externalSetpoint",
+              "frostprotection",
+              "manu",
+              "other",
+              "stop"
+            ],
+            "qualifiedName": "io:PassAPCDHWProfileState"
+          }
+        ],
+        "dataProperties": [],
+        "widgetName": "AtlanticPassAPCDHW",
+        "uiProfiles": ["DHWThermostatTargetReader"],
+        "uiClass": "WaterHeatingSystem",
+        "qualifiedName": "io:AtlanticPassAPCDHWComponent",
+        "type": "ACTUATOR"
+      },
+      "states": [
+        {
+          "name": "core:CommandLockLevelsState",
+          "type": 3,
+          "value": "[]",
+          "lastUpdateTime": 1791896295000
+        },
+        {
+          "name": "core:StatusState",
+          "type": 3,
+          "value": "available"
+        },
+        {
+          "name": "io:PassAPCDHWConfigurationState",
+          "type": 3,
+          "value": "cumulated"
+        },
+        {
+          "name": "io:PassAPCDHWModeState",
+          "type": 3,
+          "value": "peakAndOffPeakScheduling"
+        },
+        {
+          "name": "io:PassAPCDHWProfileState",
+          "type": 3,
+          "value": "eco"
+        },
+        {
+          "name": "core:ComfortTargetDHWTemperatureState",
+          "type": 1,
+          "value": 54
+        },
+        {
+          "name": "core:EcoTargetDHWTemperatureState",
+          "type": 1,
+          "value": 50
+        },
+        {
+          "name": "core:TargetDHWTemperatureState",
+          "type": 1,
+          "value": 50
+        },
+        {
+          "name": "core:DHWDerogationAvailabilityState",
+          "type": 3,
+          "value": "available"
+        },
+        {
+          "name": "core:BoostOnOffState",
+          "type": 3,
+          "value": "off"
+        },
+        {
+          "name": "core:DHWOnOffState",
+          "type": 3,
+          "value": "on"
+        }
+      ],
+      "available": true,
+      "enabled": true,
+      "placeOID": "61435d6a-4ba6-4c96-b7b5-105bb31d3b87",
+      "widget": "AtlanticPassAPCDHW",
+      "type": 1,
+      "oid": "53a520d7-90bd-4c17-b454-d902b4ccdd8c",
+      "uiClass": "WaterHeatingSystem"
+    },
+    {
+      "creationTime": 1791896299000,
+      "lastUpdateTime": 1791896299000,
+      "label": "Outside Temperature",
+      "deviceURL": "io://1234-5678-5643/10080568#3",
+      "shortcut": false,
+      "controllableName": "io:AtlanticPassAPCOutsideTemperatureSensor",
+      "definition": {
+        "commands": [],
+        "states": [
+          {
+            "type": "DiscreteState",
+            "values": ["available", "unavailable"],
+            "qualifiedName": "core:StatusState"
+          },
+          {
+            "type": "ContinuousState",
+            "qualifiedName": "core:TemperatureState"
+          }
+        ],
+        "dataProperties": [],
+        "widgetName": "TemperatureSensor",
+        "uiProfiles": ["Temperature"],
+        "uiClass": "TemperatureSensor",
+        "qualifiedName": "io:AtlanticPassAPCOutsideTemperatureSensor",
+        "type": "SENSOR"
+      },
+      "states": [
+        {
+          "name": "core:StatusState",
+          "type": 3,
+          "value": "available"
+        },
+        {
+          "name": "core:TemperatureState",
+          "type": 2,
+          "value": 16.3
+        }
+      ],
+      "attributes": [
+        {
+          "name": "core:FirmwareRevision",
+          "type": 3,
+          "value": "C667210"
+        },
+        {
+          "name": "core:Manufacturer",
+          "type": 3,
+          "value": "Atlantic Group"
+        },
+        {
+          "name": "core:MeasuredValueType",
+          "type": 3,
+          "value": "core:TemperatureInCelcius"
+        },
+        {
+          "name": "core:PowerSourceType",
+          "type": 3,
+          "value": "mainSupply"
+        },
+        {
+          "name": "core:MaxSensedValue",
+          "type": 2,
+          "value": 45.0
+        },
+        {
+          "name": "core:MinSensedValue",
+          "type": 2,
+          "value": -20.0
+        }
+      ],
+      "available": true,
+      "enabled": true,
+      "placeOID": "61435d6a-4ba6-4c96-b7b5-105bb31d3b87",
+      "widget": "TemperatureSensor",
+      "type": 2,
+      "oid": "66c69d8f-2f30-43e7-a171-0ebdb9f589fb",
+      "uiClass": "TemperatureSensor"
+    },
+    {
+      "creationTime": 1791896300000,
+      "lastUpdateTime": 1791896300000,
+      "label": "Total Energy",
+      "deviceURL": "io://1234-5678-5643/10080568#4",
+      "shortcut": false,
+      "controllableName": "io:TotalElectricalEnergyConsumptionSensor",
+      "definition": {
+        "commands": [],
+        "states": [
+          {
+            "type": "ContinuousState",
+            "qualifiedName": "core:ConsumptionTariff0State"
+          },
+          {
+            "type": "ContinuousState",
+            "qualifiedName": "core:ConsumptionTariff1State"
+          },
+          {
+            "type": "ContinuousState",
+            "qualifiedName": "core:ConsumptionTariff2State"
+          },
+          {
+            "type": "ContinuousState",
+            "qualifiedName": "core:ConsumptionTariff3State"
+          },
+          {
+            "type": "ContinuousState",
+            "qualifiedName": "core:ConsumptionTariff4State"
+          },
+          {
+            "type": "ContinuousState",
+            "qualifiedName": "core:ConsumptionTariff5State"
+          },
+          {
+            "type": "ContinuousState",
+            "qualifiedName": "core:ConsumptionTariff6State"
+          },
+          {
+            "type": "ContinuousState",
+            "qualifiedName": "core:ConsumptionTariff7State"
+          },
+          {
+            "type": "ContinuousState",
+            "qualifiedName": "core:ConsumptionTariff8State"
+          },
+          {
+            "type": "ContinuousState",
+            "qualifiedName": "core:ConsumptionTariff9State"
+          },
+          {
+            "type": "ContinuousState",
+            "qualifiedName": "core:ElectricEnergyConsumptionState"
+          },
+          {
+            "type": "DiscreteState",
+            "values": ["available", "unavailable"],
+            "qualifiedName": "core:StatusState"
+          }
+        ],
+        "dataProperties": [],
+        "widgetName": "CumulativeElectricPowerConsumptionSensor",
+        "uiProfiles": ["ElectricEnergyConsumption"],
+        "uiClass": "ElectricitySensor",
+        "qualifiedName": "io:TotalElectricalEnergyConsumptionSensor",
+        "type": "SENSOR"
+      },
+      "states": [
+        {
+          "name": "core:StatusState",
+          "type": 3,
+          "value": "available"
+        },
+        {
+          "name": "core:ElectricEnergyConsumptionState",
+          "type": 1,
+          "value": 5000
+        }
+      ],
+      "attributes": [
+        {
+          "name": "core:FirmwareRevision",
+          "type": 3,
+          "value": "C667210"
+        },
+        {
+          "name": "core:Manufacturer",
+          "type": 3,
+          "value": "Atlantic Group"
+        },
+        {
+          "name": "core:PowerSourceType",
+          "type": 3,
+          "value": "mainSupply"
+        },
+        {
+          "name": "core:MeasuredValueType",
+          "type": 3,
+          "value": "core:ElectricalEnergyInWh"
+        }
+      ],
+      "available": true,
+      "enabled": true,
+      "placeOID": "61435d6a-4ba6-4c96-b7b5-105bb31d3b87",
+      "widget": "CumulativeElectricPowerConsumptionSensor",
+      "type": 2,
+      "oid": "c114b801-fd7f-4cd3-9e75-be17b1b8aa2d",
+      "uiClass": "ElectricitySensor"
+    },
+    {
+      "creationTime": 1791896300000,
+      "lastUpdateTime": 1791896300000,
+      "label": "Hot Water Energy",
+      "deviceURL": "io://1234-5678-5643/10080568#5",
+      "shortcut": false,
+      "controllableName": "io:DHWRelatedElectricalEnergyConsumptionSensor",
+      "definition": {
+        "commands": [],
+        "states": [
+          {
+            "type": "ContinuousState",
+            "qualifiedName": "core:ConsumptionTariff0State"
+          },
+          {
+            "type": "ContinuousState",
+            "qualifiedName": "core:ConsumptionTariff1State"
+          },
+          {
+            "type": "ContinuousState",
+            "qualifiedName": "core:ConsumptionTariff2State"
+          },
+          {
+            "type": "ContinuousState",
+            "qualifiedName": "core:ConsumptionTariff3State"
+          },
+          {
+            "type": "ContinuousState",
+            "qualifiedName": "core:ConsumptionTariff4State"
+          },
+          {
+            "type": "ContinuousState",
+            "qualifiedName": "core:ConsumptionTariff5State"
+          },
+          {
+            "type": "ContinuousState",
+            "qualifiedName": "core:ConsumptionTariff6State"
+          },
+          {
+            "type": "ContinuousState",
+            "qualifiedName": "core:ConsumptionTariff7State"
+          },
+          {
+            "type": "ContinuousState",
+            "qualifiedName": "core:ConsumptionTariff8State"
+          },
+          {
+            "type": "ContinuousState",
+            "qualifiedName": "core:ConsumptionTariff9State"
+          },
+          {
+            "type": "ContinuousState",
+            "qualifiedName": "core:ElectricEnergyConsumptionState"
+          },
+          {
+            "type": "DiscreteState",
+            "values": ["available", "unavailable"],
+            "qualifiedName": "core:StatusState"
+          }
+        ],
+        "dataProperties": [],
+        "widgetName": "CumulativeElectricPowerConsumptionSensor",
+        "uiProfiles": ["ElectricEnergyConsumption"],
+        "uiClass": "ElectricitySensor",
+        "qualifiedName": "io:DHWRelatedElectricalEnergyConsumptionSensor",
+        "type": "SENSOR"
+      },
+      "states": [
+        {
+          "name": "core:StatusState",
+          "type": 3,
+          "value": "available"
+        },
+        {
+          "name": "core:ElectricEnergyConsumptionState",
+          "type": 1,
+          "value": 5000
+        }
+      ],
+      "attributes": [
+        {
+          "name": "core:FirmwareRevision",
+          "type": 3,
+          "value": "C667210"
+        },
+        {
+          "name": "core:Manufacturer",
+          "type": 3,
+          "value": "Atlantic Group"
+        },
+        {
+          "name": "core:PowerSourceType",
+          "type": 3,
+          "value": "mainSupply"
+        },
+        {
+          "name": "core:MeasuredValueType",
+          "type": 3,
+          "value": "core:ElectricalEnergyInWh"
+        }
+      ],
+      "available": true,
+      "enabled": true,
+      "placeOID": "61435d6a-4ba6-4c96-b7b5-105bb31d3b87",
+      "widget": "CumulativeElectricPowerConsumptionSensor",
+      "type": 2,
+      "oid": "b0b4f731-5a8c-4a33-85f3-d189ce5ba925",
+      "uiClass": "ElectricitySensor"
+    },
+    {
+      "creationTime": 1791896300000,
+      "lastUpdateTime": 1791896300000,
+      "label": "Heating Energy",
+      "deviceURL": "io://1234-5678-5643/10080568#6",
+      "shortcut": false,
+      "controllableName": "io:HeatingRelatedElectricalEnergyConsumptionSensor",
+      "definition": {
+        "commands": [],
+        "states": [
+          {
+            "type": "ContinuousState",
+            "qualifiedName": "core:ConsumptionTariff0State"
+          },
+          {
+            "type": "ContinuousState",
+            "qualifiedName": "core:ConsumptionTariff1State"
+          },
+          {
+            "type": "ContinuousState",
+            "qualifiedName": "core:ConsumptionTariff2State"
+          },
+          {
+            "type": "ContinuousState",
+            "qualifiedName": "core:ConsumptionTariff3State"
+          },
+          {
+            "type": "ContinuousState",
+            "qualifiedName": "core:ConsumptionTariff4State"
+          },
+          {
+            "type": "ContinuousState",
+            "qualifiedName": "core:ConsumptionTariff5State"
+          },
+          {
+            "type": "ContinuousState",
+            "qualifiedName": "core:ConsumptionTariff6State"
+          },
+          {
+            "type": "ContinuousState",
+            "qualifiedName": "core:ConsumptionTariff7State"
+          },
+          {
+            "type": "ContinuousState",
+            "qualifiedName": "core:ConsumptionTariff8State"
+          },
+          {
+            "type": "ContinuousState",
+            "qualifiedName": "core:ConsumptionTariff9State"
+          },
+          {
+            "type": "ContinuousState",
+            "qualifiedName": "core:ElectricEnergyConsumptionState"
+          },
+          {
+            "type": "DiscreteState",
+            "values": ["available", "unavailable"],
+            "qualifiedName": "core:StatusState"
+          }
+        ],
+        "dataProperties": [],
+        "widgetName": "CumulativeElectricPowerConsumptionSensor",
+        "uiProfiles": ["ElectricEnergyConsumption"],
+        "uiClass": "ElectricitySensor",
+        "qualifiedName": "io:HeatingRelatedElectricalEnergyConsumptionSensor",
+        "type": "SENSOR"
+      },
+      "states": [
+        {
+          "name": "core:StatusState",
+          "type": 3,
+          "value": "available"
+        },
+        {
+          "name": "core:ElectricEnergyConsumptionState",
+          "type": 1,
+          "value": 0
+        }
+      ],
+      "attributes": [
+        {
+          "name": "core:FirmwareRevision",
+          "type": 3,
+          "value": "C667210"
+        },
+        {
+          "name": "core:Manufacturer",
+          "type": 3,
+          "value": "Atlantic Group"
+        },
+        {
+          "name": "core:PowerSourceType",
+          "type": 3,
+          "value": "mainSupply"
+        },
+        {
+          "name": "core:MeasuredValueType",
+          "type": 3,
+          "value": "core:ElectricalEnergyInWh"
+        }
+      ],
+      "available": true,
+      "enabled": true,
+      "placeOID": "61435d6a-4ba6-4c96-b7b5-105bb31d3b87",
+      "widget": "CumulativeElectricPowerConsumptionSensor",
+      "type": 2,
+      "oid": "d31faf29-5ee2-4f76-9f90-283967e2ab5a",
+      "uiClass": "ElectricitySensor"
+    },
+    {
+      "creationTime": 1791896298000,
+      "lastUpdateTime": 1791896298000,
+      "label": "Radiator Zone",
+      "deviceURL": "io://1234-5678-5643/10080568#8",
+      "shortcut": false,
+      "controllableName": "io:AtlanticPassAPCHeatingAndCoolingZoneComponent",
+      "definition": {
+        "commands": [
+          {
+            "commandName": "addLockLevel",
+            "nparams": 2
+          },
+          {
+            "commandName": "advancedRefresh",
+            "nparams": 2
+          },
+          {
+            "commandName": "refreshComfortCoolingTargetTemperature",
+            "nparams": 0
+          },
+          {
+            "commandName": "refreshComfortHeatingTargetTemperature",
+            "nparams": 0
+          },
+          {
+            "commandName": "refreshEcoCoolingTargetTemperature",
+            "nparams": 0
+          },
+          {
+            "commandName": "refreshEcoHeatingTargetTemperature",
+            "nparams": 0
+          },
+          {
+            "commandName": "refreshTargetTemperature",
+            "nparams": 0
+          },
+          {
+            "commandName": "removeLockLevel",
+            "nparams": 1
+          },
+          {
+            "commandName": "resetLockLevels",
+            "nparams": 0
+          },
+          {
+            "commandName": "setActiveCoolingTimeProgram",
+            "nparams": 1
+          },
+          {
+            "commandName": "setActiveHeatingTimeProgram",
+            "nparams": 1
+          },
+          {
+            "commandName": "setComfortCoolingTargetTemperature",
+            "nparams": 1
+          },
+          {
+            "commandName": "setComfortHeatingTargetTemperature",
+            "nparams": 1
+          },
+          {
+            "commandName": "setCoolingOnOffState",
+            "nparams": 1
+          },
+          {
+            "commandName": "setDerogatedTargetTemperature",
+            "nparams": 1
+          },
+          {
+            "commandName": "setDerogationOnOffState",
+            "nparams": 1
+          },
+          {
+            "commandName": "setDerogationTime",
+            "nparams": 1
+          },
+          {
+            "commandName": "setEcoCoolingTargetTemperature",
+            "nparams": 1
+          },
+          {
+            "commandName": "setEcoHeatingTargetTemperature",
+            "nparams": 1
+          },
+          {
+            "commandName": "setHeatingOnOffState",
+            "nparams": 1
+          },
+          {
+            "commandName": "setName",
+            "nparams": 1
+          },
+          {
+            "commandName": "refreshDerogationRemainingTime",
+            "nparams": 0
+          },
+          {
+            "commandName": "refreshPassAPCCoolingMode",
+            "nparams": 0
+          },
+          {
+            "commandName": "refreshPassAPCCoolingProfile",
+            "nparams": 0
+          },
+          {
+            "commandName": "refreshPassAPCHeatingMode",
+            "nparams": 0
+          },
+          {
+            "commandName": "refreshPassAPCHeatingProfile",
+            "nparams": 0
+          },
+          {
+            "commandName": "setPassAPCCoolingMode",
+            "nparams": 1
+          },
+          {
+            "commandName": "setPassAPCHeatingMode",
+            "nparams": 1
+          }
+        ],
+        "states": [
+          {
+            "type": "DataState",
+            "qualifiedName": "core:ActiveCoolingTimeProgramState"
+          },
+          {
+            "type": "DataState",
+            "qualifiedName": "core:ActiveHeatingTimeProgramState"
+          },
+          {
+            "type": "ContinuousState",
+            "qualifiedName": "core:ComfortCoolingTargetTemperatureState"
+          },
+          {
+            "type": "ContinuousState",
+            "qualifiedName": "core:ComfortHeatingTargetTemperatureState"
+          },
+          {
+            "eventBased": true,
+            "type": "DataState",
+            "qualifiedName": "core:CommandLockLevelsState"
+          },
+          {
+            "type": "DiscreteState",
+            "values": ["off", "on"],
+            "qualifiedName": "core:CoolingOnOffState"
+          },
+          {
+            "type": "ContinuousState",
+            "qualifiedName": "core:DerogatedTargetTemperatureState"
+          },
+          {
+            "type": "DiscreteState",
+            "values": ["off", "on"],
+            "qualifiedName": "core:DerogationOnOffState"
+          },
+          {
+            "type": "ContinuousState",
+            "qualifiedName": "core:EcoCoolingTargetTemperatureState"
+          },
+          {
+            "type": "ContinuousState",
+            "qualifiedName": "core:EcoHeatingTargetTemperatureState"
+          },
+          {
+            "type": "DiscreteState",
+            "values": ["off", "on"],
+            "qualifiedName": "core:HeatingOnOffState"
+          },
+          {
+            "type": "DataState",
+            "qualifiedName": "core:NameState"
+          },
+          {
+            "type": "DiscreteState",
+            "values": ["available", "unavailable"],
+            "qualifiedName": "core:StatusState"
+          },
+          {
+            "type": "ContinuousState",
+            "qualifiedName": "core:TargetTemperatureState"
+          },
+          {
+            "type": "DiscreteState",
+            "values": ["cooling", "heating", "heatingAndCooling"],
+            "qualifiedName": "core:ThermalConfigurationState"
+          },
+          {
+            "type": "DiscreteState",
+            "values": ["available", "unavailable"],
+            "qualifiedName": "io:CoolingInternalSchedulingAvailabilityState"
+          },
+          {
+            "type": "DataState",
+            "qualifiedName": "io:DerogationRemainingTimeState"
+          },
+          {
+            "type": "DiscreteState",
+            "values": ["available", "unavailable"],
+            "qualifiedName": "io:HeatingInternalSchedulingAvailabilityState"
+          },
+          {
+            "type": "DiscreteState",
+            "values": [
+              "absence",
+              "auto",
+              "comfort",
+              "eco",
+              "externalScheduling",
+              "internalScheduling",
+              "manu",
+              "stop"
+            ],
+            "qualifiedName": "io:PassAPCCoolingModeState"
+          },
+          {
+            "type": "DiscreteState",
+            "values": [
+              "absence",
+              "comfort",
+              "derogation",
+              "eco",
+              "externalSetpoint",
+              "frostprotection",
+              "manu",
+              "stop"
+            ],
+            "qualifiedName": "io:PassAPCCoolingProfileState"
+          },
+          {
+            "type": "DiscreteState",
+            "values": [
+              "absence",
+              "auto",
+              "comfort",
+              "eco",
+              "externalScheduling",
+              "internalScheduling",
+              "manu",
+              "stop"
+            ],
+            "qualifiedName": "io:PassAPCHeatingModeState"
+          },
+          {
+            "type": "DiscreteState",
+            "values": [
+              "absence",
+              "comfort",
+              "derogation",
+              "eco",
+              "externalSetpoint",
+              "frostprotection",
+              "manu",
+              "stop"
+            ],
+            "qualifiedName": "io:PassAPCHeatingProfileState"
+          }
+        ],
+        "dataProperties": [],
+        "widgetName": "AtlanticPassAPCHeatingAndCoolingZone",
+        "uiProfiles": ["ThermostatTargetReader"],
+        "uiClass": "HeatingSystem",
+        "uiClassifiers": ["emitter", "heatingSystem", "coolingSystem"],
+        "qualifiedName": "io:AtlanticPassAPCHeatingAndCoolingZoneComponent",
+        "type": "ACTUATOR"
+      },
+      "states": [
+        {
+          "name": "core:CommandLockLevelsState",
+          "type": 3,
+          "value": "[]",
+          "lastUpdateTime": 1791896295000
+        },
+        {
+          "name": "core:StatusState",
+          "type": 3,
+          "value": "available"
+        },
+        {
+          "name": "core:ThermalConfigurationState",
+          "type": 3,
+          "value": "heating"
+        },
+        {
+          "name": "io:HeatingInternalSchedulingAvailabilityState",
+          "type": 3,
+          "value": "available"
+        },
+        {
+          "name": "io:PassAPCHeatingModeState",
+          "type": 3,
+          "value": "eco"
+        },
+        {
+          "name": "io:CoolingInternalSchedulingAvailabilityState",
+          "type": 3,
+          "value": "unavailable"
+        },
+        {
+          "name": "io:PassAPCCoolingModeState",
+          "type": 3,
+          "value": "stop"
+        },
+        {
+          "name": "io:PassAPCHeatingProfileState",
+          "type": 3,
+          "value": "eco"
+        },
+        {
+          "name": "io:PassAPCCoolingProfileState",
+          "type": 3,
+          "value": "stop"
+        },
+        {
+          "name": "core:ComfortHeatingTargetTemperatureState",
+          "type": 2,
+          "value": 19.0
+        },
+        {
+          "name": "core:EcoHeatingTargetTemperatureState",
+          "type": 2,
+          "value": 17.0
+        },
+        {
+          "name": "core:ComfortCoolingTargetTemperatureState",
+          "type": 2,
+          "value": 24.0
+        },
+        {
+          "name": "core:EcoCoolingTargetTemperatureState",
+          "type": 2,
+          "value": 26.0
+        },
+        {
+          "name": "core:TargetTemperatureState",
+          "type": 2,
+          "value": 17.0
+        },
+        {
+          "name": "core:DerogatedTargetTemperatureState",
+          "type": 2,
+          "value": 18.0
+        },
+        {
+          "name": "io:DerogationRemainingTimeState",
+          "type": 1,
+          "value": 0
+        },
+        {
+          "name": "core:ActiveHeatingTimeProgramState",
+          "type": 3,
+          "value": "1"
+        },
+        {
+          "name": "core:ActiveCoolingTimeProgramState",
+          "type": 3,
+          "value": "3"
+        },
+        {
+          "name": "core:NameState",
+          "type": 3,
+          "value": "Radiator Zone"
+        },
+        {
+          "name": "core:HeatingOnOffState",
+          "type": 3,
+          "value": "on"
+        },
+        {
+          "name": "core:CoolingOnOffState",
+          "type": 3,
+          "value": "off"
+        },
+        {
+          "name": "core:DerogationOnOffState",
+          "type": 3,
+          "value": "off"
+        }
+      ],
+      "available": true,
+      "enabled": true,
+      "placeOID": "61435d6a-4ba6-4c96-b7b5-105bb31d3b87",
+      "widget": "AtlanticPassAPCHeatingAndCoolingZone",
+      "type": 1,
+      "oid": "870af2e8-f51b-4d63-bdae-5e2a359fea04",
+      "uiClass": "HeatingSystem"
+    },
+    {
+      "creationTime": 1791896298000,
+      "lastUpdateTime": 1791896298000,
+      "label": "Radiator Zone Temperature",
+      "deviceURL": "io://1234-5678-5643/10080568#9",
+      "shortcut": false,
+      "controllableName": "io:AtlanticPassAPCZoneTemperatureSensor",
+      "definition": {
+        "commands": [],
+        "states": [
+          {
+            "type": "DiscreteState",
+            "values": ["available", "unavailable"],
+            "qualifiedName": "core:StatusState"
+          },
+          {
+            "type": "ContinuousState",
+            "qualifiedName": "core:TemperatureState"
+          }
+        ],
+        "dataProperties": [],
+        "widgetName": "TemperatureSensor",
+        "uiProfiles": ["Temperature"],
+        "uiClass": "TemperatureSensor",
+        "qualifiedName": "io:AtlanticPassAPCZoneTemperatureSensor",
+        "type": "SENSOR"
+      },
+      "states": [
+        {
+          "name": "core:StatusState",
+          "type": 3,
+          "value": "available"
+        },
+        {
+          "name": "core:TemperatureState",
+          "type": 2,
+          "value": 20.0
+        }
+      ],
+      "attributes": [
+        {
+          "name": "core:FirmwareRevision",
+          "type": 3,
+          "value": "C667210"
+        },
+        {
+          "name": "core:Manufacturer",
+          "type": 3,
+          "value": "Atlantic Group"
+        },
+        {
+          "name": "core:MeasuredValueType",
+          "type": 3,
+          "value": "core:TemperatureInCelcius"
+        },
+        {
+          "name": "core:PowerSourceType",
+          "type": 3,
+          "value": "mainSupply"
+        },
+        {
+          "name": "core:MaxSensedValue",
+          "type": 2,
+          "value": 30.0
+        },
+        {
+          "name": "core:MinSensedValue",
+          "type": 2,
+          "value": 5.0
+        }
+      ],
+      "available": true,
+      "enabled": true,
+      "placeOID": "61435d6a-4ba6-4c96-b7b5-105bb31d3b87",
+      "widget": "TemperatureSensor",
+      "type": 2,
+      "oid": "cc0ed77a-a8bf-48c2-9970-cc3e0e4af455",
+      "uiClass": "TemperatureSensor"
     }
   ],
   "features": [],
