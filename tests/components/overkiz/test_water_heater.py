@@ -38,6 +38,13 @@ DHW_CE_FLAT_C2 = FixtureDevice(
     "water_heater.my_home_patio_water_heating",
 )
 
+# Thermor Malicio (io:AtlanticDomesticHotWaterProductionV2_CE_S4_IOComponent)
+DHW_CE_S4 = FixtureDevice(
+    "setup/cloud_atlantic_cozytouch.json",
+    "io://1234-5678-5643/11473805#1",
+    "water_heater.my_home_bathroom_water_heater",
+)
+
 # Hitachi Yutaki DHW (modbus:YutakiV2DHWTComponent)
 DHW_HITACHI_YUTAKI = FixtureDevice(
     "setup/cloud_atlantic_cozytouch.json",
@@ -223,24 +230,32 @@ async def test_set_operation_mode_auto(
     )
 
 
+@pytest.mark.parametrize(
+    "device",
+    [
+        pytest.param(DHW_CE_FLAT_C2, id="ce_flat_c2"),
+        pytest.param(DHW_CE_S4, id="ce_s4"),
+    ],
+)
 async def test_set_operation_mode_performance_turns_boost_on(
     hass: HomeAssistant,
     mock_client: MockOverkizClient,
     setup_overkiz_integration: SetupOverkizIntegration,
+    device: FixtureDevice,
 ) -> None:
     """Test selecting 'performance' refreshes boost dates then sets boost on."""
-    await setup_overkiz_integration(fixture=DHW_CE_FLAT_C2.fixture)
+    await setup_overkiz_integration(fixture=device.fixture)
 
     await hass.services.async_call(
         "water_heater",
         "set_operation_mode",
-        {"entity_id": DHW_CE_FLAT_C2.entity_id, ATTR_OPERATION_MODE: STATE_PERFORMANCE},
+        {"entity_id": device.entity_id, ATTR_OPERATION_MODE: STATE_PERFORMANCE},
         blocking=True,
     )
 
     assert_commands_call(
         mock_client,
-        device_url=DHW_CE_FLAT_C2.device_url,
+        device_url=device.device_url,
         commands=[
             ("refreshBoostStartDate", None),
             ("refreshBoostEndDate", None),
