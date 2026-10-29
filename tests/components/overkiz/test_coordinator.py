@@ -6,8 +6,10 @@ from aiohttp import ClientConnectorError
 from freezegun.api import FrozenDateTimeFactory
 from pyoverkiz.enums import ExecutionState, OverkizState
 from pyoverkiz.exceptions import (
+    BadCredentialsError,
     InvalidEventListenerIdError,
     MaintenanceError,
+    NotAuthenticatedError,
     ServiceUnavailableError,
     SomfyServiceError,
     TooManyConcurrentRequestsError,
@@ -29,7 +31,7 @@ from homeassistant.components.overkiz.const import (
     UPDATE_INTERVAL_ALL_ASSUMED_STATE,
     UPDATE_INTERVAL_EXECUTION,
 )
-from homeassistant.config_entries import ConfigEntryState
+from homeassistant.config_entries import SOURCE_REAUTH, ConfigEntryState
 from homeassistant.const import ATTR_ENTITY_ID, STATE_UNAVAILABLE
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr, entity_registry as er
@@ -129,6 +131,46 @@ async def test_transient_error_is_retried(
     await hass.async_block_till_done()
 
     assert hass.states.get(TEMPERATURE_SENSOR.entity_id).state == initial_state.state
+
+
+async def test_expired_session_logs_in_again(
+    hass: HomeAssistant,
+    setup_overkiz_integration: SetupOverkizIntegration,
+    mock_client: MockOverkizClient,
+    freezer: FrozenDateTimeFactory,
+) -> None:
+    """An expired session logs in again and refetches states without reauth."""
+    config_entry = await setup_overkiz_integration(fixture=TEMPERATURE_SENSOR.fixture)
+    mock_client.reset_mock()
+
+    mock_client.fetch_events.side_effect = NotAuthenticatedError("Not authenticated")
+    freezer.tick(UPDATE_INTERVAL)
+    async_fire_time_changed(hass)
+    await hass.async_block_till_done()
+
+    mock_client.login.assert_awaited_once()
+    # Events missed while the session was expired are lost, so refetch all states.
+    mock_client.get_devices.assert_awaited_once_with(refresh=True)
+    assert hass.states.get(TEMPERATURE_SENSOR.entity_id).state != STATE_UNAVAILABLE
+    assert not list(config_entry.async_get_active_flows(hass, {SOURCE_REAUTH}))
+
+
+async def test_expired_session_with_bad_credentials_starts_reauth(
+    hass: HomeAssistant,
+    setup_overkiz_integration: SetupOverkizIntegration,
+    mock_client: MockOverkizClient,
+    freezer: FrozenDateTimeFactory,
+) -> None:
+    """Reauth starts only when logging in again rejects the credentials."""
+    config_entry = await setup_overkiz_integration(fixture=TEMPERATURE_SENSOR.fixture)
+
+    mock_client.fetch_events.side_effect = NotAuthenticatedError("Not authenticated")
+    mock_client.login.side_effect = BadCredentialsError("Bad credentials")
+    freezer.tick(UPDATE_INTERVAL)
+    async_fire_time_changed(hass)
+    await hass.async_block_till_done()
+
+    assert list(config_entry.async_get_active_flows(hass, {SOURCE_REAUTH}))
 
 
 async def test_rate_limit_delays_next_refresh(

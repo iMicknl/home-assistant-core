@@ -118,11 +118,7 @@ class OverkizDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Device]]):
         """Fetch Overkiz data via event listener."""
         try:
             events = await self.client.fetch_events()
-        except (
-            BadCredentialsError,
-            NotAuthenticatedError,
-            OAuth2TokenRequestReauthError,
-        ) as exception:
+        except (BadCredentialsError, OAuth2TokenRequestReauthError) as exception:
             raise ConfigEntryAuthFailed("Invalid authentication.") from exception
         except OAuth2TokenRequestError as exception:
             raise UpdateFailed("Failed to refresh OAuth2 token.") from exception
@@ -147,7 +143,9 @@ class OverkizDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Device]]):
         except (TimeoutError, ClientConnectorError) as exception:
             LOGGER.debug("Failed to connect", exc_info=True)
             raise UpdateFailed("Failed to connect.") from exception
-        except ServerDisconnectedError:
+        # An expired session is not a credential problem; only a rejected
+        # login below should start reauth.
+        except ServerDisconnectedError, NotAuthenticatedError:
             self.executions = {}
 
             # During the relogin, similar exceptions can be thrown.
