@@ -589,18 +589,27 @@ async def test_pass_apc_heating_zone_preset_modes(
 
 
 @pytest.mark.parametrize(
-    ("heating_mode", "heating_profile", "preset_mode"),
+    ("heating_mode", "heating_profile", "preset_mode", "hvac_mode"),
     [
-        pytest.param("comfort", "comfort", "comfort", id="comfort"),
-        pytest.param("eco", "eco", "eco", id="eco"),
-        pytest.param("internalScheduling", "comfort", "comfort", id="schedule_comfort"),
+        pytest.param("comfort", "comfort", "comfort", HVACMode.HEAT, id="comfort"),
+        pytest.param("eco", "eco", "eco", HVACMode.AUTO, id="eco"),
+        pytest.param(
+            "internalScheduling",
+            "comfort",
+            "comfort",
+            HVACMode.AUTO,
+            id="schedule_comfort",
+        ),
         # Frost protection is only reported as a profile, never as a mode
         pytest.param(
             "internalScheduling",
             "frostprotection",
             "frost_protection",
+            HVACMode.AUTO,
             id="schedule_frost_protection",
         ),
+        # Reported while an absence set in the Cozytouch app is active
+        pytest.param("absence", "absence", "away", HVACMode.AUTO, id="absence"),
     ],
 )
 async def test_pass_apc_heating_zone_preset_mode(
@@ -611,8 +620,9 @@ async def test_pass_apc_heating_zone_preset_mode(
     heating_mode: str,
     heating_profile: str,
     preset_mode: str,
+    hvac_mode: HVACMode,
 ) -> None:
-    """Test the preset reflects the heating mode, or the profile when scheduled."""
+    """Test the preset and HVAC mode reflect the heating mode and profile."""
     await setup_overkiz_integration(fixture=PASS_APC_HEATING_ZONE.fixture)
 
     await async_deliver_events(
@@ -641,3 +651,35 @@ async def test_pass_apc_heating_zone_preset_mode(
     state = hass.states.get(PASS_APC_HEATING_ZONE.entity_id)
     assert state is not None
     assert state.attributes[ATTR_PRESET_MODE] == preset_mode
+    assert state.state == hvac_mode
+
+
+@pytest.mark.parametrize(
+    ("hvac_mode", "heating_mode"),
+    [
+        pytest.param(HVACMode.AUTO, "internalScheduling", id="auto"),
+        pytest.param(HVACMode.HEAT, "comfort", id="heat"),
+        pytest.param(HVACMode.OFF, "stop", id="off"),
+    ],
+)
+async def test_pass_apc_heating_zone_set_hvac_mode(
+    hass: HomeAssistant,
+    mock_client: MockOverkizClient,
+    setup_overkiz_integration: SetupOverkizIntegration,
+    hvac_mode: HVACMode,
+    heating_mode: str,
+) -> None:
+    """Test setting the HVAC mode never sends the absence heating mode."""
+    await setup_overkiz_integration(fixture=PASS_APC_HEATING_ZONE.fixture)
+
+    await hass.services.async_call(
+        "climate",
+        "set_hvac_mode",
+        {"entity_id": PASS_APC_HEATING_ZONE.entity_id, "hvac_mode": hvac_mode},
+        blocking=True,
+    )
+
+    actions = mock_client.execute_action_group.await_args_list[0].kwargs["actions"]
+    assert actions[0].device_url == PASS_APC_HEATING_ZONE.device_url
+    assert actions[0].commands[0].name == "setPassAPCHeatingMode"
+    assert actions[0].commands[0].parameters == [heating_mode]

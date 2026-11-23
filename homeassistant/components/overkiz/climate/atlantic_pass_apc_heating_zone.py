@@ -20,7 +20,9 @@ from ..const import DOMAIN
 from ..coordinator import OverkizDataUpdateCoordinator
 from ..entity import OverkizEntity
 
+# HVAC_MODE_TO_OVERKIZ reverses this mapping, thus order matters.
 OVERKIZ_TO_HVAC_MODE: dict[str, HVACMode] = {
+    OverkizCommandParam.ABSENCE: HVACMode.AUTO,
     OverkizCommandParam.AUTO: HVACMode.AUTO,
     OverkizCommandParam.ECO: HVACMode.AUTO,
     OverkizCommandParam.MANU: HVACMode.HEAT,
