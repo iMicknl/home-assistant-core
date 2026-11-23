@@ -38,7 +38,7 @@ DHW_CE_FLAT_C2 = FixtureDevice(
     "water_heater.my_home_patio_water_heating",
 )
 
-# Thermor Malicio (io:AtlanticDomesticHotWaterProductionV2_CE_S4_IOComponent)
+# Thermor Malicio / Atlantic Lineo (io:AtlanticDomesticHotWaterProductionV2_CE_S4_IOComponent)
 DHW_CE_S4 = FixtureDevice(
     "setup/cloud_atlantic_cozytouch.json",
     "io://1234-5678-5643/11473805#1",
@@ -103,20 +103,28 @@ async def test_target_temperature_uses_water_target_state(
 
 
 # --- CE_FLAT_C2 (io:AtlanticDomesticHotWaterProductionV2_CE_FLAT_C2_IOComponent) ---
+@pytest.mark.parametrize(
+    "device",
+    [
+        pytest.param(DHW_CE_FLAT_C2, id="ce_flat_c2"),
+        pytest.param(DHW_CE_S4, id="ce_s4"),
+    ],
+)
 async def test_turn_away_mode_on(
     hass: HomeAssistant,
     freezer: FrozenDateTimeFactory,
     mock_client: MockOverkizClient,
     setup_overkiz_integration: SetupOverkizIntegration,
+    device: FixtureDevice,
 ) -> None:
     """Test turning away mode on sends absence dates then setAbsenceMode prog."""
     freezer.move_to("2026-05-28 12:00:00+00:00")
-    await setup_overkiz_integration(fixture=DHW_CE_FLAT_C2.fixture)
+    await setup_overkiz_integration(fixture=device.fixture)
 
     await hass.services.async_call(
         "water_heater",
         "set_away_mode",
-        {"entity_id": DHW_CE_FLAT_C2.entity_id, "away_mode": True},
+        {"entity_id": device.entity_id, "away_mode": True},
         blocking=True,
     )
 
@@ -124,7 +132,7 @@ async def test_turn_away_mode_on(
     # default test timezone (US/Pacific).
     assert_commands_call(
         mock_client,
-        device_url=DHW_CE_FLAT_C2.device_url,
+        device_url=device.device_url,
         commands=[
             (
                 "setAbsenceStartDate",
@@ -159,24 +167,32 @@ async def test_turn_away_mode_on(
     )
 
 
+@pytest.mark.parametrize(
+    "device",
+    [
+        pytest.param(DHW_CE_FLAT_C2, id="ce_flat_c2"),
+        pytest.param(DHW_CE_S4, id="ce_s4"),
+    ],
+)
 async def test_turn_away_mode_off(
     hass: HomeAssistant,
     mock_client: MockOverkizClient,
     setup_overkiz_integration: SetupOverkizIntegration,
+    device: FixtureDevice,
 ) -> None:
     """Turning away mode off sends setAbsenceMode['off']."""
-    await setup_overkiz_integration(fixture=DHW_CE_FLAT_C2.fixture)
+    await setup_overkiz_integration(fixture=device.fixture)
 
     await hass.services.async_call(
         "water_heater",
         "set_away_mode",
-        {"entity_id": DHW_CE_FLAT_C2.entity_id, "away_mode": False},
+        {"entity_id": device.entity_id, "away_mode": False},
         blocking=True,
     )
 
     assert_command_call(
         mock_client,
-        device_url=DHW_CE_FLAT_C2.device_url,
+        device_url=device.device_url,
         command_name="setAbsenceMode",
         parameters=["off"],
     )
@@ -207,24 +223,32 @@ async def test_set_temperature(
     )
 
 
+@pytest.mark.parametrize(
+    "device",
+    [
+        pytest.param(DHW_CE_FLAT_C2, id="ce_flat_c2"),
+        pytest.param(DHW_CE_S4, id="ce_s4"),
+    ],
+)
 async def test_set_operation_mode_auto(
     hass: HomeAssistant,
     mock_client: MockOverkizClient,
     setup_overkiz_integration: SetupOverkizIntegration,
+    device: FixtureDevice,
 ) -> None:
     """Test selecting 'auto' sets DHW mode to autoMode."""
-    await setup_overkiz_integration(fixture=DHW_CE_FLAT_C2.fixture)
+    await setup_overkiz_integration(fixture=device.fixture)
 
     await hass.services.async_call(
         "water_heater",
         "set_operation_mode",
-        {"entity_id": DHW_CE_FLAT_C2.entity_id, ATTR_OPERATION_MODE: "auto"},
+        {"entity_id": device.entity_id, ATTR_OPERATION_MODE: "auto"},
         blocking=True,
     )
 
     assert_command_call(
         mock_client,
-        device_url=DHW_CE_FLAT_C2.device_url,
+        device_url=device.device_url,
         command_name="setDHWMode",
         parameters=["autoMode"],
     )
