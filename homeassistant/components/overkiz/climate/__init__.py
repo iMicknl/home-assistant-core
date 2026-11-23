@@ -15,6 +15,9 @@ from .atlantic_electrical_heater import AtlanticElectricalHeater
 from .atlantic_electrical_heater_with_adjustable_temperature_setpoint import (
     AtlanticElectricalHeaterWithAdjustableTemperatureSetpoint,
 )
+from .atlantic_electrical_heater_with_adjustable_temperature_setpoint_mbl_component import (
+    AtlanticElectricalHeaterWithAdjustableTemperatureSetpointMBLComponent,
+)
 from .atlantic_electrical_towel_dryer import AtlanticElectricalTowelDryer
 from .atlantic_heat_recovery_ventilation import AtlanticHeatRecoveryVentilation
 from .atlantic_pass_apc_heat_pump_main_component import (
@@ -42,6 +45,7 @@ class Controllable(StrEnum):
     IO_ATLANTIC_PASS_APC_ZONE_CONTROL_ZONE = (
         "io:AtlanticPassAPCZoneControlZoneComponent"
     )
+    MODBUSLINK_ATLANTIC_ELECTRICAL_HEATER_WITH_ADJUSTABLE_TEMPERATURE_SETPOINT = "modbuslink:AtlanticElectricalHeaterWithAdjustableTemperatureSetpointMBLComponent"
 
 
 WIDGET_TO_CLIMATE_ENTITY = {
@@ -62,6 +66,14 @@ WIDGET_TO_CLIMATE_ENTITY = {
     ),
     UIWidget.VALVE_HEATING_TEMPERATURE_INTERFACE: ValveHeatingTemperatureInterface,
     UIWidget.ATLANTIC_PASS_APC_HEAT_PUMP: AtlanticPassAPCHeatPumpMainComponent,
+}
+
+# Device variants sharing a widget with an incompatible command set.
+# Takes precedence over WIDGET_TO_CLIMATE_ENTITY.
+CONTROLLABLE_TO_CLIMATE_ENTITY = {
+    Controllable.MODBUSLINK_ATLANTIC_ELECTRICAL_HEATER_WITH_ADJUSTABLE_TEMPERATURE_SETPOINT: (
+        AtlanticElectricalHeaterWithAdjustableTemperatureSetpointMBLComponent
+    ),
 }
 
 # For Atlantic APC, some devices are standalone and control
@@ -99,11 +111,21 @@ async def async_setup_entry(
     """Set up the Overkiz climate from a config entry."""
     data = entry.runtime_data
 
+    # Match devices based on the controllableName.
+    entities_based_on_controllable: list[Entity] = [
+        CONTROLLABLE_TO_CLIMATE_ENTITY[device.controllable_name](  # type: ignore[index]
+            device.device_url, data.coordinator
+        )
+        for device in data.platforms[Platform.CLIMATE]
+        if device.controllable_name in CONTROLLABLE_TO_CLIMATE_ENTITY
+    ]
+
     # Match devices based on the widget.
     entities_based_on_widget: list[Entity] = [
         WIDGET_TO_CLIMATE_ENTITY[device.widget](device.device_url, data.coordinator)
         for device in data.platforms[Platform.CLIMATE]
         if device.widget in WIDGET_TO_CLIMATE_ENTITY
+        and device.controllable_name not in CONTROLLABLE_TO_CLIMATE_ENTITY
     ]
 
     # Match devices based on the widget and controllableName.
@@ -131,7 +153,8 @@ async def async_setup_entry(
     ]
 
     async_add_entities(
-        entities_based_on_widget
+        entities_based_on_controllable
+        + entities_based_on_widget
         + entities_based_on_widget_and_controllable
         + entities_based_on_widget_and_protocol
     )

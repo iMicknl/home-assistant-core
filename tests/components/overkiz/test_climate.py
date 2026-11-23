@@ -16,6 +16,7 @@ from homeassistant.components.climate import (
     ATTR_CURRENT_TEMPERATURE,
     ATTR_FAN_MODE,
     ATTR_HVAC_ACTION,
+    ATTR_HVAC_MODE,
     ATTR_PRESET_MODE,
     HVACAction,
     HVACMode,
@@ -27,6 +28,7 @@ from homeassistant.helpers import entity_registry as er
 from .conftest import FixtureDevice, MockOverkizClient, SetupOverkizIntegration
 from .helpers import (
     assert_command_call,
+    assert_commands_call,
     async_deliver_events,
     device_available_event,
     device_removed_event,
@@ -513,4 +515,165 @@ async def test_heat_recovery_ventilation_without_ventilation_mode(
         service,
         {"entity_id": HEAT_RECOVERY_VENTILATION.entity_id, **service_data},
         blocking=True,
+    )
+
+
+@pytest.mark.parametrize(
+    ("device_states", "expected_hvac_mode", "expected_preset_mode"),
+    [
+        pytest.param(
+            [
+                {"name": OverkizState.CORE_ON_OFF, "type": 3, "value": "off"},
+                {"name": OverkizState.CORE_OPERATING_MODE, "type": 3, "value": "prog"},
+            ],
+            HVACMode.OFF,
+            "comfort",
+            id="off_keeps_operating_mode",
+        ),
+        pytest.param(
+            [
+                {"name": OverkizState.CORE_ON_OFF, "type": 3, "value": "on"},
+                {
+                    "name": OverkizState.CORE_OPERATING_MODE,
+                    "type": 3,
+                    "value": "manual",
+                },
+            ],
+            HVACMode.HEAT,
+            "comfort",
+            id="manual",
+        ),
+        pytest.param(
+            [
+                {"name": OverkizState.CORE_ON_OFF, "type": 3, "value": "on"},
+                {"name": OverkizState.CORE_OPERATING_MODE, "type": 3, "value": "prog"},
+                {
+                    "name": OverkizState.MODBUSLINK_TARGET_HEATING_LEVEL,
+                    "type": 3,
+                    "value": "eco",
+                },
+            ],
+            HVACMode.AUTO,
+            "eco",
+            id="prog",
+        ),
+        pytest.param(
+            [
+                {"name": OverkizState.CORE_ON_OFF, "type": 3, "value": "on"},
+                {"name": OverkizState.CORE_OPERATING_MODE, "type": 3, "value": "auto"},
+                {
+                    "name": OverkizState.MODBUSLINK_TARGET_HEATING_LEVEL,
+                    "type": 3,
+                    "value": "boost",
+                },
+            ],
+            HVACMode.AUTO,
+            "boost",
+            id="auto",
+        ),
+    ],
+)
+async def test_electrical_heater_adjustable_mbl_state(
+    hass: HomeAssistant,
+    freezer: FrozenDateTimeFactory,
+    mock_client: MockOverkizClient,
+    setup_overkiz_integration: SetupOverkizIntegration,
+    device_states: list[dict[str, Any]],
+    expected_hvac_mode: HVACMode,
+    expected_preset_mode: str,
+) -> None:
+    """Test the modbuslink heater maps on/off, operating mode and heating level."""
+    await setup_overkiz_integration(fixture=COZYTOUCH.fixture)
+
+    await async_deliver_events(
+        hass,
+        freezer,
+        mock_client,
+        [
+            device_state_changed_event(
+                device_url=COZYTOUCH.device_url,
+                device_states=device_states,
+            )
+        ],
+    )
+
+    state = hass.states.get(COZYTOUCH.entity_id)
+    assert state is not None
+    assert state.state == expected_hvac_mode
+    assert state.attributes[ATTR_PRESET_MODE] == expected_preset_mode
+
+
+@pytest.mark.parametrize(
+    ("service", "service_data", "commands"),
+    [
+        pytest.param(
+            "set_hvac_mode",
+            {ATTR_HVAC_MODE: HVACMode.OFF},
+            [("setOnOff", ["off"])],
+            id="hvac_mode_off",
+        ),
+        pytest.param(
+            "set_hvac_mode",
+            {ATTR_HVAC_MODE: HVACMode.HEAT},
+            [("setOnOff", ["on"]), ("setOperatingMode", ["manual"])],
+            id="hvac_mode_heat",
+        ),
+        pytest.param(
+            "set_hvac_mode",
+            {ATTR_HVAC_MODE: HVACMode.AUTO},
+            [
+                ("setOnOff", ["on"]),
+                ("setOperatingMode", ["prog"]),
+                ("refreshHeatingLevel", None),
+            ],
+            id="hvac_mode_auto",
+        ),
+        pytest.param("turn_on", {}, [("setOnOff", ["on"])], id="turn_on"),
+        pytest.param("turn_off", {}, [("setOnOff", ["off"])], id="turn_off"),
+        pytest.param(
+            "set_preset_mode",
+            {ATTR_PRESET_MODE: "comfort"},
+            [("setHeatingLevel", ["comfort"])],
+            id="preset_comfort",
+        ),
+        pytest.param(
+            "set_preset_mode",
+            {ATTR_PRESET_MODE: "eco"},
+            [("setHeatingLevel", ["eco"])],
+            id="preset_eco",
+        ),
+        pytest.param(
+            "set_preset_mode",
+            {ATTR_PRESET_MODE: "boost"},
+            [("setHeatingLevel", ["boost"])],
+            id="preset_boost",
+        ),
+        pytest.param(
+            "set_temperature",
+            {ATTR_TEMPERATURE: 20.5},
+            [("setTargetTemperature", [20.5])],
+            id="temperature",
+        ),
+    ],
+)
+async def test_electrical_heater_adjustable_mbl_commands(
+    hass: HomeAssistant,
+    mock_client: MockOverkizClient,
+    setup_overkiz_integration: SetupOverkizIntegration,
+    service: str,
+    service_data: dict[str, Any],
+    commands: list[tuple[str, list[Any] | None]],
+) -> None:
+    """Test the modbuslink heater only sends commands and values it accepts."""
+    await setup_overkiz_integration(fixture=COZYTOUCH.fixture)
+
+    await hass.services.async_call(
+        "climate",
+        service,
+        {"entity_id": COZYTOUCH.entity_id, **service_data},
+        blocking=True,
+    )
+
+    assert_commands_call(
+        mock_client, device_url=COZYTOUCH.device_url, commands=commands
     )
