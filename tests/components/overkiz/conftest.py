@@ -3,8 +3,9 @@
 from collections.abc import Awaitable, Callable, Generator
 from dataclasses import dataclass, field
 from typing import NamedTuple
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
+from aiohttp import ClientSession
 from pyoverkiz.client import OverkizClient
 from pyoverkiz.enums import APIType
 from pyoverkiz.models import Event, ServerConfig, Setup
@@ -35,6 +36,7 @@ class MockOverkizClient(OverkizClient):
 
     setup: Setup = field(default_factory=load_setup_fixture)
     event_batches: list[list[Event]] = field(default_factory=list)
+    session: ClientSession = field(default_factory=lambda: Mock(spec=ClientSession))
     server_config: ServerConfig = field(
         default_factory=lambda: ServerConfig(
             name="Somfy",

@@ -29,6 +29,7 @@ from homeassistant.components.cover import (
 from homeassistant.components.overkiz.const import (
     DOMAIN,
     RATE_LIMIT_RETRY_AFTER,
+    SERVER_UNAVAILABLE_RELOGIN_AFTER,
     UPDATE_INTERVAL,
     UPDATE_INTERVAL_ALL_ASSUMED_STATE,
     UPDATE_INTERVAL_EXECUTION,
@@ -162,17 +163,27 @@ async def test_transient_error_is_retried(
     assert hass.states.get(TEMPERATURE_SENSOR.entity_id).state == initial_state.state
 
 
+@pytest.mark.parametrize(
+    "exception",
+    [
+        pytest.param(
+            NotAuthenticatedError("Not authenticated"), id="not_authenticated"
+        ),
+        pytest.param(BadCredentialsError("Bad credentials"), id="bad_credentials"),
+    ],
+)
 async def test_expired_session_logs_in_again(
     hass: HomeAssistant,
     setup_overkiz_integration: SetupOverkizIntegration,
     mock_client: MockOverkizClient,
     freezer: FrozenDateTimeFactory,
+    exception: Exception,
 ) -> None:
-    """An expired session logs in again and refetches states without reauth."""
+    """A rejected session logs in again and refetches states without reauth."""
     config_entry = await setup_overkiz_integration(fixture=TEMPERATURE_SENSOR.fixture)
     mock_client.reset_mock()
 
-    mock_client.fetch_events.side_effect = NotAuthenticatedError("Not authenticated")
+    mock_client.fetch_events.side_effect = exception
     freezer.tick(UPDATE_INTERVAL)
     async_fire_time_changed(hass)
     await hass.async_block_till_done()
@@ -200,6 +211,114 @@ async def test_expired_session_with_bad_credentials_starts_reauth(
     await hass.async_block_till_done()
 
     assert list(config_entry.async_get_active_flows(hass, {SOURCE_REAUTH}))
+
+
+@pytest.mark.parametrize(
+    "exception",
+    [
+        pytest.param(
+            MaintenanceError("Server is down for maintenance"), id="maintenance"
+        ),
+        pytest.param(
+            ServiceUnavailableError("Server is unavailable"), id="service_unavailable"
+        ),
+    ],
+)
+async def test_persistent_server_error_logs_in_again(
+    hass: HomeAssistant,
+    setup_overkiz_integration: SetupOverkizIntegration,
+    mock_client: MockOverkizClient,
+    freezer: FrozenDateTimeFactory,
+    exception: Exception,
+) -> None:
+    """A server failing the session for a while gets a fresh login."""
+    config_entry = await setup_overkiz_integration(fixture=TEMPERATURE_SENSOR.fixture)
+    mock_client.reset_mock()
+
+    mock_client.fetch_events.side_effect = exception
+    freezer.tick(UPDATE_INTERVAL)
+    async_fire_time_changed(hass)
+    await hass.async_block_till_done()
+
+    # A short outage keeps the session.
+    mock_client.login.assert_not_awaited()
+    assert hass.states.get(TEMPERATURE_SENSOR.entity_id).state == STATE_UNAVAILABLE
+
+    freezer.tick(SERVER_UNAVAILABLE_RELOGIN_AFTER)
+    async_fire_time_changed(hass)
+    await hass.async_block_till_done()
+
+    mock_client.session.cookie_jar.clear.assert_called_once()
+    mock_client.login.assert_awaited_once()
+    mock_client.get_devices.assert_awaited_once_with(refresh=True)
+    assert hass.states.get(TEMPERATURE_SENSOR.entity_id).state != STATE_UNAVAILABLE
+    assert not list(config_entry.async_get_active_flows(hass, {SOURCE_REAUTH}))
+
+
+async def test_server_error_streak_resets_after_success(
+    hass: HomeAssistant,
+    setup_overkiz_integration: SetupOverkizIntegration,
+    mock_client: MockOverkizClient,
+    freezer: FrozenDateTimeFactory,
+) -> None:
+    """Separate short outages do not add up to a relogin."""
+    await setup_overkiz_integration(fixture=TEMPERATURE_SENSOR.fixture)
+    mock_client.reset_mock()
+
+    mock_client.fetch_events.side_effect = ServiceUnavailableError("Unavailable")
+    freezer.tick(UPDATE_INTERVAL)
+    async_fire_time_changed(hass)
+    await hass.async_block_till_done()
+
+    mock_client.fetch_events.side_effect = None
+    mock_client.fetch_events.return_value = []
+    freezer.tick(UPDATE_INTERVAL)
+    async_fire_time_changed(hass)
+    await hass.async_block_till_done()
+
+    mock_client.fetch_events.side_effect = ServiceUnavailableError("Unavailable")
+    freezer.tick(SERVER_UNAVAILABLE_RELOGIN_AFTER)
+    async_fire_time_changed(hass)
+    await hass.async_block_till_done()
+
+    mock_client.login.assert_not_awaited()
+
+
+async def test_relogin_during_server_outage_is_throttled(
+    hass: HomeAssistant,
+    setup_overkiz_integration: SetupOverkizIntegration,
+    mock_client: MockOverkizClient,
+    freezer: FrozenDateTimeFactory,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """While the server stays down, log in again once per window, not every poll."""
+    await setup_overkiz_integration(fixture=TEMPERATURE_SENSOR.fixture)
+    mock_client.reset_mock()
+
+    mock_client.fetch_events.side_effect = ServiceUnavailableError("Unavailable")
+    mock_client.login.side_effect = ServiceUnavailableError("Unavailable")
+    freezer.tick(UPDATE_INTERVAL)
+    async_fire_time_changed(hass)
+    await hass.async_block_till_done()
+
+    freezer.tick(SERVER_UNAVAILABLE_RELOGIN_AFTER)
+    async_fire_time_changed(hass)
+    await hass.async_block_till_done()
+    assert mock_client.login.await_count == 1
+
+    freezer.tick(UPDATE_INTERVAL)
+    async_fire_time_changed(hass)
+    await hass.async_block_till_done()
+    assert mock_client.login.await_count == 1
+
+    freezer.tick(SERVER_UNAVAILABLE_RELOGIN_AFTER)
+    async_fire_time_changed(hass)
+    await hass.async_block_till_done()
+    assert mock_client.login.await_count == 2
+
+    assert hass.states.get(TEMPERATURE_SENSOR.entity_id).state == STATE_UNAVAILABLE
+    # A failed relogin is an expected outage, not an unexpected error.
+    assert "Unexpected error" not in caplog.text
 
 
 async def test_rate_limit_delays_next_refresh(

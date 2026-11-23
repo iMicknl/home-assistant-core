@@ -2,7 +2,7 @@
 
 from collections.abc import Callable, Coroutine
 from dataclasses import dataclass
-from datetime import timedelta
+from datetime import datetime, timedelta
 import logging
 from typing import TYPE_CHECKING, Any, override
 
@@ -44,6 +44,7 @@ from homeassistant.helpers.update_coordinator import (
     UpdateFailed,
     UpdateFailedUnreachable,
 )
+from homeassistant.util import dt as dt_util
 from homeassistant.util.decorator import Registry
 
 from .const import (
@@ -51,6 +52,7 @@ from .const import (
     IGNORED_OVERKIZ_DEVICES,
     LOGGER,
     RATE_LIMIT_RETRY_AFTER,
+    SERVER_UNAVAILABLE_RELOGIN_AFTER,
     UPDATE_INTERVAL,
     UPDATE_INTERVAL_EXECUTION,
 )
@@ -109,6 +111,7 @@ class OverkizDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Device]]):
         }
         self.areas = self._places_to_area(places) if places else None
         self._default_update_interval = UPDATE_INTERVAL
+        self._server_unavailable_since: datetime | None = None
 
         self.is_stateless = all(
             device.identifier.protocol in (Protocol.RTS, Protocol.INTERNAL)
@@ -122,7 +125,7 @@ class OverkizDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Device]]):
         """Fetch Overkiz data via event listener."""
         try:
             events = await self.client.fetch_events()
-        except (BadCredentialsError, OAuth2TokenRequestReauthError) as exception:
+        except OAuth2TokenRequestReauthError as exception:
             raise ConfigEntryAuthFailed("Invalid authentication.") from exception
         except OAuth2TokenRequestError as exception:
             raise UpdateFailed("Failed to refresh OAuth2 token.") from exception
@@ -136,12 +139,15 @@ class OverkizDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Device]]):
                     RATE_LIMIT_RETRY_AFTER, self._default_update_interval
                 ).total_seconds(),
             ) from exception
-        except MaintenanceError as exception:
+        except ServiceUnavailableError as exception:
+            if self._server_unavailable_for_too_long():
+                LOGGER.debug("Server still unavailable, logging in again")
+                return await self._async_relogin()
             raise UpdateFailedUnreachable(
                 "Server is down for maintenance."
+                if isinstance(exception, MaintenanceError)
+                else "Server is unavailable."
             ) from exception
-        except ServiceUnavailableError as exception:
-            raise UpdateFailedUnreachable("Server is unavailable.") from exception
         except SomfyServiceError as exception:
             raise UpdateFailed("Somfy service error.") from exception
         except InvalidEventListenerIdError as exception:
@@ -152,21 +158,12 @@ class OverkizDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Device]]):
         except ClientConnectorError as exception:
             LOGGER.debug("Failed to connect", exc_info=True)
             raise UpdateFailedUnreachable("Failed to connect.") from exception
-        # An expired session is not a credential problem; only a rejected
-        # login below should start reauth.
-        except ServerDisconnectedError, NotAuthenticatedError:
-            self.executions = {}
+        # A rejected session does not mean the credentials are wrong; reauth
+        # starts only when logging in again fails.
+        except ServerDisconnectedError, NotAuthenticatedError, BadCredentialsError:
+            return await self._async_relogin()
 
-            # During the relogin, similar exceptions can be thrown.
-            try:
-                await self.client.login()
-                self.devices = await self._get_devices()
-            except (BadCredentialsError, NotAuthenticatedError) as exception:
-                raise ConfigEntryAuthFailed("Invalid authentication.") from exception
-            except TooManyRequestsError as exception:
-                raise UpdateFailed("Too many requests, try again later.") from exception
-
-            return self.devices
+        self._server_unavailable_since = None
 
         for event in events:
             LOGGER.debug(event)
@@ -177,6 +174,35 @@ class OverkizDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Device]]):
         # Restore the default update interval if no executions are pending
         if not self.executions:
             self.update_interval = self._default_update_interval
+
+        return self.devices
+
+    def _server_unavailable_for_too_long(self) -> bool:
+        """Return whether the server has failed long enough to log in again."""
+        now = dt_util.utcnow()
+        if self._server_unavailable_since is None:
+            self._server_unavailable_since = now
+        return now - self._server_unavailable_since >= SERVER_UNAVAILABLE_RELOGIN_AFTER
+
+    async def _async_relogin(self) -> dict[str, Device]:
+        """Log in again and refetch all devices, as events may have been missed."""
+        self.executions = {}
+        # Also throttles the next relogin while the server stays unavailable.
+        self._server_unavailable_since = None
+        # Only a reload, which starts with an empty cookie jar, is known to
+        # recover a session the server keeps failing.
+        self.client.session.cookie_jar.clear()
+
+        # During the relogin, similar exceptions can be thrown.
+        try:
+            await self.client.login()
+            self.devices = await self._get_devices()
+        except (BadCredentialsError, NotAuthenticatedError) as exception:
+            raise ConfigEntryAuthFailed("Invalid authentication.") from exception
+        except TooManyRequestsError as exception:
+            raise UpdateFailed("Too many requests, try again later.") from exception
+        except ServiceUnavailableError as exception:
+            raise UpdateFailedUnreachable("Server is unavailable.") from exception
 
         return self.devices
 

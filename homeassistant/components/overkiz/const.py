@@ -50,6 +50,8 @@ UPDATE_INTERVAL_SAUTER_SMART_CONTROL: Final = timedelta(seconds=25)
 # fetch_events allows 1 call per second, and refresh timing jitters, so leave margin.
 UPDATE_INTERVAL_EXECUTION: Final = timedelta(seconds=2)
 RATE_LIMIT_RETRY_AFTER: Final = timedelta(minutes=1)
+# The server can keep failing a session that a new login would fix.
+SERVER_UNAVAILABLE_RELOGIN_AFTER: Final = timedelta(minutes=5)
 
 PLATFORMS: list[Platform] = [
     Platform.ALARM_CONTROL_PANEL,
